@@ -21,6 +21,8 @@ executable pmgame
   build-depends:       base >= 4.7 && < 5
                      , brick
                      , vty
+                     , matrix
+                     , vector
                      , text
                      , unix
  other-modules:        Types

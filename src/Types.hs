@@ -1,10 +1,11 @@
 module Types
-    ( Maze
-    , Tile (..)
+    ( Tile (..)
     , St (..)
     , Direction (..)
     , TimeEvent (..)
     ) where
+
+import qualified Data.Matrix as M
 
 data TimeEvent = Tick deriving ( Show )
 
@@ -30,8 +31,6 @@ data Tile = Player
           | RDCr
           deriving (Show, Eq)
 
-type Maze = [[Tile]]
-
-data St = St { maze      :: Maze
+data St = St { maze      :: M.Matrix Tile
              , score     :: Int
              , direction :: Direction }

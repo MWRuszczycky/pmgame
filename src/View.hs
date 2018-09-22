@@ -6,6 +6,7 @@ module View
 
 import qualified Graphics.Vty as V
 import qualified Data.Text    as T
+import qualified Data.Matrix  as M
 import Brick.Types                      ( Widget (..) )
 import Brick.Widgets.Core               ( txt, withAttr, vBox, hBox )
 import Brick.AttrMap                    ( attrMap, AttrMap )
@@ -15,7 +16,7 @@ import Types
 
 drawUI :: St -> [ Widget () ]
 drawUI s = [ center . vBox $ [ hdr, m, scr ] ]
-    where m   = vBox . map ( hBox . map (renderTile s) ) . maze $ s
+    where m   = vBox . map ( hBox . map (renderTile s) ) . M.toLists . maze $ s
           scr = withAttr "score" . txt . T.pack . show . score $ s
           hdr = withAttr "score" . txt $ "PacMan!"
 

@@ -4,13 +4,12 @@ module Maze
     , isWall
     , isFree
     , sumPair
-    , update
     , findTile
-    , query
     ) where
 
-import Types        ( St, Maze, Tile (..), Direction (..) )
-import Data.List    ( find )
+import qualified Data.Matrix as M
+import qualified Data.Vector as V
+import Types                        ( St, Tile (..), Direction (..) )
 
 ---------------------------------------------------------------------
 -- Utilities
@@ -18,32 +17,16 @@ import Data.List    ( find )
 sumPair :: Num a => (a, a) -> (a, a) -> (a, a)
 sumPair (x0,y0) (x1,y1) = (x0 + x1, y0 + y1)
 
-findTile :: Tile -> Maze -> Maybe (Int, Int)
-findTile t = go t . zip [0..]
-    where go t []     = Nothing
-          go t (r:rs) = case find ((== t) . snd) . zip [0..] . snd $ r of
-                             Nothing    -> go t rs
-                             Just (c,_) -> Just (fst r, c)
+findTile :: Tile -> M.Matrix Tile -> Maybe (Int, Int)
+findTile t m = case V.elemIndex t . M.getMatrixAsVector $ m of
+                    Nothing -> Nothing
+                    Just k  -> let (r,c) = quotRem k . M.ncols $ m
+                               in  Just (r+1, c+1) -- Matrices are 1-indexed
 
-update :: (Int, Int) -> Tile -> Maze -> Maze
-update _ _ [] = []
-update (x,y) t (r:rs)
-    | x > 0     = r : update (x-1,y) t rs
-    | x < 0     = r : rs
-    | otherwise = updateCol y t r : rs
-    where updateCol _ _ [] = []
-          updateCol y t (c:cs) | y > 0     = c : updateCol (y-1) t cs
-                               | y < 0     = c : cs
-                               | otherwise = t : cs
-
-isFree :: (Int, Int) -> Maze -> Bool
-isFree (r,c) m = let maxr = length m - 1
-                     maxc = (length . head) m - 1
-                 in all id [ r >= 0, r <= maxr, c >= 0, c <= maxc
-                           , not . isWall . query (r,c) $ m ]
-
-query :: (Int, Int) -> Maze -> Tile
-query (r,c) m = m !! r !! c
+isFree :: (Int, Int) -> M.Matrix Tile -> Bool
+isFree (r,c) m = case M.safeGet r c m of
+                      Nothing -> False
+                      Just t  -> not . isWall $ t
 
 isWall :: Tile -> Bool
 isWall t = elem t [ HBar, VBar, LTee, UTee, RTee, DTee, RDCr, LDCr, RUCr, LUCr ]
@@ -57,16 +40,12 @@ dirToPair South = (1, 0)
 ---------------------------------------------------------------------
 -- Converters from strings
 
-initMaze :: String -> Maze
-initMaze s = chop nc . map (convertTile ss) $ ts
+initMaze :: String -> M.Matrix Tile
+initMaze s = M.fromList nr nc . map (convertTile ss) $ ts
     where ts = [ (r,c) | r <- [0 .. nr-1], c <- [0 .. nc-1] ]
           ss = lines s
           nr = length ss
           nc = length . head $ ss
-
-chop :: Int -> [Tile] -> Maze
-chop _ [] = []
-chop n ts = (:) <$> fst <*> chop n . snd $ splitAt n ts
 
 convertTile :: [String] -> (Int, Int) -> Tile
 convertTile ss (x,y)

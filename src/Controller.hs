@@ -3,9 +3,10 @@ module Controller
     ) where
 
 import qualified Graphics.Vty as V
+import qualified Data.Matrix  as M
 import Brick.Types  ( BrickEvent (..), Next, EventM )
 import Types        ( St (..), Tile (..), TimeEvent (..), Direction (..) )
-import Maze         ( sumPair, isFree, update, findTile, query, dirToPair )
+import Maze         ( sumPair, isFree, findTile, dirToPair )
 import Brick.Main   ( continue, halt )
 
 ---------------------------------------------------------------------
@@ -42,7 +43,7 @@ movePlayer s
           m0      = maze s
           Just p0 = findTile Player m0
           p1      = sumPair p0 d
-          m1      = update p0 Empty . update p1 Player $ m0
-          scr1    = case query p1 m0 of
-                        Pellet    -> (+10) . score $ s
-                        otherwise -> score s
+          m1      = M.setElem Empty p0 . M.setElem Player p1 $ m0
+          scr1    = case uncurry M.getElem p1 m0 of
+                         Pellet    -> (+10) . score $ s
+                         otherwise -> score s
