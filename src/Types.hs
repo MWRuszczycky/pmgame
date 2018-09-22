@@ -1,6 +1,6 @@
 module Types
     ( Tile (..)
-    , St (..)
+    , Game (..)
     , Direction (..)
     , TimeEvent (..)
     ) where
@@ -31,6 +31,6 @@ data Tile = Player
           | RDCr
           deriving (Show, Eq)
 
-data St = St { maze      :: M.Matrix Tile
+data Game = Game { maze      :: M.Matrix Tile
              , score     :: Int
              , direction :: Direction }

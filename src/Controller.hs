@@ -5,14 +5,14 @@ module Controller
 import qualified Graphics.Vty as V
 import qualified Data.Matrix  as M
 import Brick.Types  ( BrickEvent (..), Next, EventM )
-import Types        ( St (..), Tile (..), TimeEvent (..), Direction (..) )
+import Types        ( Game (..), Tile (..), TimeEvent (..), Direction (..) )
 import Maze         ( sumPair, isFree, findTile, dirToPair )
 import Brick.Main   ( continue, halt )
 
 ---------------------------------------------------------------------
 -- Interface
 
-eventRouter :: St -> BrickEvent () TimeEvent -> EventM () ( Next St )
+eventRouter :: Game -> BrickEvent () TimeEvent -> EventM () ( Next Game )
 eventRouter s (VtyEvent (V.EvKey V.KEsc [] )) = halt s
 eventRouter s (VtyEvent (V.EvKey k ms ))      = continue . keyEvent k ms $ s
 eventRouter s (VtyEvent (V.EvResize _ _))     = continue s
@@ -22,20 +22,20 @@ eventRouter s _                               = continue s
 ---------------------------------------------------------------------
 -- Helpers
 
-tickEvent :: St -> St
+tickEvent :: Game -> Game
 tickEvent = moveGhosts . movePlayer
 
-keyEvent :: V.Key -> [V.Modifier] -> St -> St
+keyEvent :: V.Key -> [V.Modifier] -> Game -> Game
 keyEvent V.KLeft  ms s = s { direction = West  }
 keyEvent V.KRight ms s = s { direction = East  }
 keyEvent V.KUp    ms s = s { direction = North }
 keyEvent V.KDown  ms s = s { direction = South }
 keyEvent _        _  s = s
 
-moveGhosts :: St -> St
+moveGhosts :: Game -> Game
 moveGhosts = id
 
-movePlayer :: St -> St
+movePlayer :: Game -> Game
 movePlayer s
     | isFree p1 m0 = s { maze = m1, score = scr1 }
     | otherwise    = s

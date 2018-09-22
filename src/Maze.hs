@@ -9,7 +9,7 @@ module Maze
 
 import qualified Data.Matrix as M
 import qualified Data.Vector as V
-import Types                        ( St, Tile (..), Direction (..) )
+import Types                        ( Game, Tile (..), Direction (..) )
 
 ---------------------------------------------------------------------
 -- Utilities

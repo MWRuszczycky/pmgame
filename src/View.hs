@@ -14,13 +14,13 @@ import Brick.Util                       ( on, bg, fg )
 import Brick.Widgets.Center             ( center )
 import Types
 
-drawUI :: St -> [ Widget () ]
+drawUI :: Game -> [ Widget () ]
 drawUI s = [ center . vBox $ [ hdr, m, scr ] ]
     where m   = vBox . map ( hBox . map (renderTile s) ) . M.toLists . maze $ s
           scr = withAttr "score" . txt . T.pack . show . score $ s
           hdr = withAttr "score" . txt $ "PacMan!"
 
-renderTile :: St -> Tile -> Widget ()
+renderTile :: Game -> Tile -> Widget ()
 renderTile _ Empty  = withAttr "maze"   . txt $ " "
 renderTile _ Pellet = withAttr "pellet" . txt $ "."
 renderTile _ Blinky = withAttr "blinky" . txt $ " "
@@ -40,7 +40,7 @@ renderTile _ LDCr   = withAttr "maze"   . txt $ "╚"
 renderTile _ RDCr   = withAttr "maze"   . txt $ "╝"
 renderTile s Player = withAttr "player" . txt . playerGlyph $ s
 
-playerGlyph :: St -> T.Text
+playerGlyph :: Game -> T.Text
 playerGlyph s = case direction s of
                      North -> "∨"
                      South -> "∧"

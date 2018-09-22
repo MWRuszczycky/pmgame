@@ -10,7 +10,7 @@ import Brick.BChan                      ( BChan
                                         , writeBChan
                                         , newBChan          )
 import Controller                       ( eventRouter       )
-import Types                            ( St (..)
+import Types                            ( Game (..)
                                         , Direction (..)
                                         , TimeEvent (..)    )
 import View                             ( drawUI
@@ -24,7 +24,7 @@ import Brick.Main                       ( App (..)
                                         , neverShowCursor
                                         , customMain        )
 
-app :: App St TimeEvent ()
+app :: App Game TimeEvent ()
 app = App { appDraw         = drawUI
           , appHandleEvent  = eventRouter
           , appAttrMap      = const attributes
@@ -35,7 +35,7 @@ main :: IO ()
 main = do
     putEnv "TERM=xterm-256color"
     m <- initMaze <$> readFile "data/classicMaze1.txt"
-    let start = St { maze = m, score = 0, direction = North }
+    let start = Game { maze = m, score = 0, direction = North }
     chan <- newBChan 10 :: IO ( BChan TimeEvent )
     defaultConfig <- V.standardIOConfig
     forkIO . forever $ writeBChan chan Tick >> threadDelay 250000
