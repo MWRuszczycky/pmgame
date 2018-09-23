@@ -7,12 +7,14 @@ module Types
     , PacMan (..)
     , Direction (..)
     , TimeEvent (..)
+    , Items (..)
     -- Lenses for Game
     , maze
-    , score
+    , items
     , pacman
     , ghosts
     , rgen
+    , remaining
     -- Lenses for PacMan
     , pdir
     , ppos
@@ -20,6 +22,8 @@ module Types
     , gname
     , gdir
     , gpos
+    -- Lenses for Items
+    , pellets
     ) where
 
 import qualified Data.Matrix as M
@@ -56,17 +60,23 @@ data Ghost = Ghost { _gname :: Tile
                    , _gdir  :: Direction
                    , _gpos  :: (Int, Int)
                    } deriving ( Show )
-$(makeLenses ''Ghost)
 
 data PacMan = PacMan { _pdir :: Direction
                      , _ppos :: (Int, Int)
                      } deriving ( Show )
-$(makeLenses ''PacMan)
 
-data Game = Game { _maze   :: Maze
-                 , _score  :: Int
-                 , _pacman :: PacMan
-                 , _ghosts :: [ Ghost ]
-                 , _rgen   :: StdGen
+data Items = Items { _pellets :: Int
+                   } deriving ( Show )
+
+data Game = Game { _maze      :: Maze
+                 , _items     :: Items
+                 , _pacman    :: PacMan
+                 , _ghosts    :: [ Ghost ]
+                 , _rgen      :: StdGen
+                 , _remaining :: Int
                  } deriving ( Show )
-$(makeLenses ''Game)
+
+makeLenses ''Game
+makeLenses ''Items
+makeLenses ''PacMan
+makeLenses ''Ghost

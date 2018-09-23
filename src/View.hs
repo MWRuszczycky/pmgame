@@ -21,10 +21,19 @@ import Types                            ( Game (..)
                                         , Maze (..)                 )
 
 drawUI :: Game -> [ Widget () ]
-drawUI g = [ center . vBox $ [ hdr, m, scr ] ]
+drawUI g = [ center . vBox $ [ hdr, m, scr, r ] ]
     where m   = renderMaze g
-          scr = withAttr "score" . txt . Txt.pack . show $ g ^. T.score
+          scr = renderScore g
+          r   = renderRemaining g
           hdr = withAttr "score" . txt $ "PacMan!"
+
+renderScore :: Game -> Widget ()
+renderScore g = withAttr "score" . txt . Txt.pack . show $ s
+    where s = 10 * g ^. T.items . T.pellets
+
+renderRemaining :: Game -> Widget ()
+renderRemaining g = withAttr "score" . txt . Txt.pack . show $ r
+    where r = g ^. T.remaining
 
 renderMaze :: Game -> Widget ()
 renderMaze g = vBox . map ( hBox . map (renderTile g) ) . M.toLists $ m2

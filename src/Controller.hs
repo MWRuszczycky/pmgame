@@ -5,7 +5,7 @@ module Controller
 import qualified Graphics.Vty as V
 import qualified Data.Matrix  as M
 import qualified Types        as T
-import Lens.Micro                   ( (&), (^.), (.~) )
+import Lens.Micro                   ( (&), (^.), (.~), (%~) )
 import System.Random                ( StdGen            )
 import Data.List                    ( foldl', delete    )
 import Brick.Types                  ( BrickEvent (..)
@@ -65,12 +65,15 @@ moveGhost (m, gsts, r0) (Ghost nm d0 p0) = (m, (Ghost nm d1 p1):gsts, r1)
 
 movePlayer :: Game -> Game
 movePlayer g
-    | isFree m0 p1 = g & T.maze .~ m1 & T.score .~ s1 & T.pacman . T.ppos .~ p1
+    | isFree m0 p1 = g & T.maze .~ m1
+                       & T.items . T.pellets %~ (+ s1)
+                       & T.remaining %~ (subtract s1)
+                       & T.pacman . T.ppos .~ p1
     | otherwise    = g
     where PacMan d p0 = g ^. T.pacman
           m0 = g ^. T.maze
           p1 = sumPair p0 . dirToPair $ d
           m1 = M.setElem Empty p0 m0
           s1 = case uncurry M.getElem p1 m0 of
-                    Pellet    -> 10 + g ^. T.score
-                    otherwise -> g ^. T.score
+                    Pellet    -> 1
+                    otherwise -> 0

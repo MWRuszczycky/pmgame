@@ -19,6 +19,7 @@ import Types                        ( Game (..)
                                     , Ghost (..)
                                     , PacMan (..)
                                     , Tile (..)
+                                    , Items (..)
                                     , Direction (..)    )
 
 ---------------------------------------------------------------------
@@ -61,10 +62,11 @@ initGame r s = do
     pman <- loadPacMan sf (M.ncols m)
     gsts <- mapM ( loadGhost sf (M.ncols m) ) "pbic"
     return Game { _maze = m
-                , _score = 0
+                , _items = Items 0
                 , _rgen = r
                 , _pacman = pman
-                , _ghosts = gsts }
+                , _ghosts = gsts
+                , _remaining = length . filter (== '.') $ sf }
 
 loadMaze :: [String] -> Maybe Maze
 loadMaze [] = Nothing
