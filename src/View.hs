@@ -20,25 +20,25 @@ drawUI s = [ center . vBox $ [ hdr, m, scr ] ]
           scr = withAttr "score" . txt . T.pack . show . score $ s
           hdr = withAttr "score" . txt $ "PacMan!"
 
-renderTile :: Game -> Tile -> Widget ()
-renderTile _ Empty  = withAttr "maze"   . txt $ " "
-renderTile _ HBar   = withAttr "maze"   . txt $ "═"
-renderTile _ VBar   = withAttr "maze"   . txt $ "║"
-renderTile _ Cros   = withAttr "maze"   . txt $ "╬"
-renderTile _ LTee   = withAttr "maze"   . txt $ "╣"
-renderTile _ RTee   = withAttr "maze"   . txt $ "╠"
-renderTile _ DTee   = withAttr "maze"   . txt $ "╦"
-renderTile _ UTee   = withAttr "maze"   . txt $ "╩"
-renderTile _ LUCr   = withAttr "maze"   . txt $ "╔"
-renderTile _ RUCr   = withAttr "maze"   . txt $ "╗"
-renderTile _ LDCr   = withAttr "maze"   . txt $ "╚"
-renderTile _ RDCr   = withAttr "maze"   . txt $ "╝"
-renderTile s Player = withAttr "player" . txt . playerGlyph . direction $ s
-renderTile _ Pellet = withAttr "pellet" . txt $ "."
-renderTile _ Blinky = withAttr "blinky" . txt $ " "
-renderTile _ Inky   = withAttr "inky"   . txt $ " "
-renderTile _ Pinky  = withAttr "pinky"  . txt $ " "
-renderTile _ Clyde  = withAttr "clyde"  . txt $ " "
+renderTile :: Game -> [Tile] -> Widget ()
+renderTile _ []         = withAttr "maze"   . txt $ " "
+renderTile _ (HBar:_)   = withAttr "maze"   . txt $ "═"
+renderTile _ (VBar:_)   = withAttr "maze"   . txt $ "║"
+renderTile _ (Cros:_)   = withAttr "maze"   . txt $ "╬"
+renderTile _ (LTee:_)   = withAttr "maze"   . txt $ "╣"
+renderTile _ (RTee:_)   = withAttr "maze"   . txt $ "╠"
+renderTile _ (DTee:_)   = withAttr "maze"   . txt $ "╦"
+renderTile _ (UTee:_)   = withAttr "maze"   . txt $ "╩"
+renderTile _ (LUCr:_)   = withAttr "maze"   . txt $ "╔"
+renderTile _ (RUCr:_)   = withAttr "maze"   . txt $ "╗"
+renderTile _ (LDCr:_)   = withAttr "maze"   . txt $ "╚"
+renderTile _ (RDCr:_)   = withAttr "maze"   . txt $ "╝"
+renderTile s (Player:_) = withAttr "player" . txt . playerGlyph . pdir $ s
+renderTile _ (Pellet:_) = withAttr "pellet" . txt $ "."
+renderTile _ (Blinky:_) = withAttr "blinky" . txt $ " "
+renderTile _ (Inky:_)   = withAttr "inky"   . txt $ " "
+renderTile _ (Pinky:_)  = withAttr "pinky"  . txt $ " "
+renderTile _ (Clyde:_)  = withAttr "clyde"  . txt $ " "
 
 playerGlyph :: Direction -> T.Text
 playerGlyph North = "∨"

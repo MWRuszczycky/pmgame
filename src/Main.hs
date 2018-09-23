@@ -13,6 +13,8 @@ import Brick.BChan                      ( BChan
 import Controller                       ( eventRouter       )
 import Types                            ( Game (..)
                                         , Tile (..)
+                                        , Ghost (..)
+                                        , Maze (..)
                                         , Direction (..)
                                         , TimeEvent (..)    )
 import View                             ( drawUI
@@ -33,9 +35,9 @@ app = App { appDraw         = drawUI
           , appStartEvent   = return
           , appChooseCursor = neverShowCursor }
 
-start :: M.Matrix Tile -> Game
-start m = Game { maze = m, score = 0, direction = North, ghosts = gs }
-    where gs = [ ( Blinky, West ) ]
+start :: Maze -> Game
+start m = Game { maze = m, score = 0, pdir = North, ghosts = gs }
+    where gs = [ Ghost Blinky West ]
                -- , ( Inky, North  )
                -- , ( Pinky, East  )
                -- , ( Clyde, South ) ]

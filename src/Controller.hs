@@ -4,9 +4,14 @@ module Controller
 
 import qualified Graphics.Vty as V
 import qualified Data.Matrix  as M
-import Data.List    ( foldl', (\\) )
+import Data.List    ( foldl', (\\), delete )
 import Brick.Types  ( BrickEvent (..), Next, EventM )
-import Types        ( Game (..), Tile (..), TimeEvent (..), Direction (..) )
+import Types        ( Game (..)
+                    , Maze (..)
+                    , Ghost (..)
+                    , Tile (..)
+                    , TimeEvent (..)
+                    , Direction (..) )
 import Maze         ( sumPair, isFree, findTile, dirToPair )
 import Brick.Main   ( continue, halt )
 
@@ -27,34 +32,35 @@ tickEvent :: Game -> Game
 tickEvent = moveGhosts . movePlayer
 
 keyEvent :: V.Key -> [V.Modifier] -> Game -> Game
-keyEvent V.KLeft  ms s = s { direction = West  }
-keyEvent V.KRight ms s = s { direction = East  }
-keyEvent V.KUp    ms s = s { direction = North }
-keyEvent V.KDown  ms s = s { direction = South }
+keyEvent V.KLeft  ms s = s { pdir = West  }
+keyEvent V.KRight ms s = s { pdir = East  }
+keyEvent V.KUp    ms s = s { pdir = North }
+keyEvent V.KDown  ms s = s { pdir = South }
 keyEvent _        _  s = s
 
 moveGhosts :: Game -> Game
 moveGhosts s = s { maze = m, ghosts = gs }
     where (m, gs) = foldl' moveGhost (maze s, []) . ghosts $ s
 
-moveGhost :: (M.Matrix Tile, [(Tile, Direction)]) -> (Tile, Direction)
-             -> (M.Matrix Tile, [(Tile, Direction)])
-moveGhost (m0, gs) (t,d0) = (m1, (t,d1):gs)
-    where Just p0  = findTile t m0
+moveGhost :: (Maze, [Ghost]) -> Ghost -> (Maze, [Ghost])
+moveGhost (m0, gs) (Ghost nm d0) = (m1, (Ghost nm d1):gs)
+    where Just p0  = findTile nm m0
           dirs     = d0 : ( [North, East, South, West] \\ [d0] )
           ps       = [ (d, sumPair p0 . dirToPair $ d) | d <- dirs ]
           (d1, p1) = head . dropWhile (not . isFree m0 . snd) $ ps
-          m1       = M.setElem Empty p0 . M.setElem t p1 $ m0
+          old      = uncurry M.getElem p0 m0
+          nxt      = uncurry M.getElem p1 m0
+          m1       = M.setElem (delete nm old) p0 . M.setElem (nm:nxt) p1 $ m0
 
 movePlayer :: Game -> Game
 movePlayer s
     | isFree m0 p1 = s { maze = m1, score = scr1 }
     | otherwise    = s
-    where d       = dirToPair . direction $ s
+    where d       = dirToPair . pdir $ s
           m0      = maze s
           Just p0 = findTile Player m0
           p1      = sumPair p0 d
-          m1      = M.setElem Empty p0 . M.setElem Player p1 $ m0
+          m1      = M.setElem [] p0 . M.setElem [Player] p1 $ m0
           scr1    = case uncurry M.getElem p1 m0 of
-                         Pellet    -> (+10) . score $ s
+                         [Pellet]  -> (+10) . score $ s
                          otherwise -> score s

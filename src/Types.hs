@@ -1,6 +1,8 @@
 module Types
     ( Tile (..)
+    , Maze (..)
     , Game (..)
+    , Ghost (..)
     , Direction (..)
     , TimeEvent (..)
     ) where
@@ -12,7 +14,6 @@ data TimeEvent = Tick deriving ( Show )
 data Direction = North | South | East | West deriving ( Show, Eq )
 
 data Tile = Player
-          | Empty
           | Pellet
           | Pinky
           | Blinky
@@ -31,8 +32,14 @@ data Tile = Player
           | RDCr
           deriving (Show, Eq)
 
-data Game = Game { maze      :: M.Matrix Tile
-                 , score     :: Int
-                 , direction :: Direction
-                 , ghosts    :: [ (Tile, Direction) ]
+type Maze = M.Matrix [ Tile ]
+
+data Ghost = Ghost { name :: Tile
+                   , gdir :: Direction
+                   } deriving ( Show )
+
+data Game = Game { maze   :: Maze
+                 , score  :: Int
+                 , pdir   :: Direction
+                 , ghosts :: [ Ghost ]
                  } deriving ( Show )
