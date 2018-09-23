@@ -17,10 +17,12 @@ import Types                        ( Game (..)
                                     , PacMan (..)
                                     , Tile (..)
                                     , TimeEvent (..)
-                                    , Direction (..)    )
+                                    , Direction (..)
+                                    , Status (..)       )
 import Maze                         ( sumPair
                                     , isFree
                                     , dirToPair
+                                    , chkStatus
                                     , randomDirections  )
 import Brick.Main                   ( continue
                                     , halt              )
@@ -29,11 +31,18 @@ import Brick.Main                   ( continue
 -- Interface
 
 eventRouter :: Game -> BrickEvent () TimeEvent -> EventM () ( Next Game )
-eventRouter s (VtyEvent (V.EvKey V.KEsc [] )) = halt s
-eventRouter s (VtyEvent (V.EvKey k ms ))      = continue . keyEvent k ms $ s
-eventRouter s (VtyEvent (V.EvResize _ _))     = continue s
-eventRouter s (AppEvent Tick)                 = continue . tickEvent $ s
-eventRouter s _                               = continue s
+eventRouter g (VtyEvent (V.EvKey V.KEsc [] )) = halt g
+eventRouter g (VtyEvent (V.EvKey k ms ))      = continue . keyEvent k ms $ g
+eventRouter g (VtyEvent (V.EvResize _ _))     = continue g
+eventRouter g (AppEvent Tick)                 = routeTick g
+eventRouter g _                               = continue g
+
+routeTick :: Game -> EventM () ( Next Game )
+routeTick g0 = let g1 = moveGhosts . movePlayer $ g0
+               in  case chkStatus g1 of
+                        Running       -> continue g1
+                        GameOver      -> halt g1
+                        LevelFinished -> halt g1
 
 ---------------------------------------------------------------------
 -- Helpers

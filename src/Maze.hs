@@ -5,22 +5,26 @@ module Maze
     , isFree
     , sumPair
     , randomDirections
+    , chkStatus
     ) where
 
 import qualified Data.Matrix as M
 import qualified Data.Vector as V
+import qualified Types       as T
+import Lens.Micro                   ( (&), (^.), (.~), (%~) )
 import Data.List                    ( delete
                                     , elemIndex
-                                    , nub               )
+                                    , nub                   )
 import System.Random                ( StdGen
-                                    , randomR           )
+                                    , randomR               )
 import Types                        ( Game (..)
                                     , Maze
                                     , Ghost (..)
                                     , PacMan (..)
                                     , Tile (..)
                                     , Items (..)
-                                    , Direction (..)    )
+                                    , Status (..)
+                                    , Direction (..)        )
 
 ---------------------------------------------------------------------
 -- Utilities
@@ -50,6 +54,16 @@ randomDirections r0 ds0 = (r, d:ds)
           d       = ds0 !! k
           ds1     = delete d . nub $ ds0
           (r,ds)  = randomDirections r1 ds1
+
+chkStatus :: Game -> Status
+chkStatus g
+    | allPellets = LevelFinished
+    | captured     = GameOver
+    | otherwise    = Running
+    where allPellets = g ^. T.remaining == 0
+          overlaps   = ( == g ^. T.pacman . T.ppos )
+          gs         = g ^. T.ghosts
+          captured   = any (\ x -> overlaps $ x ^. T.gpos ) gs
 
 ---------------------------------------------------------------------
 -- Converters from strings

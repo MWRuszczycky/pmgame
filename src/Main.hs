@@ -17,10 +17,12 @@ import Types                            ( Game (..)
                                         , Ghost (..)
                                         , Maze (..)
                                         , Direction (..)
+                                        , Status (..)
                                         , TimeEvent (..)    )
 import View                             ( drawUI
                                         , attributes        )
 import Maze                             ( initGame
+                                        , chkStatus
                                         , isWall            )
 import Brick.Types                      ( BrickEvent (..)
                                         , EventM
@@ -50,4 +52,8 @@ runGame g = do
     chan <- newBChan 10 :: IO ( BChan TimeEvent )
     defaultConfig <- V.standardIOConfig
     forkIO . forever $ writeBChan chan Tick >> threadDelay 250000
-    void $ customMain (V.mkVty defaultConfig) (Just chan) app g
+    g' <- customMain (V.mkVty defaultConfig) (Just chan) app g
+    case chkStatus g' of
+         GameOver      -> putStrLn "Game Over"
+         LevelFinished -> putStrLn "Level Finished!"
+         otherwise     -> putStrLn "Error! Game finished unexpectedly!"

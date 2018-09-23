@@ -8,6 +8,7 @@ module Types
     , Direction (..)
     , TimeEvent (..)
     , Items (..)
+    , Status (..)
     -- Lenses for Game
     , maze
     , items
@@ -33,6 +34,8 @@ import Lens.Micro.TH                ( makeLenses )
 data TimeEvent = Tick deriving ( Show )
 
 data Direction = North | South | East | West deriving ( Show, Eq )
+
+data Status = Running | GameOver | LevelFinished deriving ( Show, Eq )
 
 data Tile = Player
           | Empty
