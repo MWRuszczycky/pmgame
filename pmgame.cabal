@@ -26,6 +26,8 @@ executable pmgame
                      , random
                      , text
                      , unix
+                     , microlens
+                     , microlens-th
  other-modules:        Types
                      , Controller
                      , View

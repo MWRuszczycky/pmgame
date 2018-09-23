@@ -5,42 +5,56 @@ module View
     ) where
 
 import qualified Graphics.Vty as V
-import qualified Data.Text    as T
+import qualified Data.Text    as Txt
 import qualified Data.Matrix  as M
+import qualified Types        as T
+import Data.List                        ( foldl'                    )
+import Lens.Micro                       ( (.~), (^.), (&)           )
 import Brick.Types                      ( Widget (..)               )
 import Brick.Widgets.Core               ( txt, withAttr, vBox, hBox )
 import Brick.AttrMap                    ( attrMap, AttrMap          )
 import Brick.Util                       ( on, bg, fg                )
 import Brick.Widgets.Center             ( center                    )
-import Types
+import Types                            ( Game (..)
+                                        , Tile (..)
+                                        , Direction (..)
+                                        , Maze (..)                 )
 
 drawUI :: Game -> [ Widget () ]
-drawUI s = [ center . vBox $ [ hdr, m, scr ] ]
-    where m   = vBox . map ( hBox . map (renderTile s) ) . M.toLists . maze $ s
-          scr = withAttr "score" . txt . T.pack . show . score $ s
+drawUI g = [ center . vBox $ [ hdr, m, scr ] ]
+    where m   = renderMaze g
+          scr = withAttr "score" . txt . Txt.pack . show $ g ^. T.score
           hdr = withAttr "score" . txt $ "PacMan!"
 
-renderTile :: Game -> [Tile] -> Widget ()
-renderTile _ []         = withAttr "maze"   . txt $ " "
-renderTile _ (HBar:_)   = withAttr "maze"   . txt $ "═"
-renderTile _ (VBar:_)   = withAttr "maze"   . txt $ "║"
-renderTile _ (Cros:_)   = withAttr "maze"   . txt $ "╬"
-renderTile _ (LTee:_)   = withAttr "maze"   . txt $ "╣"
-renderTile _ (RTee:_)   = withAttr "maze"   . txt $ "╠"
-renderTile _ (DTee:_)   = withAttr "maze"   . txt $ "╦"
-renderTile _ (UTee:_)   = withAttr "maze"   . txt $ "╩"
-renderTile _ (LUCr:_)   = withAttr "maze"   . txt $ "╔"
-renderTile _ (RUCr:_)   = withAttr "maze"   . txt $ "╗"
-renderTile _ (LDCr:_)   = withAttr "maze"   . txt $ "╚"
-renderTile _ (RDCr:_)   = withAttr "maze"   . txt $ "╝"
-renderTile s (Player:_) = withAttr "player" . txt . playerGlyph . pdir $ s
-renderTile _ (Pellet:_) = withAttr "pellet" . txt $ "."
-renderTile _ (Blinky:_) = withAttr "blinky" . txt $ " "
-renderTile _ (Inky:_)   = withAttr "inky"   . txt $ " "
-renderTile _ (Pinky:_)  = withAttr "pinky"  . txt $ " "
-renderTile _ (Clyde:_)  = withAttr "clyde"  . txt $ " "
+renderMaze :: Game -> Widget ()
+renderMaze g = vBox . map ( hBox . map (renderTile g) ) . M.toLists $ m2
+    where gs = g ^. T.ghosts
+          m0 = g ^. T.maze
+          m1 = M.setElem Player ( g ^. T.pacman . T.ppos ) m0
+          m2 = foldl' (\ m x -> M.setElem (x ^. T.gname) (x ^. T.gpos) m) m1 gs
 
-playerGlyph :: Direction -> T.Text
+renderTile :: Game -> Tile -> Widget ()
+renderTile _ Empty  = withAttr "maze"   . txt $ " "
+renderTile _ HBar   = withAttr "maze"   . txt $ "═"
+renderTile _ VBar   = withAttr "maze"   . txt $ "║"
+renderTile _ Cros   = withAttr "maze"   . txt $ "╬"
+renderTile _ LTee   = withAttr "maze"   . txt $ "╣"
+renderTile _ RTee   = withAttr "maze"   . txt $ "╠"
+renderTile _ DTee   = withAttr "maze"   . txt $ "╦"
+renderTile _ UTee   = withAttr "maze"   . txt $ "╩"
+renderTile _ LUCr   = withAttr "maze"   . txt $ "╔"
+renderTile _ RUCr   = withAttr "maze"   . txt $ "╗"
+renderTile _ LDCr   = withAttr "maze"   . txt $ "╚"
+renderTile _ RDCr   = withAttr "maze"   . txt $ "╝"
+renderTile _ Pellet = withAttr "pellet" . txt $ "."
+renderTile _ Blinky = withAttr "blinky" . txt $ " "
+renderTile _ Inky   = withAttr "inky"   . txt $ " "
+renderTile _ Pinky  = withAttr "pinky"  . txt $ " "
+renderTile _ Clyde  = withAttr "clyde"  . txt $ " "
+renderTile g Player = withAttr "player" . txt . playerGlyph $ dir
+    where dir = g ^. T.pacman . T.pdir
+
+playerGlyph :: Direction -> Txt.Text
 playerGlyph North = "∨"
 playerGlyph South = "∧"
 playerGlyph West  = ">"

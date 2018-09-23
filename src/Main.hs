@@ -20,7 +20,7 @@ import Types                            ( Game (..)
                                         , TimeEvent (..)    )
 import View                             ( drawUI
                                         , attributes        )
-import Maze                             ( initMaze
+import Maze                             ( initGame
                                         , isWall            )
 import Brick.Types                      ( BrickEvent (..)
                                         , EventM
@@ -36,21 +36,18 @@ app = App { appDraw         = drawUI
           , appStartEvent   = return
           , appChooseCursor = neverShowCursor }
 
-start :: Maze -> IO Game
-start m = do
-    gen <- getStdGen
-    let gs = [ Ghost Blinky West
-             , Ghost Inky North
-             , Ghost Pinky East
-             , Ghost Clyde South ]
-    return Game { maze = m, score = 0, pdir = North, ghosts = gs, rgen = gen }
-
 main :: IO ()
 main = do
     putEnv "TERM=xterm-256color"
-    m <- initMaze <$> readFile "data/classicMaze1.txt"
-    game <- start m
+    gen  <- getStdGen
+    mbGame <- initGame gen <$> readFile "data/classicMaze1.txt"
+    case mbGame of
+         Nothing -> putStrLn "Maze cannot be loaded."
+         Just g  -> runGame g
+
+runGame :: Game -> IO ()
+runGame g = do
     chan <- newBChan 10 :: IO ( BChan TimeEvent )
     defaultConfig <- V.standardIOConfig
     forkIO . forever $ writeBChan chan Tick >> threadDelay 250000
-    void $ customMain (V.mkVty defaultConfig) (Just chan) app game
+    void $ customMain (V.mkVty defaultConfig) (Just chan) app g
