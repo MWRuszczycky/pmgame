@@ -8,6 +8,7 @@ module Types
     ) where
 
 import qualified Data.Matrix as M
+import System.Random ( StdGen )
 
 data TimeEvent = Tick deriving ( Show )
 
@@ -42,4 +43,5 @@ data Game = Game { maze   :: Maze
                  , score  :: Int
                  , pdir   :: Direction
                  , ghosts :: [ Ghost ]
+                 , rgen   :: StdGen
                  } deriving ( Show )

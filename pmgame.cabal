@@ -23,6 +23,7 @@ executable pmgame
                      , vty
                      , matrix
                      , vector
+                     , random
                      , text
                      , unix
  other-modules:        Types

@@ -3,6 +3,7 @@ module Main where
 
 import qualified Graphics.Vty as V
 import qualified Data.Matrix  as M
+import System.Random                    ( getStdGen         )
 import System.Posix.Env                 ( putEnv            )
 import Control.Monad                    ( void, forever     )
 import Control.Concurrent               ( threadDelay
@@ -35,18 +36,21 @@ app = App { appDraw         = drawUI
           , appStartEvent   = return
           , appChooseCursor = neverShowCursor }
 
-start :: Maze -> Game
-start m = Game { maze = m, score = 0, pdir = North, ghosts = gs }
-    where gs = [ Ghost Blinky West
-               , Ghost Inky North
-               , Ghost Pinky East
-               , Ghost Clyde South ]
+start :: Maze -> IO Game
+start m = do
+    gen <- getStdGen
+    let gs = [ Ghost Blinky West
+             , Ghost Inky North
+             , Ghost Pinky East
+             , Ghost Clyde South ]
+    return Game { maze = m, score = 0, pdir = North, ghosts = gs, rgen = gen }
 
 main :: IO ()
 main = do
     putEnv "TERM=xterm-256color"
     m <- initMaze <$> readFile "data/classicMaze1.txt"
+    game <- start m
     chan <- newBChan 10 :: IO ( BChan TimeEvent )
     defaultConfig <- V.standardIOConfig
     forkIO . forever $ writeBChan chan Tick >> threadDelay 250000
-    void $ customMain (V.mkVty defaultConfig) (Just chan) app (start m)
+    void $ customMain (V.mkVty defaultConfig) (Just chan) app game
