@@ -5,15 +5,20 @@ module Maze
     , isFree
     , sumPair
     , findTile
+    , randomDirections
     ) where
 
 import qualified Data.Matrix as M
 import qualified Data.Vector as V
+import Data.List                    ( delete
+                                    , nub               )
+import System.Random                ( StdGen
+                                    , randomR           )
 import Types                        ( Game
                                     , Maze
                                     , Ghost (..)
                                     , Tile (..)
-                                    , Direction (..) )
+                                    , Direction (..)    )
 
 ---------------------------------------------------------------------
 -- Utilities
@@ -46,6 +51,14 @@ dirToPair West  = (0,-1)
 dirToPair East  = (0, 1)
 dirToPair North = (-1,0)
 dirToPair South = (1, 0)
+
+randomDirections :: StdGen -> [Direction] -> (StdGen, [Direction])
+randomDirections r0 [] = (r0, [])
+randomDirections r0 ds0 = (r, d:ds)
+    where (k,r1)  = randomR (0, length ds0 - 1) r0
+          d       = ds0 !! k
+          ds1     = delete d . nub $ ds0
+          (r,ds)  = randomDirections r1 ds1
 
 ---------------------------------------------------------------------
 -- Converters from strings

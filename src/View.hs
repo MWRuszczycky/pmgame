@@ -7,11 +7,11 @@ module View
 import qualified Graphics.Vty as V
 import qualified Data.Text    as T
 import qualified Data.Matrix  as M
-import Brick.Types                      ( Widget (..) )
+import Brick.Types                      ( Widget (..)               )
 import Brick.Widgets.Core               ( txt, withAttr, vBox, hBox )
-import Brick.AttrMap                    ( attrMap, AttrMap )
-import Brick.Util                       ( on, bg, fg )
-import Brick.Widgets.Center             ( center )
+import Brick.AttrMap                    ( attrMap, AttrMap          )
+import Brick.Util                       ( on, bg, fg                )
+import Brick.Widgets.Center             ( center                    )
 import Types
 
 drawUI :: Game -> [ Widget () ]

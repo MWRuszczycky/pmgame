@@ -8,7 +8,7 @@ module Types
     ) where
 
 import qualified Data.Matrix as M
-import System.Random ( StdGen )
+import System.Random                ( StdGen )
 
 data TimeEvent = Tick deriving ( Show )
 

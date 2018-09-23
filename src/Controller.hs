@@ -4,17 +4,24 @@ module Controller
 
 import qualified Graphics.Vty as V
 import qualified Data.Matrix  as M
-import System.Random ( StdGen, randomR )
-import Data.List    ( foldl', (\\), delete, nub )
-import Brick.Types  ( BrickEvent (..), Next, EventM )
-import Types        ( Game (..)
-                    , Maze (..)
-                    , Ghost (..)
-                    , Tile (..)
-                    , TimeEvent (..)
-                    , Direction (..) )
-import Maze         ( sumPair, isFree, findTile, dirToPair )
-import Brick.Main   ( continue, halt )
+import System.Random                ( StdGen            )
+import Data.List                    ( foldl', delete    )
+import Brick.Types                  ( BrickEvent (..)
+                                    , Next
+                                    , EventM            )
+import Types                        ( Game (..)
+                                    , Maze (..)
+                                    , Ghost (..)
+                                    , Tile (..)
+                                    , TimeEvent (..)
+                                    , Direction (..)    )
+import Maze                         ( sumPair
+                                    , isFree
+                                    , findTile
+                                    , dirToPair
+                                    , randomDirections  )
+import Brick.Main                   ( continue
+                                    , halt              )
 
 ---------------------------------------------------------------------
 -- Interface
@@ -53,14 +60,6 @@ moveGhost (m0, gs, r0) (Ghost nm d0) = (m1, (Ghost nm d1):gs, r1)
           old      = uncurry M.getElem p0 m0
           nxt      = uncurry M.getElem p1 m0
           m1       = M.setElem (delete nm old) p0 . M.setElem (nm:nxt) p1 $ m0
-
-randomDirections :: StdGen -> [Direction] -> (StdGen, [Direction])
-randomDirections r0 [] = (r0, [])
-randomDirections r0 ds0 = (r, d:ds)
-    where (k,r1)  = randomR (0, length ds0 - 1) r0
-          d       = ds0 !! k
-          ds1     = delete d . nub $ ds0
-          (r,ds)  = randomDirections r1 ds1
 
 movePlayer :: Game -> Game
 movePlayer s
