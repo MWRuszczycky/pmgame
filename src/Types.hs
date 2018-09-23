@@ -32,5 +32,7 @@ data Tile = Player
           deriving (Show, Eq)
 
 data Game = Game { maze      :: M.Matrix Tile
-             , score     :: Int
-             , direction :: Direction }
+                 , score     :: Int
+                 , direction :: Direction
+                 , ghosts    :: [ (Tile, Direction) ]
+                 } deriving ( Show )

@@ -2,6 +2,7 @@
 module Main where
 
 import qualified Graphics.Vty as V
+import qualified Data.Matrix  as M
 import System.Posix.Env                 ( putEnv            )
 import Control.Monad                    ( void, forever     )
 import Control.Concurrent               ( threadDelay
@@ -11,6 +12,7 @@ import Brick.BChan                      ( BChan
                                         , newBChan          )
 import Controller                       ( eventRouter       )
 import Types                            ( Game (..)
+                                        , Tile (..)
                                         , Direction (..)
                                         , TimeEvent (..)    )
 import View                             ( drawUI
@@ -31,12 +33,18 @@ app = App { appDraw         = drawUI
           , appStartEvent   = return
           , appChooseCursor = neverShowCursor }
 
+start :: M.Matrix Tile -> Game
+start m = Game { maze = m, score = 0, direction = North, ghosts = gs }
+    where gs = [ ( Blinky, West ) ]
+               -- , ( Inky, North  )
+               -- , ( Pinky, East  )
+               -- , ( Clyde, South ) ]
+
 main :: IO ()
 main = do
     putEnv "TERM=xterm-256color"
     m <- initMaze <$> readFile "data/classicMaze1.txt"
-    let start = Game { maze = m, score = 0, direction = North }
     chan <- newBChan 10 :: IO ( BChan TimeEvent )
     defaultConfig <- V.standardIOConfig
     forkIO . forever $ writeBChan chan Tick >> threadDelay 250000
-    void $ customMain (V.mkVty defaultConfig) (Just chan) app start
+    void $ customMain (V.mkVty defaultConfig) (Just chan) app (start m)

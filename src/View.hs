@@ -22,11 +22,6 @@ drawUI s = [ center . vBox $ [ hdr, m, scr ] ]
 
 renderTile :: Game -> Tile -> Widget ()
 renderTile _ Empty  = withAttr "maze"   . txt $ " "
-renderTile _ Pellet = withAttr "pellet" . txt $ "."
-renderTile _ Blinky = withAttr "blinky" . txt $ " "
-renderTile _ Inky   = withAttr "inky"   . txt $ " "
-renderTile _ Pinky  = withAttr "pinky"  . txt $ " "
-renderTile _ Clyde  = withAttr "clyde"  . txt $ " "
 renderTile _ HBar   = withAttr "maze"   . txt $ "═"
 renderTile _ VBar   = withAttr "maze"   . txt $ "║"
 renderTile _ Cros   = withAttr "maze"   . txt $ "╬"
@@ -38,14 +33,18 @@ renderTile _ LUCr   = withAttr "maze"   . txt $ "╔"
 renderTile _ RUCr   = withAttr "maze"   . txt $ "╗"
 renderTile _ LDCr   = withAttr "maze"   . txt $ "╚"
 renderTile _ RDCr   = withAttr "maze"   . txt $ "╝"
-renderTile s Player = withAttr "player" . txt . playerGlyph $ s
+renderTile s Player = withAttr "player" . txt . playerGlyph . direction $ s
+renderTile _ Pellet = withAttr "pellet" . txt $ "."
+renderTile _ Blinky = withAttr "blinky" . txt $ " "
+renderTile _ Inky   = withAttr "inky"   . txt $ " "
+renderTile _ Pinky  = withAttr "pinky"  . txt $ " "
+renderTile _ Clyde  = withAttr "clyde"  . txt $ " "
 
-playerGlyph :: Game -> T.Text
-playerGlyph s = case direction s of
-                     North -> "∨"
-                     South -> "∧"
-                     West  -> ">"
-                     East  -> "<"
+playerGlyph :: Direction -> T.Text
+playerGlyph North = "∨"
+playerGlyph South = "∧"
+playerGlyph West  = ">"
+playerGlyph East  = "<"
 
 attributes :: AttrMap
 attributes = attrMap V.defAttr [ ( "player", on V.black V.brightYellow  )

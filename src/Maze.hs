@@ -23,8 +23,8 @@ findTile t m = case V.elemIndex t . M.getMatrixAsVector $ m of
                     Just k  -> let (r,c) = quotRem k . M.ncols $ m
                                in  Just (r+1, c+1) -- Matrices are 1-indexed
 
-isFree :: (Int, Int) -> M.Matrix Tile -> Bool
-isFree (r,c) m = case M.safeGet r c m of
+isFree :: M.Matrix Tile -> (Int, Int) -> Bool
+isFree m (r,c) = case M.safeGet r c m of
                       Nothing -> False
                       Just t  -> not . isWall $ t
 
