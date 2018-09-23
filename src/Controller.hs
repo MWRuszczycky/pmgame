@@ -37,7 +37,7 @@ eventRouter s _                               = continue s
 -- Helpers
 
 tickEvent :: Game -> Game
-tickEvent = moveGhosts . movePlayer
+tickEvent = chkDone . moveGhosts . movePlayer
 
 keyEvent :: V.Key -> [V.Modifier] -> Game -> Game
 keyEvent V.KLeft  ms s = s { pdir = West  }
@@ -45,6 +45,9 @@ keyEvent V.KRight ms s = s { pdir = East  }
 keyEvent V.KUp    ms s = s { pdir = North }
 keyEvent V.KDown  ms s = s { pdir = South }
 keyEvent _        _  s = s
+
+chkDone :: Game -> Game
+chkDone = id
 
 moveGhosts :: Game -> Game
 moveGhosts s = s { maze = m, ghosts = gs, rgen = r }
