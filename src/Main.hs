@@ -37,10 +37,10 @@ app = App { appDraw         = drawUI
 
 start :: Maze -> Game
 start m = Game { maze = m, score = 0, pdir = North, ghosts = gs }
-    where gs = [ Ghost Blinky West ]
-               -- , ( Inky, North  )
-               -- , ( Pinky, East  )
-               -- , ( Clyde, South ) ]
+    where gs = [ Ghost Blinky West
+               , Ghost Inky North
+               , Ghost Pinky East
+               , Ghost Clyde South ]
 
 main :: IO ()
 main = do
