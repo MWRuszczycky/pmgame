@@ -31,24 +31,29 @@ import Brick.Main                   ( continue
 -- Interface
 
 eventRouter :: Game -> BrickEvent () TimeEvent -> EventM () ( Next Game )
-eventRouter g (VtyEvent (V.EvKey V.KEsc [] )) = halt g
-eventRouter g (VtyEvent (V.EvKey k ms ))      = continue . keyEvent k ms $ g
-eventRouter g (VtyEvent (V.EvResize _ _))     = continue g
-eventRouter g (AppEvent Tick)                 = routeTick g
-eventRouter g _                               = continue g
+eventRouter g e = case chkStatus g of
+                       Running   -> routeRunning g e
+                       GameOver  -> routeGameOver g e
+                       LevelOver -> routeLevelOver g e
 
-routeTick :: Game -> EventM () ( Next Game )
-routeTick g0 = let g1 = moveGhosts . movePlayer $ g0
-               in  case chkStatus g1 of
-                        Running       -> continue g1
-                        GameOver      -> halt g1
-                        LevelFinished -> halt g1
+routeRunning :: Game -> BrickEvent () TimeEvent -> EventM () ( Next Game )
+routeRunning g (VtyEvent (V.EvKey V.KEsc [] )) = halt g
+routeRunning g (VtyEvent (V.EvKey k ms ))      = continue . keyEvent k ms $ g
+routeRunning g (VtyEvent (V.EvResize _ _))     = continue g
+routeRunning g (AppEvent Tick)                 = continue . tickEvent $ g
+routeRunning g _                               = continue g
+
+routeGameOver :: Game -> BrickEvent () TimeEvent -> EventM () ( Next Game )
+routeGameOver g e = halt g
+
+routeLevelOver :: Game -> BrickEvent () TimeEvent -> EventM () ( Next Game )
+routeLevelOver g e = halt g
 
 ---------------------------------------------------------------------
 -- Helpers
 
 tickEvent :: Game -> Game
-tickEvent = chkDone . moveGhosts . movePlayer
+tickEvent = moveGhosts . movePlayer
 
 keyEvent :: V.Key -> [V.Modifier] -> Game -> Game
 keyEvent V.KLeft  ms g = g & T.pacman . T.pdir .~ West
@@ -56,9 +61,6 @@ keyEvent V.KRight ms g = g & T.pacman . T.pdir .~ East
 keyEvent V.KUp    ms g = g & T.pacman . T.pdir .~ North
 keyEvent V.KDown  ms g = g & T.pacman . T.pdir .~ South
 keyEvent _        _  g = g
-
-chkDone :: Game -> Game
-chkDone = id
 
 moveGhosts :: Game -> Game
 moveGhosts g = g & T.maze .~ m & T.ghosts .~ gsts & T.rgen .~ r

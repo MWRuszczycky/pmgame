@@ -35,7 +35,7 @@ data TimeEvent = Tick deriving ( Show )
 
 data Direction = North | South | East | West deriving ( Show, Eq )
 
-data Status = Running | GameOver | LevelFinished deriving ( Show, Eq )
+data Status = Running | GameOver | LevelOver deriving ( Show, Eq )
 
 data Tile = Player
           | Empty

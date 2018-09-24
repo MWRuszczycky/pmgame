@@ -57,9 +57,9 @@ randomDirections r0 ds0 = (r, d:ds)
 
 chkStatus :: Game -> Status
 chkStatus g
-    | allPellets = LevelFinished
-    | captured     = GameOver
-    | otherwise    = Running
+    | allPellets = LevelOver
+    | captured   = GameOver
+    | otherwise  = Running
     where allPellets = g ^. T.remaining == 0
           overlaps   = ( == g ^. T.pacman . T.ppos )
           gs         = g ^. T.ghosts

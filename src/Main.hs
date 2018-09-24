@@ -54,6 +54,6 @@ runGame g = do
     forkIO . forever $ writeBChan chan Tick >> threadDelay 250000
     g' <- customMain (V.mkVty defaultConfig) (Just chan) app g
     case chkStatus g' of
-         GameOver      -> putStrLn "Game Over"
-         LevelFinished -> putStrLn "Level Finished!"
-         otherwise     -> putStrLn "Error! Game finished unexpectedly!"
+         GameOver  -> putStrLn "Game Over"
+         LevelOver -> putStrLn "Level Finished!"
+         otherwise -> putStrLn "Error! Game finished unexpectedly!"
