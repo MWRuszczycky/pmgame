@@ -2,6 +2,7 @@
 module Types
     ( Tile (..)
     , Maze (..)
+    , Point (..)
     , Game (..)
     , Ghost (..)
     , PacMan (..)
@@ -15,6 +16,7 @@ module Types
     , pacman
     , ghosts
     , rgen
+    , captured
     , remaining
     -- Lenses for PacMan
     , pdir
@@ -59,13 +61,15 @@ data Tile = Player
 
 type Maze = M.Matrix Tile
 
+type Point = (Int, Int)
+
 data Ghost = Ghost { _gname :: Tile
                    , _gdir  :: Direction
-                   , _gpos  :: (Int, Int)
+                   , _gpos  :: Point
                    } deriving ( Show )
 
 data PacMan = PacMan { _pdir :: Direction
-                     , _ppos :: (Int, Int)
+                     , _ppos :: Point
                      } deriving ( Show )
 
 data Items = Items { _pellets :: Int
@@ -77,6 +81,7 @@ data Game = Game { _maze      :: Maze
                  , _ghosts    :: [ Ghost ]
                  , _rgen      :: StdGen
                  , _remaining :: Int
+                 , _captured  :: Bool
                  } deriving ( Show )
 
 makeLenses ''Game

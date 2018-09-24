@@ -22,6 +22,7 @@ import Types                        ( Game (..)
 import Maze                         ( sumPair
                                     , isFree
                                     , dirToPair
+                                    , wasCaptured
                                     , chkStatus
                                     , randomDirections  )
 import Brick.Main                   ( continue
@@ -53,7 +54,8 @@ routeLevelOver g e = halt g
 -- Helpers
 
 tickEvent :: Game -> Game
-tickEvent = moveGhosts . movePlayer
+tickEvent g0 = g1 & T.captured .~ (wasCaptured g0 g1)
+    where g1 = moveGhosts . movePlayer $ g0
 
 keyEvent :: V.Key -> [V.Modifier] -> Game -> Game
 keyEvent V.KLeft  ms g = g & T.pacman . T.pdir .~ West
@@ -64,12 +66,12 @@ keyEvent _        _  g = g
 
 moveGhosts :: Game -> Game
 moveGhosts g = g & T.maze .~ m & T.ghosts .~ gsts & T.rgen .~ r
-    where (m, gsts, r) = foldl' moveGhost start $ g ^. T.ghosts
+    where (m, gsts, r) = foldr moveGhost start $ g ^. T.ghosts
           start = (g ^. T.maze, [], g ^. T.rgen )
 
-moveGhost :: (Maze, [Ghost], StdGen) -> Ghost -> (Maze, [Ghost], StdGen)
-moveGhost (m, gsts, r0) (Ghost nm d0 p0) = (m, (Ghost nm d1 p1):gsts, r1)
-    where dirs     = [North, South, East, West] ++ replicate 10 d0
+moveGhost :: Ghost -> (Maze, [Ghost], StdGen) -> (Maze, [Ghost], StdGen)
+moveGhost (Ghost nm d0 p0) (m, gsts, r0) = (m, (Ghost nm d1 p1):gsts, r1)
+    where dirs     = [North, South, East, West] ++ replicate 20 d0
           (r1, ds) = randomDirections r0 dirs
           ps       = [ (d, sumPair p0 . dirToPair $ d) | d <- ds ]
           (d1, p1) = head . dropWhile (not . isFree m . snd) $ ps

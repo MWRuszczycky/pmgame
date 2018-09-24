@@ -11,7 +11,7 @@ import qualified Types        as T
 import Data.List                        ( foldl'                    )
 import Lens.Micro                       ( (.~), (^.), (&)           )
 import Brick.Types                      ( Widget (..)               )
-import Brick.Widgets.Core               ( txt, withAttr, vBox, hBox )
+import Brick.Widgets.Core               ( txt, withAttr, vBox, hBox, str )
 import Brick.AttrMap                    ( attrMap, AttrMap          )
 import Brick.Util                       ( on, bg, fg                )
 import Brick.Widgets.Center             ( center                    )
@@ -21,11 +21,14 @@ import Types                            ( Game (..)
                                         , Maze (..)                 )
 
 drawUI :: Game -> [ Widget () ]
-drawUI g = [ center . vBox $ [ hdr, m, scr, r ] ]
+drawUI g = [ center . vBox $ [ hdr, m, scr, r, p, gws ] ]
     where m   = renderMaze g
           scr = renderScore g
           r   = renderRemaining g
           hdr = withAttr "score" . txt $ "PacMan!"
+          p   = withAttr "score" . str . show $ g ^. T.pacman . T.ppos
+          gs  = map ( ^. T.gpos ) ( g ^. T.ghosts )
+          gws = withAttr "score" . str . show $ gs
 
 renderScore :: Game -> Widget ()
 renderScore g = withAttr "score" . txt . Txt.pack . show $ s

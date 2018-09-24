@@ -5,6 +5,7 @@ module Maze
     , isFree
     , sumPair
     , randomDirections
+    , wasCaptured
     , chkStatus
     ) where
 
@@ -19,6 +20,7 @@ import System.Random                ( StdGen
                                     , randomR               )
 import Types                        ( Game (..)
                                     , Maze
+                                    , Point (..)
                                     , Ghost (..)
                                     , PacMan (..)
                                     , Tile (..)
@@ -32,7 +34,7 @@ import Types                        ( Game (..)
 sumPair :: Num a => (a, a) -> (a, a) -> (a, a)
 sumPair (x0,y0) (x1,y1) = (x0 + x1, y0 + y1)
 
-isFree :: Maze -> (Int, Int) -> Bool
+isFree :: Maze -> Point -> Bool
 isFree m (r,c) = case M.safeGet r c m of
                       Nothing -> False
                       Just t  -> not . isWall $ t
@@ -41,7 +43,7 @@ isWall :: Tile -> Bool
 isWall t = elem t ws
     where ws = [ HBar, VBar, LTee, UTee, RTee, DTee, RDCr, LDCr, RUCr, LUCr ]
 
-dirToPair :: Direction -> (Int, Int)
+dirToPair :: Direction -> Point
 dirToPair West  = (0,-1)
 dirToPair East  = (0, 1)
 dirToPair North = (-1,0)
@@ -55,15 +57,22 @@ randomDirections r0 ds0 = (r, d:ds)
           ds1     = delete d . nub $ ds0
           (r,ds)  = randomDirections r1 ds1
 
+wasCaptured :: Game -> Game -> Bool
+wasCaptured g0 g1 = any ( pathsCrossed (p0, p1) ) ( zip gs0 gs1 )
+    where p0 = g0 ^. T.pacman . T.ppos
+          p1 = g1 ^. T.pacman . T.ppos
+          gs0 = map ( ^. T.gpos ) ( g0 ^. T.ghosts )
+          gs1 = map ( ^. T.gpos ) ( g1 ^. T.ghosts )
+
+pathsCrossed :: (Point, Point) -> (Point, Point) -> Bool
+pathsCrossed (p0, p1) (g0, g1) = p1 == g1 || ( p1 == g0 && p0 == g1 )
+
 chkStatus :: Game -> Status
 chkStatus g
-    | allPellets = LevelOver
-    | captured   = GameOver
-    | otherwise  = Running
+    | allPellets      = LevelOver
+    | g ^. T.captured = GameOver
+    | otherwise       = Running
     where allPellets = g ^. T.remaining == 0
-          overlaps   = ( == g ^. T.pacman . T.ppos )
-          gs         = g ^. T.ghosts
-          captured   = any (\ x -> overlaps $ x ^. T.gpos ) gs
 
 ---------------------------------------------------------------------
 -- Converters from strings
@@ -80,6 +89,7 @@ initGame r s = do
                 , _rgen = r
                 , _pacman = pman
                 , _ghosts = gsts
+                , _captured = False
                 , _remaining = length . filter (== '.') $ sf }
 
 loadMaze :: [String] -> Maybe Maze

@@ -56,4 +56,4 @@ runGame g = do
     case chkStatus g' of
          GameOver  -> putStrLn "Game Over"
          LevelOver -> putStrLn "Level Finished!"
-         otherwise -> putStrLn "Error! Game finished unexpectedly!"
+         otherwise -> putStrLn "Looks like you gave up..."
