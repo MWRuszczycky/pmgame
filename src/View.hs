@@ -11,27 +11,61 @@ import qualified Types        as T
 import Data.List                        ( foldl'                    )
 import Lens.Micro                       ( (.~), (^.), (&)           )
 import Brick.Types                      ( Widget (..)               )
-import Brick.Widgets.Core               ( txt, withAttr, vBox, hBox, str )
+import Brick.Widgets.Core               ( txt, withAttr, vBox, hBox
+                                        , str, hLimit, vLimit, fill
+                                        , withBorderStyle           )
+import Brick.Widgets.Border.Style       ( unicodeRounded            )
+import Brick.Widgets.Border             ( borderWithLabel
+                                        , borderAttr                )
 import Brick.AttrMap                    ( attrMap, AttrMap          )
 import Brick.Util                       ( on, bg, fg                )
-import Brick.Widgets.Center             ( center                    )
+import Brick.Widgets.Center             ( center, hCenter, vCenter  )
 import Types                            ( Game (..)
                                         , Tile (..)
                                         , Direction (..)
+                                        , Status (..)
                                         , Maze (..)                 )
 
 drawUI :: Game -> [ Widget () ]
-drawUI g = [ center . vBox $ [ hdr, m, scr, r, p, gws ] ]
-    where m   = renderMaze g
-          scr = renderScore g
-          r   = renderRemaining g
-          hdr = withAttr "score" . txt $ "PacMan!"
-          p   = withAttr "score" . str . show $ g ^. T.pacman . T.ppos
-          gs  = map ( ^. T.gpos ) ( g ^. T.ghosts )
-          gws = withAttr "score" . str . show $ gs
+drawUI g = case g ^. T.status of
+                Running   -> drawRunningUI g
+                GameOver  -> drawGameOverUI g
+                LevelOver -> drawLevelOverUI g
+
+drawRunningUI :: Game -> [ Widget () ]
+drawRunningUI g = [ withAttr "background" ui ]
+    where ui = center . vBox $
+                   [ withAttr "score" . txt $ "PacMan!"
+                   , renderMaze g
+                   , renderScore g
+                   , renderRemaining g
+                   , withAttr "score" . str . show $ ( g ^. T.pacman . T.ppos )
+                   ]
+
+drawGameOverUI :: Game -> [ Widget () ]
+drawGameOverUI g = [ withAttr "background" msg ]
+    where hdr = withAttr "score" . txt $ "GAME OVER!"
+          msg = center
+                . withBorderStyle unicodeRounded
+                . borderWithLabel hdr
+                . hLimit 25
+                . vLimit 3
+                . center
+                . renderScore $ g
+
+drawLevelOverUI :: Game -> [ Widget () ]
+drawLevelOverUI g = [ withAttr "background" msg]
+    where hdr = withAttr "score" . txt $ "LEVEL COMPLETED!"
+          msg = center
+                . withBorderStyle unicodeRounded
+                . borderWithLabel hdr
+                . hLimit 25
+                . vLimit 3
+                . center
+                . renderScore $ g
 
 renderScore :: Game -> Widget ()
-renderScore g = withAttr "score" . txt . Txt.pack . show $ s
+renderScore g = withAttr "score" . str . ("Score: " ++) . show $ s
     where s = 10 * g ^. T.items . T.pellets
 
 renderRemaining :: Game -> Widget ()
@@ -81,4 +115,6 @@ attributes = attrMap V.defAttr [ ( "player", on V.black V.brightYellow  )
                                , ( "pinky",  bg V.brightMagenta         )
                                , ( "inky",   bg V.brightCyan            )
                                , ( "clyde",  bg V.yellow                )
+                               , ( "background", bg V.black             )
+                               , ( borderAttr, on V.yellow V.black      )
                                ]

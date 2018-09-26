@@ -4,9 +4,6 @@ module Maze
     , isWall
     , isFree
     , sumPair
-    , randomDirections
-    , wasCaptured
-    , chkStatus
     ) where
 
 import qualified Data.Matrix as M
@@ -14,10 +11,8 @@ import qualified Data.Vector as V
 import qualified Types       as T
 import Lens.Micro                   ( (&), (^.), (.~), (%~) )
 import Data.List                    ( delete
-                                    , elemIndex
-                                    , nub                   )
-import System.Random                ( StdGen
-                                    , randomR               )
+                                    , elemIndex             )
+import System.Random                ( StdGen                )
 import Types                        ( Game (..)
                                     , Maze
                                     , Point (..)
@@ -49,31 +44,6 @@ dirToPair East  = (0, 1)
 dirToPair North = (-1,0)
 dirToPair South = (1, 0)
 
-randomDirections :: StdGen -> [Direction] -> (StdGen, [Direction])
-randomDirections r0 [] = (r0, [])
-randomDirections r0 ds0 = (r, d:ds)
-    where (k,r1)  = randomR (0, length ds0 - 1) r0
-          d       = ds0 !! k
-          ds1     = delete d . nub $ ds0
-          (r,ds)  = randomDirections r1 ds1
-
-wasCaptured :: Game -> Game -> Bool
-wasCaptured g0 g1 = any ( pathsCrossed (p0, p1) ) ( zip gs0 gs1 )
-    where p0 = g0 ^. T.pacman . T.ppos
-          p1 = g1 ^. T.pacman . T.ppos
-          gs0 = map ( ^. T.gpos ) ( g0 ^. T.ghosts )
-          gs1 = map ( ^. T.gpos ) ( g1 ^. T.ghosts )
-
-pathsCrossed :: (Point, Point) -> (Point, Point) -> Bool
-pathsCrossed (p0, p1) (g0, g1) = p1 == g1 || ( p1 == g0 && p0 == g1 )
-
-chkStatus :: Game -> Status
-chkStatus g
-    | allPellets      = LevelOver
-    | g ^. T.captured = GameOver
-    | otherwise       = Running
-    where allPellets = g ^. T.remaining == 0
-
 ---------------------------------------------------------------------
 -- Converters from strings
 
@@ -89,7 +59,7 @@ initGame r s = do
                 , _rgen = r
                 , _pacman = pman
                 , _ghosts = gsts
-                , _captured = False
+                , _status = Running
                 , _remaining = length . filter (== '.') $ sf }
 
 loadMaze :: [String] -> Maybe Maze

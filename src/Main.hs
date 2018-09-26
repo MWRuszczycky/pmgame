@@ -3,33 +3,34 @@ module Main where
 
 import qualified Graphics.Vty as V
 import qualified Data.Matrix  as M
-import System.Random                    ( getStdGen         )
-import System.Posix.Env                 ( putEnv            )
-import Control.Monad                    ( void, forever     )
+import qualified Types        as T
+import Lens.Micro                       ( (^.)                      )
+import System.Random                    ( getStdGen                 )
+import System.Posix.Env                 ( putEnv                    )
+import Control.Monad                    ( void, forever             )
 import Control.Concurrent               ( threadDelay
-                                        , forkIO            )
+                                        , forkIO                    )
 import Brick.BChan                      ( BChan
                                         , writeBChan
-                                        , newBChan          )
-import Controller                       ( eventRouter       )
+                                        , newBChan                  )
+import Controller                       ( eventRouter               )
 import Types                            ( Game (..)
                                         , Tile (..)
                                         , Ghost (..)
                                         , Maze (..)
                                         , Direction (..)
                                         , Status (..)
-                                        , TimeEvent (..)    )
+                                        , TimeEvent (..)            )
 import View                             ( drawUI
-                                        , attributes        )
+                                        , attributes                )
 import Maze                             ( initGame
-                                        , chkStatus
-                                        , isWall            )
+                                        , isWall                    )
 import Brick.Types                      ( BrickEvent (..)
                                         , EventM
-                                        , Next              )
+                                        , Next                      )
 import Brick.Main                       ( App (..)
                                         , neverShowCursor
-                                        , customMain        )
+                                        , customMain                )
 
 app :: App Game TimeEvent ()
 app = App { appDraw         = drawUI
@@ -53,7 +54,7 @@ runGame g = do
     defaultConfig <- V.standardIOConfig
     forkIO . forever $ writeBChan chan Tick >> threadDelay 250000
     g' <- customMain (V.mkVty defaultConfig) (Just chan) app g
-    case chkStatus g' of
+    case g' ^. T.status of
          GameOver  -> putStrLn "Game Over"
          LevelOver -> putStrLn "Level Finished!"
          otherwise -> putStrLn "Looks like you gave up..."
