@@ -25,8 +25,10 @@ import Types                        ( Game (..)
                                     , Status (..)           )
 import Maze                         ( sumPair
                                     , isFree
+                                    , initGame
                                     , dirToPair             )
 import Brick.Main                   ( continue
+                                    , suspendAndResume
                                     , halt                  )
 
 ---------------------------------------------------------------------
@@ -52,11 +54,16 @@ routeRunning g _                               =
     continue . Right $ g
 
 routeGameOver :: Game -> BrickEvent () TimeEvent -> EventM () ( Next GameSt )
-routeGameOver g (VtyEvent (V.EvKey V.KEsc [] ))   = halt . Right $ g
-routeGameOver g (VtyEvent (V.EvKey V.KEnter [] )) = halt . Right $ g
-routeGameOver g (VtyEvent (V.EvKey _ _ ))         = continue . Right $ g
-routeGameOver g (VtyEvent (V.EvResize _ _ ))      = continue . Right $ g
-routeGameOver g _                                 = continue . Right $ g
+routeGameOver g (VtyEvent (V.EvKey V.KEsc [] ))   =
+    halt . Right $ g
+routeGameOver g (VtyEvent (V.EvKey V.KEnter [] )) =
+    suspendAndResume ( restartGame g )
+routeGameOver g (VtyEvent (V.EvKey _ _ ))         =
+    continue . Right $ g
+routeGameOver g (VtyEvent (V.EvResize _ _ ))      =
+    continue . Right $ g
+routeGameOver g _                                 =
+    continue . Right $ g
 
 routeLevelOver :: Game -> BrickEvent () TimeEvent -> EventM () ( Next GameSt )
 routeLevelOver g (VtyEvent (V.EvKey V.KEsc [] ))   = halt . Right $ g
@@ -80,6 +87,11 @@ keyEvent _        _  g = g
 
 ---------------------------------------------------------------------
 -- Event handlers for game over
+
+restartGame :: Game -> IO GameSt
+restartGame g = do
+    let gen = g ^. T.rgen
+    initGame gen <$> readFile "data/classicMaze1.txt"
 
 ---------------------------------------------------------------------
 -- Game state management
