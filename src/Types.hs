@@ -4,6 +4,7 @@ module Types
     , Maze (..)
     , Point (..)
     , Game (..)
+    , GameSt (..)
     , Ghost (..)
     , PacMan (..)
     , Direction (..)
@@ -62,6 +63,8 @@ data Tile = Player
 type Maze = M.Matrix Tile
 
 type Point = (Int, Int)
+
+type GameSt = Either String Game
 
 data Ghost = Ghost { _gname :: Tile
                    , _gdir  :: Direction

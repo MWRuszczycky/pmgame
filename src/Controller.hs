@@ -14,6 +14,7 @@ import Brick.Types                  ( BrickEvent (..)
                                     , Next
                                     , EventM                )
 import Types                        ( Game (..)
+                                    , GameSt (..)
                                     , Maze (..)
                                     , Ghost (..)
                                     , PacMan (..)
@@ -31,32 +32,38 @@ import Brick.Main                   ( continue
 ---------------------------------------------------------------------
 -- Event routers
 
-eventRouter :: Game -> BrickEvent () TimeEvent -> EventM () ( Next Game )
-eventRouter g e = case g ^. T.status of
-                       Running   -> routeRunning g e
-                       GameOver  -> routeGameOver g e
-                       LevelOver -> routeLevelOver g e
+eventRouter :: GameSt -> BrickEvent () TimeEvent -> EventM () ( Next GameSt )
+eventRouter (Left err) _ = halt (Left err)
+eventRouter (Right g)  e = case g ^. T.status of
+                                Running   -> routeRunning g e
+                                GameOver  -> routeGameOver g e
+                                LevelOver -> routeLevelOver g e
 
-routeRunning :: Game -> BrickEvent () TimeEvent -> EventM () ( Next Game )
-routeRunning g (VtyEvent (V.EvKey V.KEsc [] )) = halt g
-routeRunning g (VtyEvent (V.EvKey k ms ))      = continue . keyEvent k ms $ g
-routeRunning g (VtyEvent (V.EvResize _ _ ))    = continue g
-routeRunning g (AppEvent Tick)                 = continue . tickEvent $ g
-routeRunning g _                               = continue g
+routeRunning :: Game -> BrickEvent () TimeEvent -> EventM () ( Next GameSt )
+routeRunning g (VtyEvent (V.EvKey V.KEsc [] )) =
+    halt . Right $ g
+routeRunning g (VtyEvent (V.EvKey k ms ))      =
+    continue . Right . keyEvent k ms $ g
+routeRunning g (VtyEvent (V.EvResize _ _ ))    =
+    continue . Right $ g
+routeRunning g (AppEvent Tick)                 =
+    continue . Right . tickEvent $ g
+routeRunning g _                               =
+    continue . Right $ g
 
-routeGameOver :: Game -> BrickEvent () TimeEvent -> EventM () ( Next Game )
-routeGameOver g (VtyEvent (V.EvKey V.KEsc [] ))   = halt g
-routeGameOver g (VtyEvent (V.EvKey V.KEnter [] )) = halt g
-routeGameOver g (VtyEvent (V.EvKey _ _ ))         = continue g
-routeGameOver g (VtyEvent (V.EvResize _ _ ))      = continue g
-routeGameOver g _                                 = continue g
+routeGameOver :: Game -> BrickEvent () TimeEvent -> EventM () ( Next GameSt )
+routeGameOver g (VtyEvent (V.EvKey V.KEsc [] ))   = halt . Right $ g
+routeGameOver g (VtyEvent (V.EvKey V.KEnter [] )) = halt . Right $ g
+routeGameOver g (VtyEvent (V.EvKey _ _ ))         = continue . Right $ g
+routeGameOver g (VtyEvent (V.EvResize _ _ ))      = continue . Right $ g
+routeGameOver g _                                 = continue . Right $ g
 
-routeLevelOver :: Game -> BrickEvent () TimeEvent -> EventM () ( Next Game )
-routeLevelOver g (VtyEvent (V.EvKey V.KEsc [] ))   = halt g
-routeLevelOver g (VtyEvent (V.EvKey V.KEnter [] )) = halt g
-routeLevelOver g (VtyEvent (V.EvKey _ _ ))         = continue g
-routeLevelOver g (VtyEvent (V.EvResize _ _ ))      = continue g
-routeLevelOver g _                                 = continue g
+routeLevelOver :: Game -> BrickEvent () TimeEvent -> EventM () ( Next GameSt )
+routeLevelOver g (VtyEvent (V.EvKey V.KEsc [] ))   = halt . Right $ g
+routeLevelOver g (VtyEvent (V.EvKey V.KEnter [] )) = halt . Right $ g
+routeLevelOver g (VtyEvent (V.EvKey _ _ ))         = continue . Right $ g
+routeLevelOver g (VtyEvent (V.EvResize _ _ ))      = continue . Right $ g
+routeLevelOver g _                                 = continue . Right $ g
 
 ---------------------------------------------------------------------
 -- Event handlers for running game

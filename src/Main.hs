@@ -16,6 +16,7 @@ import Brick.BChan                      ( BChan
                                         , newBChan                  )
 import Controller                       ( eventRouter               )
 import Types                            ( Game (..)
+                                        , GameSt (..)
                                         , Tile (..)
                                         , Ghost (..)
                                         , Maze (..)
@@ -33,7 +34,7 @@ import Brick.Main                       ( App (..)
                                         , neverShowCursor
                                         , customMain                )
 
-app :: App Game TimeEvent ()
+app :: App GameSt TimeEvent ()
 app = App { appDraw         = drawUI
           , appHandleEvent  = eventRouter
           , appAttrMap      = const attributes
@@ -45,20 +46,22 @@ main = do
     putEnv "TERM=xterm-256color"
     gen  <- getStdGen
     args <- getArgs
-    mbGame <- case args of
+    etGame <- case args of
                    []  -> initGame gen <$> readFile "data/classicMaze1.txt"
                    x:_ -> initGame gen <$> readFile x
-    case mbGame of
-         Nothing -> putStrLn "Maze cannot be loaded."
-         Just g  -> runGame g
+    case etGame of
+         Left err -> putStrLn err
+         Right g  -> runGame etGame
 
-runGame :: Game -> IO ()
-runGame g = do
+runGame :: GameSt -> IO ()
+runGame etG = do
     chan <- newBChan 10 :: IO ( BChan TimeEvent )
     defaultConfig <- V.standardIOConfig
     forkIO . forever $ writeBChan chan Tick >> threadDelay 250000
-    g' <- customMain (V.mkVty defaultConfig) (Just chan) app g
-    case g' ^. T.status of
-         GameOver  -> putStrLn "Game Over"
-         LevelOver -> putStrLn "Level Finished!"
-         otherwise -> putStrLn "Looks like you gave up..."
+    etG' <- customMain (V.mkVty defaultConfig) (Just chan) app etG
+    case etG' of
+         Left err -> putStrLn err
+         Right g  -> case g ^. T.status of
+                          GameOver  -> putStrLn "Game Over"
+                          LevelOver -> putStrLn "Level Finished!"
+                          otherwise -> putStrLn "Looks like you gave up..."

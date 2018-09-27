@@ -21,16 +21,18 @@ import Brick.AttrMap                    ( attrMap, AttrMap          )
 import Brick.Util                       ( on, bg, fg                )
 import Brick.Widgets.Center             ( center, hCenter, vCenter  )
 import Types                            ( Game (..)
+                                        , GameSt (..)
                                         , Tile (..)
                                         , Direction (..)
                                         , Status (..)
                                         , Maze (..)                 )
 
-drawUI :: Game -> [ Widget () ]
-drawUI g = case g ^. T.status of
-                Running   -> drawRunningUI g
-                GameOver  -> drawGameOverUI g
-                LevelOver -> drawLevelOverUI g
+drawUI :: GameSt -> [ Widget () ]
+drawUI (Left _)  = []
+drawUI (Right g) = case g ^. T.status of
+                        Running   -> drawRunningUI g
+                        GameOver  -> drawGameOverUI g
+                        LevelOver -> drawLevelOverUI g
 
 drawRunningUI :: Game -> [ Widget () ]
 drawRunningUI g = [ withAttr "background" ui ]

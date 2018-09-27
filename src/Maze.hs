@@ -14,6 +14,7 @@ import Data.List                    ( delete
                                     , elemIndex             )
 import System.Random                ( StdGen                )
 import Types                        ( Game (..)
+                                    , GameSt (..)
                                     , Maze
                                     , Point (..)
                                     , Ghost (..)
@@ -47,7 +48,7 @@ dirToPair South = (1, 0)
 ---------------------------------------------------------------------
 -- Converters from strings
 
-initGame :: StdGen -> String -> Maybe Game
+initGame :: StdGen -> String -> GameSt
 initGame r s = do
     let ss = lines s
         sf = concat ss
@@ -62,35 +63,37 @@ initGame r s = do
                 , _status = Running
                 , _remaining = length . filter (== '.') $ sf }
 
-loadMaze :: [String] -> Maybe Maze
-loadMaze [] = Nothing
-loadMaze ss = Just . M.fromList nr nc . map (convertTile ss) $ ts
+loadMaze :: [String] -> Either String Maze
+loadMaze [] = Left "No maze string provided."
+loadMaze ss = Right . M.fromList nr nc . map (convertTile ss) $ ts
     where ts = [ (r,c) | r <- [0 .. nr-1], c <- [0 .. nc-1] ]
           nr = length ss
           nc = length . head $ ss
 
-loadPacMan :: String -> Int -> Maybe PacMan
+loadPacMan :: String -> Int -> Either String PacMan
 loadPacMan s nc = do
     pos <- loadPos s nc 'P'
     (_, d) <- initTile 'P'
     return PacMan { _pdir = d, _ppos = pos }
 
-loadGhost :: String -> Int -> Char -> Maybe Ghost
+loadGhost :: String -> Int -> Char -> Either String Ghost
 loadGhost s nc c = do
     pos <- loadPos s nc c
     (t, d) <- initTile c
     return Ghost { _gname = t, _gdir = d, _gpos = pos }
 
-loadPos :: String -> Int -> Char -> Maybe (Int, Int)
-loadPos s nc c = sumPair (1,1) . flip quotRem nc <$> elemIndex c s
+loadPos :: String -> Int -> Char -> Either String (Int, Int)
+loadPos s nc c = case sumPair (1,1) . flip quotRem nc <$> elemIndex c s of
+                      Nothing -> Left $ "Cannot find '" ++ [c] ++ "' in maze"
+                      Just p  -> Right p
 
-initTile :: Char -> Maybe (Tile, Direction)
-initTile 'P' = Just ( Player, North )
-initTile 'p' = Just ( Pinky,  North )
-initTile 'b' = Just ( Blinky, West  )
-initTile 'i' = Just ( Inky,   East  )
-initTile 'c' = Just ( Clyde,  South )
-initTile _   = Nothing
+initTile :: Char -> Either String (Tile, Direction)
+initTile 'P' = Right ( Player, North )
+initTile 'p' = Right ( Pinky,  North )
+initTile 'b' = Right ( Blinky, West  )
+initTile 'i' = Right ( Inky,   East  )
+initTile 'c' = Right ( Clyde,  South )
+initTile c   = Left $ "Character '" ++ [c] ++ "' not recognized"
 
 convertTile :: [String] -> (Int, Int) -> Tile
 convertTile ss (x,y)
