@@ -45,16 +45,18 @@ routeRunning g (AppEvent Tick)                 = continue . tickEvent $ g
 routeRunning g _                               = continue g
 
 routeGameOver :: Game -> BrickEvent () TimeEvent -> EventM () ( Next Game )
-routeGameOver g (VtyEvent (V.EvKey V.KEsc [] )) = halt g
-routeGameOver g (VtyEvent (V.EvKey _ _ ))       = continue g
-routeGameOver g (VtyEvent (V.EvResize _ _ ))    = continue g
-routeGameOver g _                               = continue g
+routeGameOver g (VtyEvent (V.EvKey V.KEsc [] ))   = halt g
+routeGameOver g (VtyEvent (V.EvKey V.KEnter [] )) = halt g
+routeGameOver g (VtyEvent (V.EvKey _ _ ))         = continue g
+routeGameOver g (VtyEvent (V.EvResize _ _ ))      = continue g
+routeGameOver g _                                 = continue g
 
 routeLevelOver :: Game -> BrickEvent () TimeEvent -> EventM () ( Next Game )
-routeLevelOver g (VtyEvent (V.EvKey V.KEsc [] )) = halt g
-routeLevelOver g (VtyEvent (V.EvKey _ _ ))       = continue g
-routeLevelOver g (VtyEvent (V.EvResize _ _ ))    = continue g
-routeLevelOver g _                               = continue g
+routeLevelOver g (VtyEvent (V.EvKey V.KEsc [] ))   = halt g
+routeLevelOver g (VtyEvent (V.EvKey V.KEnter [] )) = halt g
+routeLevelOver g (VtyEvent (V.EvKey _ _ ))         = continue g
+routeLevelOver g (VtyEvent (V.EvResize _ _ ))      = continue g
+routeLevelOver g _                                 = continue g
 
 ---------------------------------------------------------------------
 -- Event handlers for running game

@@ -45,24 +45,28 @@ drawRunningUI g = [ withAttr "background" ui ]
 drawGameOverUI :: Game -> [ Widget () ]
 drawGameOverUI g = [ withAttr "background" msg ]
     where hdr = withAttr "score" . txt $ "GAME OVER!"
+          esc = withAttr "score" . txt $ "Esc to quit"
+          ent = withAttr "score" . txt $ "Enter to play again"
           msg = center
                 . withBorderStyle unicodeRounded
                 . borderWithLabel hdr
                 . hLimit 25
                 . vLimit 3
                 . center
-                . renderScore $ g
+                . vBox $ [ renderScore g, esc, ent ]
 
 drawLevelOverUI :: Game -> [ Widget () ]
 drawLevelOverUI g = [ withAttr "background" msg]
     where hdr = withAttr "score" . txt $ "LEVEL COMPLETED!"
+          esc = withAttr "score" . txt $ "Esc to quit"
+          ent = withAttr "score" . txt $ "Enter to play next level"
           msg = center
                 . withBorderStyle unicodeRounded
                 . borderWithLabel hdr
                 . hLimit 25
                 . vLimit 3
                 . center
-                . renderScore $ g
+                . vBox $ [ renderScore g, esc, ent ]
 
 renderScore :: Game -> Widget ()
 renderScore g = withAttr "score" . str . ("Score: " ++) . show $ s

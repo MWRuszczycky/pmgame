@@ -6,6 +6,7 @@ import qualified Data.Matrix  as M
 import qualified Types        as T
 import Lens.Micro                       ( (^.)                      )
 import System.Random                    ( getStdGen                 )
+import System.Environment               ( getArgs                   )
 import System.Posix.Env                 ( putEnv                    )
 import Control.Monad                    ( void, forever             )
 import Control.Concurrent               ( threadDelay
@@ -43,7 +44,10 @@ main :: IO ()
 main = do
     putEnv "TERM=xterm-256color"
     gen  <- getStdGen
-    mbGame <- initGame gen <$> readFile "data/classicMaze1.txt"
+    args <- getArgs
+    mbGame <- case args of
+                   []  -> initGame gen <$> readFile "data/classicMaze1.txt"
+                   x:_ -> initGame gen <$> readFile x
     case mbGame of
          Nothing -> putStrLn "Maze cannot be loaded."
          Just g  -> runGame g
