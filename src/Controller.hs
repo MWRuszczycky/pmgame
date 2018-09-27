@@ -98,8 +98,8 @@ restartGame :: Game -> IO GameSt
 restartGame g = do
     let gen = g ^. T.rgen
     case lookup 1 levels of
-         Just fn -> initGame gen <$> readFile "data/classicMaze1.txt"
-         Nothing -> return . Left $ "Cannot restart for some reason"
+         Just fn -> initGame gen <$> readFile fn
+         Nothing -> return . Left $ "Cannot find first level"
 
 ---------------------------------------------------------------------
 -- Level transitioning
