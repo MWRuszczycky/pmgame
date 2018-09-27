@@ -28,8 +28,8 @@ import Types                            ( Game (..)
                                         , Maze (..)                 )
 
 drawUI :: GameSt -> [ Widget () ]
-drawUI (Left _)  = []
-drawUI (Right g) = case g ^. T.status of
+drawUI (Left msg) = [ str msg ]
+drawUI (Right g)  = case g ^. T.status of
                         Running   -> drawRunningUI g
                         GameOver  -> drawGameOverUI g
                         LevelOver -> drawLevelOverUI g

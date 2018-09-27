@@ -19,6 +19,7 @@ module Types
     , rgen
     , remaining
     , status
+    , level
     -- Lenses for PacMan
     , pdir
     , ppos
@@ -85,6 +86,7 @@ data Game = Game { _maze      :: Maze
                  , _rgen      :: StdGen
                  , _remaining :: Int
                  , _status    :: Status
+                 , _level     :: Int
                  } deriving ( Show )
 
 makeLenses ''Game

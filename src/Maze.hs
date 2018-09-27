@@ -4,6 +4,7 @@ module Maze
     , isWall
     , isFree
     , sumPair
+    , levels
     ) where
 
 import qualified Data.Matrix as M
@@ -61,6 +62,7 @@ initGame r s = do
                 , _pacman = pman
                 , _ghosts = gsts
                 , _status = Running
+                , _level  = 1
                 , _remaining = length . filter (== '.') $ sf }
 
 loadMaze :: [String] -> Either String Maze
@@ -124,3 +126,10 @@ resolveWall ss (r,c)
           sw   = r < rBnd && isWallChar ( ss !! (r+1) !! c )
           ww   = c > 0 && isWallChar ( ss !! r !! (c-1) )
           ew   = c < cBnd && isWallChar ( ss !! r !! (c+1) )
+
+---------------------------------------------------------------------
+-- Levels
+
+levels :: [ (Int, FilePath) ]
+levels = [ ( 1, "data/classicMaze1.txt"  )
+         , ( 2, "data/classicMaze1a.txt" ) ]

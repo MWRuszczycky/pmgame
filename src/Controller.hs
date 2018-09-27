@@ -26,6 +26,7 @@ import Types                        ( Game (..)
 import Maze                         ( sumPair
                                     , isFree
                                     , initGame
+                                    , levels
                                     , dirToPair             )
 import Brick.Main                   ( continue
                                     , suspendAndResume
@@ -66,11 +67,16 @@ routeGameOver g _                                 =
     continue . Right $ g
 
 routeLevelOver :: Game -> BrickEvent () TimeEvent -> EventM () ( Next GameSt )
-routeLevelOver g (VtyEvent (V.EvKey V.KEsc [] ))   = halt . Right $ g
-routeLevelOver g (VtyEvent (V.EvKey V.KEnter [] )) = halt . Right $ g
-routeLevelOver g (VtyEvent (V.EvKey _ _ ))         = continue . Right $ g
-routeLevelOver g (VtyEvent (V.EvResize _ _ ))      = continue . Right $ g
-routeLevelOver g _                                 = continue . Right $ g
+routeLevelOver g (VtyEvent (V.EvKey V.KEsc [] ))   =
+    halt . Right $ g
+routeLevelOver g (VtyEvent (V.EvKey V.KEnter [] )) =
+    suspendAndResume . startNextLevel g $ lookup ( succ $ g ^. T.level ) levels
+routeLevelOver g (VtyEvent (V.EvKey _ _ ))         =
+    continue . Right $ g
+routeLevelOver g (VtyEvent (V.EvResize _ _ ))      =
+    continue . Right $ g
+routeLevelOver g _                                 =
+    continue . Right $ g
 
 ---------------------------------------------------------------------
 -- Event handlers for running game
@@ -91,7 +97,21 @@ keyEvent _        _  g = g
 restartGame :: Game -> IO GameSt
 restartGame g = do
     let gen = g ^. T.rgen
-    initGame gen <$> readFile "data/classicMaze1.txt"
+    case lookup 1 levels of
+         Just fn -> initGame gen <$> readFile "data/classicMaze1.txt"
+         Nothing -> return . Left $ "Cannot restart for some reason"
+
+---------------------------------------------------------------------
+-- Level transitioning
+
+startNextLevel :: Game -> Maybe FilePath -> IO GameSt
+startNextLevel _ Nothing   = return . Left $ "Game completed!"
+startNextLevel g (Just fn) = do
+    etG <- initGame ( g ^. T.rgen ) <$> readFile fn
+    case etG of
+         Left _   -> return etG
+         Right g1 -> return . Right $ g1 & T.items .~ ( g ^. T.items )
+                                         & T.level .~ ( succ $ g ^. T.level )
 
 ---------------------------------------------------------------------
 -- Game state management

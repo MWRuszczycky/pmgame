@@ -60,7 +60,7 @@ runGame etG = do
     forkIO . forever $ writeBChan chan Tick >> threadDelay 250000
     etG' <- customMain (V.mkVty defaultConfig) (Just chan) app etG
     case etG' of
-         Left err -> putStrLn err
+         Left msg -> putStrLn msg
          Right g  -> case g ^. T.status of
                           GameOver  -> putStrLn "Game Over"
                           LevelOver -> putStrLn "Level Finished!"
