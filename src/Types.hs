@@ -59,6 +59,7 @@ data Tile = Player
           | RUCr
           | LDCr
           | RDCr
+          | Warp Direction Point
           deriving (Show, Eq)
 
 type Maze = M.Matrix Tile

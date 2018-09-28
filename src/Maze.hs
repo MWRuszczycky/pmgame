@@ -11,8 +11,6 @@ import qualified Data.Matrix as M
 import qualified Data.Vector as V
 import qualified Types       as T
 import Lens.Micro                   ( (&), (^.), (.~), (%~) )
-import Data.List                    ( delete
-                                    , elemIndex             )
 import System.Random                ( StdGen                )
 import Types                        ( Game (..)
                                     , GameSt (..)
@@ -47,15 +45,14 @@ dirToPair North = (-1,0)
 dirToPair South = (1, 0)
 
 ---------------------------------------------------------------------
--- Converters from strings
+-- Game initialization
 
 initGame :: StdGen -> String -> GameSt
 initGame r s = do
-    let ss = lines s
-        sf = concat ss
-    m    <- loadMaze ss
-    pman <- loadPacMan sf (M.ncols m)
-    gsts <- mapM ( loadGhost sf (M.ncols m) ) "pbic"
+    let sf = indexMazeString s
+    m    <- loadMaze sf
+    pman <- loadPacMan sf
+    gsts <- mapM ( loadGhost sf ) "pbic"
     return Game { _maze = m
                 , _items = Items 0
                 , _rgen = r
@@ -63,52 +60,77 @@ initGame r s = do
                 , _ghosts = gsts
                 , _status = Running
                 , _level  = 1
-                , _remaining = length . filter (== '.') $ sf }
+                , _remaining = countPellets sf }
 
-loadMaze :: [String] -> Either String Maze
-loadMaze [] = Left "No maze string provided."
-loadMaze ss = Right . M.fromList nr nc . map (convertTile ss) $ ts
-    where ts = [ (r,c) | r <- [0 .. nr-1], c <- [0 .. nc-1] ]
+indexMazeString :: String -> [(Point, Char)]
+indexMazeString s = zip [ (r,c) | r <- [1..nr], c <- [1..nc] ] (concat ss)
+    where ss = lines s
           nr = length ss
           nc = length . head $ ss
 
-loadPacMan :: String -> Int -> Either String PacMan
-loadPacMan s nc = do
-    pos <- loadPos s nc 'P'
-    (_, d) <- initTile 'P'
-    return PacMan { _pdir = d, _ppos = pos }
-
-loadGhost :: String -> Int -> Char -> Either String Ghost
-loadGhost s nc c = do
-    pos <- loadPos s nc c
-    (t, d) <- initTile c
-    return Ghost { _gname = t, _gdir = d, _gpos = pos }
-
-loadPos :: String -> Int -> Char -> Either String (Int, Int)
-loadPos s nc c = case sumPair (1,1) . flip quotRem nc <$> elemIndex c s of
-                      Nothing -> Left $ "Cannot find '" ++ [c] ++ "' in maze"
-                      Just p  -> Right p
-
-initTile :: Char -> Either String (Tile, Direction)
-initTile 'P' = Right ( Player, North )
-initTile 'p' = Right ( Pinky,  North )
-initTile 'b' = Right ( Blinky, West  )
-initTile 'i' = Right ( Inky,   East  )
-initTile 'c' = Right ( Clyde,  South )
-initTile c   = Left $ "Character '" ++ [c] ++ "' not recognized"
-
-convertTile :: [String] -> (Int, Int) -> Tile
-convertTile ss (x,y)
-    | isWallChar c  = resolveWall ss (x,y)
-    | c == '.'      = Pellet
-    | otherwise     = Empty
-    where c = ss !! x !! y
+getDims :: [(Point, Char)] -> (Int, Int)
+getDims sf = (maximum rs, maximum cs)
+    where (rs,cs) = unzip . fst . unzip $ sf
 
 isWallChar :: Char -> Bool
-isWallChar c = c == '|' || c == '='
+isWallChar x = x == '|' || x == '='
 
-resolveWall :: [String] -> (Int, Int) -> Tile
-resolveWall ss (r,c)
+countPellets :: [(Point, Char)] -> Int
+countPellets = length . filter (== '.') . snd . unzip
+
+loadMaze :: [(Point, Char)] -> Either String Maze
+loadMaze [] = Left "No maze string provided."
+loadMaze sf = M.fromList nr nc <$> mapM (readTile sf) sf
+    where (nr,nc) = getDims sf
+
+loadPacMan :: [(Point, Char)] -> Either String PacMan
+loadPacMan sf = do
+    pos    <- loadPos sf 'P'
+    (_, d) <- initMover 'P'
+    return PacMan { _pdir = d, _ppos = pos }
+
+loadGhost :: [(Point, Char)] -> Char -> Either String Ghost
+loadGhost sf c = do
+    pos    <- loadPos sf c
+    (t, d) <- initMover c
+    return Ghost { _gname = t, _gdir = d, _gpos = pos }
+
+loadPos :: [(Point, Char)] -> Char -> Either String Point
+loadPos sf x
+    | null xs   = Left $ "Cannot find '" ++ [x] ++ "' in maze"
+    | otherwise = Right . fst . head $ xs
+    where xs = dropWhile ( (/= x) . snd ) sf
+
+initMover :: Char -> Either String (Tile, Direction)
+initMover 'P' = Right ( Player, North )
+initMover 'p' = Right ( Pinky,  North )
+initMover 'b' = Right ( Blinky, West  )
+initMover 'i' = Right ( Inky,   East  )
+initMover 'c' = Right ( Clyde,  South )
+initMover x   = Left $ "Character '" ++ [x] ++ "' not recognized"
+
+readTile :: [(Point, Char)] -> (Point, Char) -> Either String Tile
+readTile sf ((r,c), x)
+    | isWallChar x = Right . resolveWall sf $ (r,c)
+    | x == '.'     = Right Pellet
+    | x == 'w'     = resolveWarp sf (r,c)
+    | otherwise    = Right Empty
+
+resolveWarp :: [(Point, Char)] -> Point -> Either String Tile
+resolveWarp sf (r,c)
+    | r == 1    = Warp North <$> wLoc
+    | c == 1    = Warp West  <$> wLoc
+    | r == nr   = Warp South <$> wLoc
+    | c == nc   = Warp East  <$> wLoc
+    | otherwise = Left "Incorrect placement of warp tile"
+    where (nr, nc) = getDims sf
+          wLoc = case filter ( \ (p,x) -> x == 'w' && p /= (r,c) ) sf of
+                      []        -> Left "Cannot find matching warp tile"
+                      w:[]      -> Right . fst $ w
+                      otherwise -> Left "Too many warp tiles"
+
+resolveWall :: [(Point, Char)] -> Point -> Tile
+resolveWall sf (r,c)
     | nw && sw && ww && ew = Cros
     | nw && sw && ww       = LTee
     | nw && ww && ew       = UTee
@@ -120,12 +142,12 @@ resolveWall ss (r,c)
     | sw && ew             = LUCr
     | sw || nw             = VBar
     | otherwise            = HBar
-    where rBnd = subtract 1 . length $ ss
-          cBnd = subtract 1 . length . head $ ss
-          nw   = r > 0 && isWallChar ( ss !! (r-1) !! c )
-          sw   = r < rBnd && isWallChar ( ss !! (r+1) !! c )
-          ww   = c > 0 && isWallChar ( ss !! r !! (c-1) )
-          ew   = c < cBnd && isWallChar ( ss !! r !! (c+1) )
+    where nw  = chk . lookup (r-1, c) $ sf
+          sw  = chk . lookup (r+1, c) $ sf
+          ww  = chk . lookup (r, c-1) $ sf
+          ew  = chk . lookup (r, c+1) $ sf
+          chk Nothing  = False
+          chk (Just x) = isWallChar x
 
 ---------------------------------------------------------------------
 -- Levels

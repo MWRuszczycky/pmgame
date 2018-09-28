@@ -86,24 +86,25 @@ renderMaze g = vBox . map ( hBox . map (renderTile g) ) . M.toLists $ m2
           m2 = foldl' (\ m x -> M.setElem (x ^. T.gname) (x ^. T.gpos) m) m1 gs
 
 renderTile :: Game -> Tile -> Widget ()
-renderTile _ Empty  = withAttr "maze"   . txt $ " "
-renderTile _ HBar   = withAttr "maze"   . txt $ "═"
-renderTile _ VBar   = withAttr "maze"   . txt $ "║"
-renderTile _ Cros   = withAttr "maze"   . txt $ "╬"
-renderTile _ LTee   = withAttr "maze"   . txt $ "╣"
-renderTile _ RTee   = withAttr "maze"   . txt $ "╠"
-renderTile _ DTee   = withAttr "maze"   . txt $ "╦"
-renderTile _ UTee   = withAttr "maze"   . txt $ "╩"
-renderTile _ LUCr   = withAttr "maze"   . txt $ "╔"
-renderTile _ RUCr   = withAttr "maze"   . txt $ "╗"
-renderTile _ LDCr   = withAttr "maze"   . txt $ "╚"
-renderTile _ RDCr   = withAttr "maze"   . txt $ "╝"
-renderTile _ Pellet = withAttr "pellet" . txt $ "."
-renderTile _ Blinky = withAttr "blinky" . txt $ " "
-renderTile _ Inky   = withAttr "inky"   . txt $ " "
-renderTile _ Pinky  = withAttr "pinky"  . txt $ " "
-renderTile _ Clyde  = withAttr "clyde"  . txt $ " "
-renderTile g Player = withAttr "player" . txt . playerGlyph $ dir
+renderTile _ Empty      = withAttr "maze"   . txt $ " "
+renderTile _ HBar       = withAttr "maze"   . txt $ "═"
+renderTile _ VBar       = withAttr "maze"   . txt $ "║"
+renderTile _ Cros       = withAttr "maze"   . txt $ "╬"
+renderTile _ LTee       = withAttr "maze"   . txt $ "╣"
+renderTile _ RTee       = withAttr "maze"   . txt $ "╠"
+renderTile _ DTee       = withAttr "maze"   . txt $ "╦"
+renderTile _ UTee       = withAttr "maze"   . txt $ "╩"
+renderTile _ LUCr       = withAttr "maze"   . txt $ "╔"
+renderTile _ RUCr       = withAttr "maze"   . txt $ "╗"
+renderTile _ LDCr       = withAttr "maze"   . txt $ "╚"
+renderTile _ RDCr       = withAttr "maze"   . txt $ "╝"
+renderTile _ Pellet     = withAttr "pellet" . txt $ "."
+renderTile _ Blinky     = withAttr "blinky" . txt $ " "
+renderTile _ Inky       = withAttr "inky"   . txt $ " "
+renderTile _ Pinky      = withAttr "pinky"  . txt $ " "
+renderTile _ Clyde      = withAttr "clyde"  . txt $ " "
+renderTile _ (Warp _ _) = withAttr "maze"   . txt $ " "
+renderTile g Player     = withAttr "player" . txt . playerGlyph $ dir
     where dir = g ^. T.pacman . T.pdir
 
 playerGlyph :: Direction -> Txt.Text

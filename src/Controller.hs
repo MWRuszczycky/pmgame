@@ -5,6 +5,7 @@ module Controller
 import qualified Graphics.Vty as V
 import qualified Data.Matrix  as M
 import qualified Types        as T
+import Data.Matrix                  ( (!) )
 import Lens.Micro                   ( (&), (^.), (.~), (%~) )
 import System.Random                ( StdGen
                                     , randomR               )
@@ -145,11 +146,19 @@ movePlayer g
     | otherwise    = g
     where PacMan d p0 = g ^. T.pacman
           m0 = g ^. T.maze
-          p1 = sumPair p0 . dirToPair $ d
-          m1 = M.setElem Empty p0 m0
-          s1 = case uncurry M.getElem p1 m0 of
-                    Pellet    -> 1
-                    otherwise -> 0
+          p1 = advance p0 (m0 ! p0) d
+          (m1, s1) = case (m0 ! p0) of
+                     Pellet    -> (M.setElem Empty p0 m0, 1)
+                     otherwise -> (m0, 0)
+
+advance :: Point -> Tile -> Direction -> Point
+advance p0 (Warp wd p1) d
+    | d == wd   = p1
+    | otherwise = moveOneCell p0 d
+advance p0 _ d = moveOneCell p0 d
+
+moveOneCell :: Point -> Direction -> Point
+moveOneCell p = sumPair p . dirToPair
 
 ---------------------------------------------------------------------
 -- Ghost updating
@@ -163,7 +172,7 @@ moveGhost :: Ghost -> (Maze, [Ghost], StdGen) -> (Maze, [Ghost], StdGen)
 moveGhost (Ghost nm d0 p0) (m, gsts, r0) = (m, (Ghost nm d1 p1):gsts, r1)
     where dirs     = [North, South, East, West] ++ replicate 20 d0
           (r1, ds) = randomDirections r0 dirs
-          ps       = [ (d, sumPair p0 . dirToPair $ d) | d <- ds ]
+          ps       = [ (d, advance p0 (m ! p0) d) | d <- ds ]
           (d1, p1) = head . dropWhile (not . isFree m . snd) $ ps
 
 randomDirections :: StdGen -> [Direction] -> (StdGen, [Direction])
