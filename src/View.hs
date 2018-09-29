@@ -10,10 +10,11 @@ import qualified Data.Matrix  as M
 import qualified Types        as T
 import Data.List                        ( foldl'                    )
 import Lens.Micro                       ( (.~), (^.), (&)           )
-import Brick.Types                      ( Widget (..)               )
+import Brick.Types                      ( Widget (..), Padding (..) )
 import Brick.Widgets.Core               ( txt, withAttr, vBox, hBox
                                         , str, hLimit, vLimit, fill
-                                        , withBorderStyle           )
+                                        , withBorderStyle, padLeft
+                                        , (<+>)                     )
 import Brick.Widgets.Border.Style       ( unicodeRounded            )
 import Brick.Widgets.Border             ( borderWithLabel
                                         , borderAttr                )
@@ -33,50 +34,69 @@ drawUI (Right g)  = case g ^. T.status of
                         Running   -> drawRunningUI g
                         GameOver  -> drawGameOverUI g
                         LevelOver -> drawLevelOverUI g
+                        ReplayLvl -> drawReplayUI g
 
 drawRunningUI :: Game -> [ Widget () ]
 drawRunningUI g = [ withAttr "background" ui ]
-    where ui = center . vBox $
-                   [ withAttr "score" . txt $ "PacMan!"
-                   , renderMaze g
-                   , renderScore g
-                   , renderRemaining g
-                   , withAttr "score" . str . show $ ( g ^. T.pacman . T.ppos )
-                   ]
+    where ui = center . hLimit ( M.ncols $ g ^. T.maze ) . vBox $ ws
+          ws = [ renderScore g
+               , renderMaze g
+               , renderOneups g <+> renderFruit g
+               ]
 
 drawGameOverUI :: Game -> [ Widget () ]
 drawGameOverUI g = [ withAttr "background" msg ]
     where hdr = withAttr "score" . txt $ "GAME OVER!"
-          esc = withAttr "score" . txt $ "Esc to quit"
           ent = withAttr "score" . txt $ "Enter to play again"
+          esc = withAttr "score" . txt $ "Esc to quit"
           msg = center
                 . withBorderStyle unicodeRounded
                 . borderWithLabel hdr
                 . hLimit 25
                 . vLimit 3
                 . center
-                . vBox $ [ renderScore g, esc, ent ]
+                . vBox $ [ renderScore g, ent, esc ]
 
 drawLevelOverUI :: Game -> [ Widget () ]
 drawLevelOverUI g = [ withAttr "background" msg]
     where hdr = withAttr "score" . txt $ "LEVEL COMPLETED!"
-          esc = withAttr "score" . txt $ "Esc to quit"
           ent = withAttr "score" . txt $ "Enter to play next level"
+          esc = withAttr "score" . txt $ "Esc to quit"
           msg = center
                 . withBorderStyle unicodeRounded
                 . borderWithLabel hdr
                 . hLimit 25
                 . vLimit 3
                 . center
-                . vBox $ [ renderScore g, esc, ent ]
+                . vBox $ [ renderScore g, ent, esc ]
+
+drawReplayUI :: Game -> [ Widget () ]
+drawReplayUI g = [ withAttr "background" msg]
+    where hdr = withAttr "score" . txt $ "YOU GOT CAPTURED!"
+          ent = withAttr "score" . txt $ "Enter to keep trying"
+          esc = withAttr "score" . txt $ "Esc to quit"
+          msg = center
+                . withBorderStyle unicodeRounded
+                . borderWithLabel hdr
+                . hLimit 25
+                . vLimit 3
+                . center
+                . vBox $ [ renderScore g, ent, esc ]
+
+---------------------------------------------------------------------
+-- Widget rendering
 
 renderScore :: Game -> Widget ()
-renderScore g = withAttr "score" . str . ("Score: " ++) . show $ s
+renderScore g = withAttr "score" . str . show $ s
     where s = 10 * g ^. T.items . T.pellets
 
-renderRemaining :: Game -> Widget ()
-renderRemaining g = withAttr "score" . txt . Txt.pack . show $ r
-    where r = g ^. T.remaining
+renderOneups :: Game -> Widget ()
+renderOneups g = hBox . take (2 * g ^. T.oneups) . cycle $ [ oneup, space ]
+    where oneup = withAttr "player" . txt . playerGlyph $ West
+          space = withAttr "background" . txt $ " "
+
+renderFruit :: Game -> Widget ()
+renderFruit g = padLeft Max . withAttr "score" . txt $ "fruit!"
 
 renderMaze :: Game -> Widget ()
 renderMaze g = vBox . map ( hBox . map (renderTile g) ) . M.toLists $ m2
@@ -113,15 +133,19 @@ playerGlyph South = "∧"
 playerGlyph West  = ">"
 playerGlyph East  = "<"
 
+---------------------------------------------------------------------
+-- Attributes
+
 attributes :: AttrMap
-attributes = attrMap V.defAttr [ ( "player", on V.black V.brightYellow  )
-                               , ( "maze",   on V.blue V.black          )
-                               , ( "pellet", on V.white V.black         )
-                               , ( "score",  on V.yellow V.black        )
-                               , ( "blinky", bg V.red                   )
-                               , ( "pinky",  bg V.brightMagenta         )
-                               , ( "inky",   bg V.brightCyan            )
-                               , ( "clyde",  bg V.yellow                )
-                               , ( "background", bg V.black             )
-                               , ( borderAttr, on V.yellow V.black      )
-                               ]
+attributes = attrMap V.defAttr
+    [ ( "player", on V.black V.brightYellow )
+    , ( "maze",   on V.blue V.black         )
+    , ( "pellet", on V.white V.black        )
+    , ( "score",  on V.white V.black        )
+    , ( "blinky", bg V.red                  )
+    , ( "pinky",  bg V.brightMagenta        )
+    , ( "inky",   bg V.brightCyan           )
+    , ( "clyde",  bg V.yellow               )
+    , ( "background", bg V.black            )
+    , ( borderAttr, on V.blue V.black       )
+    ]

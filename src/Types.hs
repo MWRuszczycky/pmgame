@@ -17,16 +17,19 @@ module Types
     , pacman
     , ghosts
     , rgen
-    , remaining
+    , npellets
+    , oneups
     , status
     , level
     -- Lenses for PacMan
     , pdir
     , ppos
+    , pstrt
     -- Lenses for Ghost
     , gname
     , gdir
     , gpos
+    , gstrt
     -- Lenses for Items
     , pellets
     ) where
@@ -39,7 +42,11 @@ data TimeEvent = Tick deriving ( Show )
 
 data Direction = North | South | East | West deriving ( Show, Eq )
 
-data Status = Running | GameOver | LevelOver deriving ( Show, Eq )
+data Status = Running
+            | GameOver
+            | LevelOver
+            | ReplayLvl
+            deriving ( Show, Eq )
 
 data Tile = Player
           | Empty
@@ -71,23 +78,26 @@ type GameSt = Either String Game
 data Ghost = Ghost { _gname :: Tile
                    , _gdir  :: Direction
                    , _gpos  :: Point
+                   , _gstrt :: (Point, Direction)
                    } deriving ( Show )
 
-data PacMan = PacMan { _pdir :: Direction
-                     , _ppos :: Point
+data PacMan = PacMan { _pdir  :: Direction
+                     , _ppos  :: Point
+                     , _pstrt :: (Point, Direction)
                      } deriving ( Show )
 
 data Items = Items { _pellets :: Int
                    } deriving ( Show )
 
-data Game = Game { _maze      :: Maze
-                 , _items     :: Items
-                 , _pacman    :: PacMan
-                 , _ghosts    :: [ Ghost ]
-                 , _rgen      :: StdGen
-                 , _remaining :: Int
-                 , _status    :: Status
-                 , _level     :: Int
+data Game = Game { _maze     :: Maze
+                 , _items    :: Items
+                 , _pacman   :: PacMan
+                 , _ghosts   :: [ Ghost ]
+                 , _rgen     :: StdGen
+                 , _npellets :: Int
+                 , _oneups   :: Int
+                 , _status   :: Status
+                 , _level    :: Int
                  } deriving ( Show )
 
 makeLenses ''Game

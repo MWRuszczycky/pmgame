@@ -42,17 +42,24 @@ eventRouter (Right g)  e = case g ^. T.status of
                                 Running   -> routeRunning g e
                                 GameOver  -> routeGameOver g e
                                 LevelOver -> routeLevelOver g e
+                                ReplayLvl -> routeReplay g e
 
 routeRunning :: Game -> BrickEvent () TimeEvent -> EventM () ( Next GameSt )
 routeRunning g (VtyEvent (V.EvKey V.KEsc [] )) =
     halt . Right $ g
 routeRunning g (VtyEvent (V.EvKey k ms ))      =
     continue . Right . keyEvent k ms $ g
-routeRunning g (VtyEvent (V.EvResize _ _ ))    =
-    continue . Right $ g
 routeRunning g (AppEvent Tick)                 =
     continue . Right . tickEvent $ g
 routeRunning g _                               =
+    continue . Right $ g
+
+routeReplay :: Game -> BrickEvent () TimeEvent -> EventM () ( Next GameSt )
+routeReplay g (VtyEvent (V.EvKey V.KEsc [] ))   =
+    halt . Right $ g
+routeReplay g (VtyEvent (V.EvKey V.KEnter [] )) =
+    continue . Right . restartLevel $ g
+routeReplay g _                                 =
     continue . Right $ g
 
 routeGameOver :: Game -> BrickEvent () TimeEvent -> EventM () ( Next GameSt )
@@ -60,8 +67,6 @@ routeGameOver g (VtyEvent (V.EvKey V.KEsc [] ))   =
     halt . Right $ g
 routeGameOver g (VtyEvent (V.EvKey V.KEnter [] )) =
     suspendAndResume ( restartGame g )
-routeGameOver g (VtyEvent (V.EvKey _ _ ))         =
-    continue . Right $ g
 routeGameOver g (VtyEvent (V.EvResize _ _ ))      =
     continue . Right $ g
 routeGameOver g _                                 =
@@ -72,10 +77,6 @@ routeLevelOver g (VtyEvent (V.EvKey V.KEsc [] ))   =
     halt . Right $ g
 routeLevelOver g (VtyEvent (V.EvKey V.KEnter [] )) =
     suspendAndResume . startNextLevel g $ lookup ( succ $ g ^. T.level ) levels
-routeLevelOver g (VtyEvent (V.EvKey _ _ ))         =
-    continue . Right $ g
-routeLevelOver g (VtyEvent (V.EvResize _ _ ))      =
-    continue . Right $ g
 routeLevelOver g _                                 =
     continue . Right $ g
 
@@ -93,7 +94,7 @@ keyEvent V.KDown  ms g = g & T.pacman . T.pdir .~ South
 keyEvent _        _  g = g
 
 ---------------------------------------------------------------------
--- Event handlers for game over
+-- Event handlers for restarts
 
 restartGame :: Game -> IO GameSt
 restartGame g = do
@@ -101,6 +102,20 @@ restartGame g = do
     case lookup 1 levels of
          Just fn -> initGame gen <$> readFile fn
          Nothing -> return . Left $ "Cannot find first level"
+
+restartLevel :: Game -> Game
+restartLevel g = g & T.status .~ Running
+                   & T.pacman %~ resetPacMan
+                   & T.ghosts %~ map resetGhost
+                   & T.oneups %~ subtract 1
+
+resetPacMan :: PacMan -> PacMan
+resetPacMan p = p & T.ppos .~ pos0 & T.pdir .~ dir0
+    where (pos0, dir0) = p ^. T.pstrt
+
+resetGhost :: Ghost -> Ghost
+resetGhost g = g & T.gpos .~ pos0 & T.gdir .~ dir0
+    where (pos0, dir0) = g ^. T.gstrt
 
 ---------------------------------------------------------------------
 -- Level transitioning
@@ -127,12 +142,17 @@ wasCaptured g0 g1 = any ( pathsCrossed (p0, p1) ) ( zip gs0 gs1 )
 pathsCrossed :: (Point, Point) -> (Point, Point) -> Bool
 pathsCrossed (p0, p1) (g0, g1) = p1 == g1 || p1 == g0 && p0 == g1
 
+handleCapture :: Game -> Game -> Game
+handleCapture g0 g1
+    | g0 ^. T.oneups == 0 = g1 & T.status .~ GameOver
+    | otherwise           = g1 & T.status .~ ReplayLvl
+
 updateStatus :: Game -> Game -> Game
 updateStatus g0 g1
     | allPellets        = g1 & T.status .~ LevelOver
-    | wasCaptured g0 g1 = g1 & T.status .~ GameOver
+    | wasCaptured g0 g1 = handleCapture g0 g1
     | otherwise         = g1 & T.status .~ Running
-    where allPellets = g1 ^. T.remaining == 0
+    where allPellets = g1 ^. T.npellets == 0
 
 ---------------------------------------------------------------------
 -- Player updating
@@ -140,14 +160,15 @@ updateStatus g0 g1
 movePlayer :: Game -> Game
 movePlayer g
     | isFree m0 p1 = g & T.maze .~ m1
-                       & T.items . T.pellets %~ (+ s1)
-                       & T.remaining %~ (subtract s1)
+                       & T.items . T.pellets %~ (+ ds)
+                       & T.npellets %~ (subtract ds)
                        & T.pacman . T.ppos .~ p1
     | otherwise    = g
-    where PacMan d p0 = g ^. T.pacman
-          m0 = g ^. T.maze
-          p1 = advance p0 (m0 ! p0) d
-          (m1, s1) = case (m0 ! p0) of
+    where p0  = g ^. T.pacman . T.ppos
+          dir = g ^. T.pacman . T.pdir
+          m0  = g ^. T.maze
+          p1  = advance p0 (m0 ! p0) dir
+          (m1, ds) = case (m0 ! p0) of
                      Pellet    -> (M.setElem Empty p0 m0, 1)
                      otherwise -> (m0, 0)
 
@@ -169,11 +190,14 @@ moveGhosts g = g & T.maze .~ m & T.ghosts .~ gsts & T.rgen .~ r
           start = (g ^. T.maze, [], g ^. T.rgen )
 
 moveGhost :: Ghost -> (Maze, [Ghost], StdGen) -> (Maze, [Ghost], StdGen)
-moveGhost (Ghost nm d0 p0) (m, gsts, r0) = (m, (Ghost nm d1 p1):gsts, r1)
-    where dirs     = [North, South, East, West] ++ replicate 20 d0
+moveGhost gst0 (m, gsts, r0) = (m, gst1:gsts, r1)
+    where p0       = gst0 ^. T.gpos
+          dir      = gst0 ^. T.gdir
+          dirs     = [North, South, East, West] ++ replicate 20 dir
           (r1, ds) = randomDirections r0 dirs
           ps       = [ (d, advance p0 (m ! p0) d) | d <- ds ]
           (d1, p1) = head . dropWhile (not . isFree m . snd) $ ps
+          gst1     = gst0 & T.gpos .~ p1 & T.gdir .~ d1
 
 randomDirections :: StdGen -> [Direction] -> (StdGen, [Direction])
 randomDirections r0 [] = (r0, [])

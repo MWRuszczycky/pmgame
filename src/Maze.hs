@@ -53,14 +53,15 @@ initGame r s = do
     m    <- loadMaze sf
     pman <- loadPacMan sf
     gsts <- mapM ( loadGhost sf ) "pbic"
-    return Game { _maze = m
-                , _items = Items 0
-                , _rgen = r
-                , _pacman = pman
-                , _ghosts = gsts
-                , _status = Running
-                , _level  = 1
-                , _remaining = countPellets sf }
+    return Game { _maze     = m
+                , _items    = Items 0
+                , _rgen     = r
+                , _pacman   = pman
+                , _ghosts   = gsts
+                , _status   = Running
+                , _level    = 1
+                , _npellets = countPellets sf
+                , _oneups   = 3 }
 
 indexMazeString :: String -> [(Point, Char)]
 indexMazeString s = zip [ (r,c) | r <- [1..nr], c <- [1..nc] ] (concat ss)
@@ -87,13 +88,20 @@ loadPacMan :: [(Point, Char)] -> Either String PacMan
 loadPacMan sf = do
     pos    <- loadPos sf 'P'
     (_, d) <- initMover 'P'
-    return PacMan { _pdir = d, _ppos = pos }
+    return PacMan { _pdir  = d
+                  , _ppos  = pos
+                  , _pstrt = (pos, d)
+                  }
 
 loadGhost :: [(Point, Char)] -> Char -> Either String Ghost
 loadGhost sf c = do
     pos    <- loadPos sf c
     (t, d) <- initMover c
-    return Ghost { _gname = t, _gdir = d, _gpos = pos }
+    return Ghost { _gname = t
+                 , _gdir  = d
+                 , _gpos  = pos
+                 , _gstrt = (pos, d)
+                 }
 
 loadPos :: [(Point, Char)] -> Char -> Either String Point
 loadPos sf x
@@ -102,7 +110,7 @@ loadPos sf x
     where xs = dropWhile ( (/= x) . snd ) sf
 
 initMover :: Char -> Either String (Tile, Direction)
-initMover 'P' = Right ( Player, North )
+initMover 'P' = Right ( Player, West  )
 initMover 'p' = Right ( Pinky,  North )
 initMover 'b' = Right ( Blinky, West  )
 initMover 'i' = Right ( Inky,   East  )
