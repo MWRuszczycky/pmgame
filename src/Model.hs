@@ -1,9 +1,16 @@
 module Model
     ( movePlayer
     , moveGhosts
+    , isBlueGhost
+    , isWhiteGhost
+    , isGhost
+    , isPlayer
+    , isWall
+    , isPellet
     , restartLevel
     , getNxtLevel
-    , updateStatus
+    , updateGame
+    , updateGamePwr
     ) where
 
 import qualified Data.Matrix as M
@@ -25,6 +32,25 @@ import Types                        ( Tile      (..)
 
 ---------------------------------------------------------------------
 -- Pure functions for managing game state
+
+-- Tile subtypes
+
+isWall :: Tile -> Bool
+-- ^Evaluate whether a tile is a wall tile.
+isWall t = elem t ws
+    where ws = [ HBar, VBar, LTee, UTee, RTee, DTee, RDCr, LDCr, RUCr, LUCr ]
+
+isGhost :: Tile -> Bool
+-- ^Evaluate whether a tile is a ghost.
+isGhost t = elem t [ Blinky, Pinky, Inky, Clyde ]
+
+isPellet :: Tile -> Bool
+-- ^Evaluate whether a tile is a pellet.
+isPellet t = elem t [ PwrPellet, Pellet ]
+
+isPlayer :: Tile -> Bool
+-- ^Evaluate whether a tile is the player.
+isPlayer t = t == Player
 
 ---------------------------------------------------------------------
 -- Game and level restarting
@@ -60,13 +86,36 @@ getNxtLevel g0 g1 = g1 & T.items  .~ ( g0 ^. T.items )
 
 -- Exported
 
-updateStatus :: Game -> Game -> Game
--- ^Determine status of a running game.
-updateStatus g0 g1
-    | allPellets        = g1 & T.status .~ LevelOver
-    | wasCaptured g0 g1 = handleCapture g0 g1
-    | otherwise         = g1 & T.status .~ Running
+updateGame :: Int -> Game -> Game -> Game
+-- ^Determine status of a running game at time t.
+updateGame t g0 g1
+    | allPellets        = g1 & T.time .~ t & T.status .~ LevelOver
+    | wasCaptured g0 g1 = handleCapture g0 ( g1 & T.time .~ t )
+    | wasPowered g0 g1  = g1 & T.time .~ t & T.status .~ PwrRunning t
+    | otherwise         = g1 & T.time .~ t & T.status .~ Running
     where allPellets = g1 ^. T.npellets == 0
+
+updateGamePwr :: Int -> Int -> Game -> Game -> Game
+-- ^Determine status of a running game at time t1 after eating a
+-- power pellet at time t0.
+updateGamePwr t0 t1 g0 g1
+    | allPellets        = g1 & T.time .~ t1 & T.status .~ LevelOver
+    | wasPowered g0 g1  = g1 & T.time .~ t1 & T.status .~ PwrRunning t1
+    | powerFinished     = g1 & T.time .~ t1 & T.status .~ Running
+    | otherwise         = g1 & T.time .~ t1 & T.status .~ PwrRunning t0
+    -- | wasCaptured g0 g1 = handleCapture g0 g1
+    where allPellets    = g1 ^. T.npellets == 0
+          powerFinished = t1 - t0 >= g1 ^. T.pwrtime
+
+isBlueGhost :: Game -> Bool
+isBlueGhost g = case g ^. T.status of
+                     PwrRunning t -> isBlue ( g ^. T.time - t ) g
+                     otherwise    -> False
+
+isWhiteGhost :: Game -> Bool
+isWhiteGhost g = isPowered ( g ^. T.status ) && ( not . isBlueGhost $ g )
+    where isPowered (PwrRunning _) = True
+          isPowered _              = False
 
 -- Unexported
 
@@ -75,6 +124,12 @@ handleCapture :: Game -> Game -> Game
 handleCapture g0 g1
     | g0 ^. T.oneups == 0 = g1 & T.status .~ GameOver
     | otherwise           = g1 & T.status .~ ReplayLvl
+
+isBlue :: Int -> Game -> Bool
+isBlue tlft g
+    | tlft < half = True
+    | otherwise   = even . quot tlft $ ( g ^. T.dtime )
+    where half = quot ( g ^. T.pwrtime ) 2
 
 ---------------------------------------------------------------------
 -- Player updating
@@ -94,6 +149,7 @@ movePlayer g
           p1  = getNxtPos p0 (m0 ! p0) dir
           (m1, ds) = case (m0 ! p1) of
                      Pellet    -> (M.setElem Empty p1 m0, 1)
+                     PwrPellet -> (M.setElem Empty p1 m0, 1)
                      otherwise -> (m0, 0)
 
 ---------------------------------------------------------------------
@@ -130,6 +186,10 @@ randomDirections r0 ds0 = (r, d:ds)
 -- Utilities for time-dependent changes in the game state
 
 -- Unexported
+
+wasPowered :: Game -> Game -> Bool
+wasPowered g0 g1 = t1 == PwrPellet
+    where t1 = (g0 ^. T.maze) ! (g1 ^. T.pacman . T.ppos)
 
 wasCaptured :: Game -> Game -> Bool
 -- ^Determine whether player was captured by a ghost in last move.
@@ -168,8 +228,3 @@ isFree :: Maze -> Point -> Bool
 isFree m (r,c) = case M.safeGet r c m of
                       Nothing -> False
                       Just t  -> not . isWall $ t
-
-isWall :: Tile -> Bool
--- ^Evaluate whether a tile is a wall tile.
-isWall t = elem t ws
-    where ws = [ HBar, VBar, LTee, UTee, RTee, DTee, RDCr, LDCr, RUCr, LUCr ]

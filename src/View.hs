@@ -21,6 +21,9 @@ import Brick.Widgets.Border             ( borderWithLabel
 import Brick.AttrMap                    ( attrMap, AttrMap          )
 import Brick.Util                       ( on, bg, fg                )
 import Brick.Widgets.Center             ( center, hCenter, vCenter  )
+import Model                            ( isGhost ,isWall, isPlayer
+                                        , isPellet, isBlueGhost
+                                        , isWhiteGhost              )
 import Types                            ( Game      (..)
                                         , GameSt    (..)
                                         , Tile      (..)
@@ -31,10 +34,10 @@ import Types                            ( Game      (..)
 drawUI :: GameSt -> [ Widget () ]
 drawUI (Left msg) = [ str msg ]
 drawUI (Right g)  = case g ^. T.status of
-                        Running   -> drawRunningUI g
-                        GameOver  -> drawGameOverUI g
-                        LevelOver -> drawLevelOverUI g
-                        ReplayLvl -> drawReplayUI g
+                        GameOver     -> drawGameOverUI g
+                        LevelOver    -> drawLevelOverUI g
+                        ReplayLvl    -> drawReplayUI g
+                        otherwise    -> drawRunningUI g
 
 drawRunningUI :: Game -> [ Widget () ]
 drawRunningUI g = [ withAttr "background" ui ]
@@ -92,7 +95,7 @@ renderScore g = withAttr "score" . str . show $ s
 
 renderOneups :: Game -> Widget ()
 renderOneups g = hBox . take (2 * g ^. T.oneups) . cycle $ [ oneup, space ]
-    where oneup = withAttr "player" . txt . playerGlyph $ West
+    where oneup = withAttr "player" . txt $ ">"
           space = withAttr "background" . txt $ " "
 
 renderFruit :: Game -> Widget ()
@@ -106,32 +109,46 @@ renderMaze g = vBox . map ( hBox . map (renderTile g) ) . M.toLists $ m2
           m2 = foldl' (\ m x -> M.setElem (x ^. T.gname) (x ^. T.gpos) m) m1 gs
 
 renderTile :: Game -> Tile -> Widget ()
-renderTile _ Empty      = withAttr "maze"   . txt $ " "
-renderTile _ HBar       = withAttr "maze"   . txt $ "═"
-renderTile _ VBar       = withAttr "maze"   . txt $ "║"
-renderTile _ Cros       = withAttr "maze"   . txt $ "╬"
-renderTile _ LTee       = withAttr "maze"   . txt $ "╣"
-renderTile _ RTee       = withAttr "maze"   . txt $ "╠"
-renderTile _ DTee       = withAttr "maze"   . txt $ "╦"
-renderTile _ UTee       = withAttr "maze"   . txt $ "╩"
-renderTile _ LUCr       = withAttr "maze"   . txt $ "╔"
-renderTile _ RUCr       = withAttr "maze"   . txt $ "╗"
-renderTile _ LDCr       = withAttr "maze"   . txt $ "╚"
-renderTile _ RDCr       = withAttr "maze"   . txt $ "╝"
-renderTile _ Pellet     = withAttr "pellet" . txt $ "."
-renderTile _ Blinky     = withAttr "blinky" . txt $ " "
-renderTile _ Inky       = withAttr "inky"   . txt $ " "
-renderTile _ Pinky      = withAttr "pinky"  . txt $ " "
-renderTile _ Clyde      = withAttr "clyde"  . txt $ " "
-renderTile _ (Warp _ _) = withAttr "maze"   . txt $ " "
-renderTile g Player     = withAttr "player" . txt . playerGlyph $ dir
-    where dir = g ^. T.pacman . T.pdir
+renderTile g t
+    | isWall t   = renderWall t
+    | isPellet t = renderPellet t
+    | isGhost t  = renderGhost g t
+    | isPlayer t = renderPlayer g
+    | otherwise  = withAttr "maze" . txt $ " "
 
-playerGlyph :: Direction -> Txt.Text
-playerGlyph North = "∨"
-playerGlyph South = "∧"
-playerGlyph West  = ">"
-playerGlyph East  = "<"
+renderWall :: Tile -> Widget ()
+renderWall HBar = withAttr "maze" . txt $ "═"
+renderWall VBar = withAttr "maze" . txt $ "║"
+renderWall Cros = withAttr "maze" . txt $ "╬"
+renderWall LTee = withAttr "maze" . txt $ "╣"
+renderWall RTee = withAttr "maze" . txt $ "╠"
+renderWall DTee = withAttr "maze" . txt $ "╦"
+renderWall UTee = withAttr "maze" . txt $ "╩"
+renderWall LUCr = withAttr "maze" . txt $ "╔"
+renderWall RUCr = withAttr "maze" . txt $ "╗"
+renderWall LDCr = withAttr "maze" . txt $ "╚"
+renderWall RDCr = withAttr "maze" . txt $ "╝"
+
+renderPellet :: Tile -> Widget ()
+renderPellet Pellet    = withAttr "pellet" . txt $ "."
+renderPellet PwrPellet = withAttr "pellet" . txt $ "*"
+
+renderPlayer :: Game -> Widget ()
+renderPlayer g = withAttr "player" . txt . glyph $ g ^. T.pacman . T.pdir
+    where glyph North = "∨"
+          glyph South = "∧"
+          glyph West  = ">"
+          glyph East  = "<"
+
+renderGhost :: Game -> Tile -> Widget ()
+renderGhost g t
+    | isBlueGhost  g = withAttr "blueGhost" . txt $ "\""
+    | isWhiteGhost g = withAttr "whiteGhost" . txt $ "\""
+    | otherwise    = renderGhost' t
+    where renderGhost' Blinky = withAttr "blinky" . txt $ "\""
+          renderGhost' Inky   = withAttr "inky"   . txt $ "\""
+          renderGhost' Pinky  = withAttr "pinky"  . txt $ "\""
+          renderGhost' Clyde  = withAttr "clyde"  . txt $ "\""
 
 ---------------------------------------------------------------------
 -- Attributes
@@ -142,10 +159,12 @@ attributes = attrMap V.defAttr
     , ( "maze",   on V.blue V.black         )
     , ( "pellet", on V.white V.black        )
     , ( "score",  on V.white V.black        )
-    , ( "blinky", bg V.red                  )
-    , ( "pinky",  bg V.brightMagenta        )
-    , ( "inky",   bg V.brightCyan           )
-    , ( "clyde",  bg V.yellow               )
+    , ( "blinky", on V.black V.red          )
+    , ( "pinky", on V.black V.brightMagenta )
+    , ( "inky",   on V.black V.brightCyan   )
+    , ( "clyde",  on V.black V.yellow       )
+    , ( "blueGhost",  on V.white V.blue     )
+    , ( "whiteGhost", on V.black V.white    )
     , ( "background", bg V.black            )
-    , ( borderAttr, on V.blue V.black       )
+    , ( borderAttr,   on V.blue V.black     )
     ]

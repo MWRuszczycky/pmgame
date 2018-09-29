@@ -34,21 +34,29 @@ app = App { appDraw         = drawUI
 
 main :: IO ()
 main = do
+    let dt    = 225000
+        mfile = "data/classicMaze1.txt"
     putEnv "TERM=xterm-256color"
     gen  <- getStdGen
     args <- getArgs
     etGame <- case args of
-                   []  -> initGame gen <$> readFile "data/classicMaze1.txt"
-                   x:_ -> initGame gen <$> readFile x
+                   []  -> initGame gen dt <$> readFile mfile
+                   x:_ -> initGame gen dt <$> readFile x
     case etGame of
          Left err -> putStrLn err
-         Right g  -> runGame etGame
+         Right g  -> runGame dt etGame
 
-runGame :: GameSt -> IO ()
-runGame etG = do
+runTimer :: BChan TimeEvent -> Int -> Int -> IO ()
+runTimer chan t dt = do
+    writeBChan chan (Tick t)
+    threadDelay dt
+    runTimer chan (t+dt) dt
+
+runGame :: Int -> GameSt -> IO ()
+runGame dt etG = do
     chan <- newBChan 10 :: IO ( BChan TimeEvent )
     defaultConfig <- V.standardIOConfig
-    forkIO . forever $ writeBChan chan Tick >> threadDelay 250000
+    forkIO $ runTimer chan 0 dt
     etG' <- customMain (V.mkVty defaultConfig) (Just chan) app etG
     case etG' of
          Left msg -> putStrLn msg

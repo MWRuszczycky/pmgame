@@ -21,6 +21,9 @@ module Types
     , oneups
     , status
     , level
+    , pwrtime
+    , time
+    , dtime
     -- Lenses for PacMan
     , pdir
     , ppos
@@ -38,11 +41,12 @@ import qualified Data.Matrix as M
 import System.Random                ( StdGen )
 import Lens.Micro.TH                ( makeLenses )
 
-data TimeEvent = Tick deriving ( Show )
+data TimeEvent = Tick Int deriving ( Show )
 
 data Direction = North | South | East | West deriving ( Show, Eq )
 
 data Status = Running
+            | PwrRunning Int
             | GameOver
             | LevelOver
             | ReplayLvl
@@ -51,6 +55,7 @@ data Status = Running
 data Tile = Player
           | Empty
           | Pellet
+          | PwrPellet
           | Pinky
           | Blinky
           | Inky
@@ -98,6 +103,9 @@ data Game = Game { _maze     :: Maze
                  , _oneups   :: Int
                  , _status   :: Status
                  , _level    :: Int
+                 , _pwrtime  :: Int
+                 , _time     :: Int
+                 , _dtime    :: Int
                  } deriving ( Show )
 
 makeLenses ''Game

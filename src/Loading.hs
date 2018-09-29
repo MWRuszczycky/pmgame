@@ -29,8 +29,8 @@ levels = [ ( 1, "data/classicMaze1.txt"  )
 ---------------------------------------------------------------------
 -- Game initialization
 
-initGame :: StdGen -> String -> GameSt
-initGame r s = do
+initGame :: StdGen -> Int -> String -> GameSt
+initGame r dt s = do
     xs   <- indexMazeString s
     m    <- loadMaze xs
     pman <- loadPacMan xs
@@ -43,7 +43,10 @@ initGame r s = do
                 , _status   = Running
                 , _level    = 1
                 , _npellets = countPellets xs
-                , _oneups   = 3 }
+                , _oneups   = 3
+                , _time     = 0
+                , _dtime    = dt
+                , _pwrtime  = 7500000 }
 
 ---------------------------------------------------------------------
 -- Parsing level files
@@ -55,7 +58,8 @@ getDims xs = (maximum rs, maximum cs)
     where (rs,cs) = unzip . fst . unzip $ xs
 
 countPellets :: [(Point, Char)] -> Int
-countPellets = length . filter (== '.') . snd . unzip
+countPellets = length . filter isPellet . snd . unzip
+    where isPellet x = x == '.' || x == '*'
 
 indexMazeString :: String -> Either String [(Point, Char)]
 indexMazeString s
@@ -116,6 +120,7 @@ readTile :: [(Point, Char)] -> (Point, Char) -> Either String Tile
 readTile xs ((r,c), x)
     | isWallChar x = Right . resolveWall xs (r,c) $ x
     | x == '.'     = Right Pellet
+    | x == '*'     = Right PwrPellet
     | x == 'w'     = resolveWarp xs (r,c)
     | otherwise    = Right Empty
 
