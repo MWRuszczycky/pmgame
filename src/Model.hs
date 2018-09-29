@@ -92,8 +92,8 @@ movePlayer g
           dir = g ^. T.pacman . T.pdir
           m0  = g ^. T.maze
           p1  = getNxtPos p0 (m0 ! p0) dir
-          (m1, ds) = case (m0 ! p0) of
-                     Pellet    -> (M.setElem Empty p0 m0, 1)
+          (m1, ds) = case (m0 ! p1) of
+                     Pellet    -> (M.setElem Empty p1 m0, 1)
                      otherwise -> (m0, 0)
 
 ---------------------------------------------------------------------
