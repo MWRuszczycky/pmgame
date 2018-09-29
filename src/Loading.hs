@@ -20,14 +20,21 @@ import Types                        ( Game (..)
                                     , Direction (..)        )
 
 ---------------------------------------------------------------------
+-- List of levels and associated maze files
+
+levels :: [ (Int, FilePath) ]
+levels = [ ( 1, "data/classicMaze1.txt"  )
+         , ( 2, "data/classicMaze1a.txt" ) ]
+
+---------------------------------------------------------------------
 -- Game initialization
 
 initGame :: StdGen -> String -> GameSt
 initGame r s = do
-    let sf = indexMazeString s
-    m    <- loadMaze sf
-    pman <- loadPacMan sf
-    gsts <- mapM ( loadGhost sf ) "pbic"
+    xs   <- indexMazeString s
+    m    <- loadMaze xs
+    pman <- loadPacMan xs
+    gsts <- mapM ( loadGhost xs ) "pbic"
     return Game { _maze     = m
                 , _items    = Items 0
                 , _rgen     = r
@@ -35,33 +42,42 @@ initGame r s = do
                 , _ghosts   = gsts
                 , _status   = Running
                 , _level    = 1
-                , _npellets = countPellets sf
+                , _npellets = countPellets xs
                 , _oneups   = 3 }
 
-indexMazeString :: String -> [(Point, Char)]
-indexMazeString s = zip [ (r,c) | r <- [1..nr], c <- [1..nc] ] (concat ss)
-    where ss = lines s
-          nr = length ss
-          nc = length . head $ ss
+---------------------------------------------------------------------
+-- Parsing level files
+
+-- Helper functions
 
 getDims :: [(Point, Char)] -> (Int, Int)
-getDims sf = (maximum rs, maximum cs)
-    where (rs,cs) = unzip . fst . unzip $ sf
-
-isWallChar :: Char -> Bool
-isWallChar x = x == '|' || x == '='
+getDims xs = (maximum rs, maximum cs)
+    where (rs,cs) = unzip . fst . unzip $ xs
 
 countPellets :: [(Point, Char)] -> Int
 countPellets = length . filter (== '.') . snd . unzip
 
-loadMaze :: [(Point, Char)] -> Either String Maze
-loadMaze [] = Left "No maze string provided."
-loadMaze sf = M.fromList nr nc <$> mapM (readTile sf) sf
-    where (nr,nc) = getDims sf
+indexMazeString :: String -> Either String [(Point, Char)]
+indexMazeString s
+    | isRect    = Right . zip indxs . concat $ ss
+    | otherwise = Left "Maze is not rectangular"
+    where ss     = lines s
+          nr     = length ss
+          nc     = length . head $ ss
+          isRect = all ( (== nc). length ) ss
+          indxs  = [ (r,c) | r <- [1..nr], c <- [1..nc] ]
+
+loadPos :: [(Point, Char)] -> Char -> Either String Point
+loadPos xs x
+    | null xs   = Left $ "Cannot find '" ++ [x] ++ "' in maze"
+    | otherwise = Right . fst . head $ ys
+    where ys = dropWhile ( (/= x) . snd ) xs
+
+-- Reading the player and ghosts
 
 loadPacMan :: [(Point, Char)] -> Either String PacMan
-loadPacMan sf = do
-    pos    <- loadPos sf 'P'
+loadPacMan xs = do
+    pos    <- loadPos xs 'P'
     (_, d) <- initMover 'P'
     return PacMan { _pdir  = d
                   , _ppos  = pos
@@ -69,20 +85,14 @@ loadPacMan sf = do
                   }
 
 loadGhost :: [(Point, Char)] -> Char -> Either String Ghost
-loadGhost sf c = do
-    pos    <- loadPos sf c
+loadGhost xs c = do
+    pos    <- loadPos xs c
     (t, d) <- initMover c
     return Ghost { _gname = t
                  , _gdir  = d
                  , _gpos  = pos
                  , _gstrt = (pos, d)
                  }
-
-loadPos :: [(Point, Char)] -> Char -> Either String Point
-loadPos sf x
-    | null xs   = Left $ "Cannot find '" ++ [x] ++ "' in maze"
-    | otherwise = Right . fst . head $ xs
-    where xs = dropWhile ( (/= x) . snd ) sf
 
 initMover :: Char -> Either String (Tile, Direction)
 initMover 'P' = Right ( Player, West  )
@@ -92,28 +102,38 @@ initMover 'i' = Right ( Inky,   East  )
 initMover 'c' = Right ( Clyde,  South )
 initMover x   = Left $ "Character '" ++ [x] ++ "' not recognized"
 
+-- Reading the maze
+
+loadMaze :: [(Point, Char)] -> Either String Maze
+loadMaze [] = Left "No maze string provided."
+loadMaze xs = M.fromList nr nc <$> mapM (readTile xs) xs
+    where (nr,nc) = getDims xs
+
+isWallChar :: Char -> Bool
+isWallChar x = x == '|' || x == '='
+
 readTile :: [(Point, Char)] -> (Point, Char) -> Either String Tile
-readTile sf ((r,c), x)
-    | isWallChar x = Right . resolveWall sf $ (r,c)
+readTile xs ((r,c), x)
+    | isWallChar x = Right . resolveWall xs (r,c) $ x
     | x == '.'     = Right Pellet
-    | x == 'w'     = resolveWarp sf (r,c)
+    | x == 'w'     = resolveWarp xs (r,c)
     | otherwise    = Right Empty
 
 resolveWarp :: [(Point, Char)] -> Point -> Either String Tile
-resolveWarp sf (r,c)
+resolveWarp xs (r,c)
     | r == 1    = Warp North <$> wLoc
     | c == 1    = Warp West  <$> wLoc
     | r == nr   = Warp South <$> wLoc
     | c == nc   = Warp East  <$> wLoc
     | otherwise = Left "Incorrect placement of warp tile"
-    where (nr, nc) = getDims sf
-          wLoc = case filter ( \ (p,x) -> x == 'w' && p /= (r,c) ) sf of
+    where (nr, nc) = getDims xs
+          wLoc = case filter ( \ (p,x) -> x == 'w' && p /= (r,c) ) xs of
                       []        -> Left "Cannot find matching warp tile"
                       w:[]      -> Right . fst $ w
                       otherwise -> Left "Too many warp tiles"
 
-resolveWall :: [(Point, Char)] -> Point -> Tile
-resolveWall sf (r,c)
+resolveWall :: [(Point, Char)] -> Point -> Char -> Tile
+resolveWall xs (r,c) x
     | nw && sw && ww && ew = Cros
     | nw && sw && ww       = LTee
     | nw && ww && ew       = UTee
@@ -125,16 +145,17 @@ resolveWall sf (r,c)
     | sw && ew             = LUCr
     | sw || nw             = VBar
     | otherwise            = HBar
-    where nw  = chk . lookup (r-1, c) $ sf
-          sw  = chk . lookup (r+1, c) $ sf
-          ww  = chk . lookup (r, c-1) $ sf
-          ew  = chk . lookup (r, c+1) $ sf
-          chk Nothing  = False
-          chk (Just x) = isWallChar x
+    where nw  = verWallLink x . lookup (r-1, c) $ xs
+          sw  = verWallLink x . lookup (r+1, c) $ xs
+          ww  = horWallLink x . lookup (r, c-1) $ xs
+          ew  = horWallLink x . lookup (r, c+1) $ xs
 
----------------------------------------------------------------------
--- Levels
+verWallLink :: Char -> Maybe Char -> Bool
+verWallLink _   Nothing    = False
+verWallLink '|' (Just '|') = True
+verWallLink x   (Just y  ) = isWallChar x && isWallChar y && x /= y
 
-levels :: [ (Int, FilePath) ]
-levels = [ ( 1, "data/classicMaze1.txt"  )
-         , ( 2, "data/classicMaze1a.txt" ) ]
+horWallLink :: Char -> Maybe Char -> Bool
+horWallLink _   Nothing    = False
+horWallLink '=' (Just '=') = True
+horWallLink x   (Just y  ) = isWallChar x && isWallChar y && x /= y
