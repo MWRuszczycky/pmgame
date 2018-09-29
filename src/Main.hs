@@ -14,25 +14,16 @@ import Control.Concurrent               ( threadDelay
 import Brick.BChan                      ( BChan
                                         , writeBChan
                                         , newBChan                  )
-import Controller                       ( eventRouter               )
-import Types                            ( Game (..)
-                                        , GameSt (..)
-                                        , Tile (..)
-                                        , Ghost (..)
-                                        , Maze (..)
-                                        , Direction (..)
-                                        , Status (..)
-                                        , TimeEvent (..)            )
-import View                             ( drawUI
-                                        , attributes                )
-import Maze                             ( initGame
-                                        , isWall                    )
-import Brick.Types                      ( BrickEvent (..)
-                                        , EventM
-                                        , Next                      )
 import Brick.Main                       ( App (..)
                                         , neverShowCursor
                                         , customMain                )
+import Controller                       ( eventRouter               )
+import Types                            ( GameSt    (..)
+                                        , Status    (..)
+                                        , TimeEvent (..)            )
+import View                             ( drawUI
+                                        , attributes                )
+import Loading                          ( initGame                  )
 
 app :: App GameSt TimeEvent ()
 app = App { appDraw         = drawUI

@@ -21,12 +21,12 @@ import Brick.Widgets.Border             ( borderWithLabel
 import Brick.AttrMap                    ( attrMap, AttrMap          )
 import Brick.Util                       ( on, bg, fg                )
 import Brick.Widgets.Center             ( center, hCenter, vCenter  )
-import Types                            ( Game (..)
-                                        , GameSt (..)
-                                        , Tile (..)
+import Types                            ( Game      (..)
+                                        , GameSt    (..)
+                                        , Tile      (..)
                                         , Direction (..)
-                                        , Status (..)
-                                        , Maze (..)                 )
+                                        , Status    (..)
+                                        , Maze      (..)            )
 
 drawUI :: GameSt -> [ Widget () ]
 drawUI (Left msg) = [ str msg ]

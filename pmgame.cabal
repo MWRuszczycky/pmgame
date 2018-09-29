@@ -29,6 +29,7 @@ executable pmgame
                      , microlens
                      , microlens-th
  other-modules:        Types
+                     , Model
                      , Controller
                      , View
-                     , Maze
+                     , Loading

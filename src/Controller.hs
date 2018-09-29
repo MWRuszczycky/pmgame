@@ -5,33 +5,25 @@ module Controller
 import qualified Graphics.Vty as V
 import qualified Data.Matrix  as M
 import qualified Types        as T
-import Data.Matrix                  ( (!) )
-import Lens.Micro                   ( (&), (^.), (.~), (%~) )
-import System.Random                ( StdGen
-                                    , randomR               )
-import Data.List                    ( delete
-                                    , nub                   )
+import Lens.Micro                   ( (&), (^.), (.~)   )
 import Brick.Types                  ( BrickEvent (..)
                                     , Next
-                                    , EventM                )
-import Types                        ( Game (..)
-                                    , GameSt (..)
-                                    , Maze (..)
-                                    , Ghost (..)
-                                    , PacMan (..)
-                                    , Point (..)
-                                    , Tile (..)
-                                    , TimeEvent (..)
-                                    , Direction (..)
-                                    , Status (..)           )
-import Maze                         ( sumPair
-                                    , isFree
-                                    , initGame
-                                    , levels
-                                    , dirToPair             )
+                                    , EventM            )
 import Brick.Main                   ( continue
                                     , suspendAndResume
-                                    , halt                  )
+                                    , halt              )
+import Types                        ( Game       (..)
+                                    , Status     (..)
+                                    , TimeEvent  (..)
+                                    , Direction  (..)
+                                    , GameSt     (..)   )
+import Loading                      ( levels
+                                    , initGame          )
+import Model                        ( movePlayer
+                                    , moveGhosts
+                                    , restartLevel
+                                    , getNxtLevel
+                                    , updateStatus      )
 
 ---------------------------------------------------------------------
 -- Event routers
@@ -62,6 +54,14 @@ routeReplay g (VtyEvent (V.EvKey V.KEnter [] )) =
 routeReplay g _                                 =
     continue . Right $ g
 
+routeLevelOver :: Game -> BrickEvent () TimeEvent -> EventM () ( Next GameSt )
+routeLevelOver g (VtyEvent (V.EvKey V.KEsc [] ))   =
+    halt . Right $ g
+routeLevelOver g (VtyEvent (V.EvKey V.KEnter [] )) =
+    suspendAndResume . startNextLevel g $ lookup ( succ $ g ^. T.level ) levels
+routeLevelOver g _                                 =
+    continue . Right $ g
+
 routeGameOver :: Game -> BrickEvent () TimeEvent -> EventM () ( Next GameSt )
 routeGameOver g (VtyEvent (V.EvKey V.KEsc [] ))   =
     halt . Right $ g
@@ -70,14 +70,6 @@ routeGameOver g (VtyEvent (V.EvKey V.KEnter [] )) =
 routeGameOver g (VtyEvent (V.EvResize _ _ ))      =
     continue . Right $ g
 routeGameOver g _                                 =
-    continue . Right $ g
-
-routeLevelOver :: Game -> BrickEvent () TimeEvent -> EventM () ( Next GameSt )
-routeLevelOver g (VtyEvent (V.EvKey V.KEsc [] ))   =
-    halt . Right $ g
-routeLevelOver g (VtyEvent (V.EvKey V.KEnter [] )) =
-    suspendAndResume . startNextLevel g $ lookup ( succ $ g ^. T.level ) levels
-routeLevelOver g _                                 =
     continue . Right $ g
 
 ---------------------------------------------------------------------
@@ -103,106 +95,13 @@ restartGame g = do
          Just fn -> initGame gen <$> readFile fn
          Nothing -> return . Left $ "Cannot find first level"
 
-restartLevel :: Game -> Game
-restartLevel g = g & T.status .~ Running
-                   & T.pacman %~ resetPacMan
-                   & T.ghosts %~ map resetGhost
-                   & T.oneups %~ subtract 1
-
-resetPacMan :: PacMan -> PacMan
-resetPacMan p = p & T.ppos .~ pos0 & T.pdir .~ dir0
-    where (pos0, dir0) = p ^. T.pstrt
-
-resetGhost :: Ghost -> Ghost
-resetGhost g = g & T.gpos .~ pos0 & T.gdir .~ dir0
-    where (pos0, dir0) = g ^. T.gstrt
-
 ---------------------------------------------------------------------
 -- Level transitioning
 
 startNextLevel :: Game -> Maybe FilePath -> IO GameSt
-startNextLevel _ Nothing   = return . Left $ "Game completed!"
+startNextLevel g Nothing   = startNextLevel g . lookup 1 $ levels
 startNextLevel g (Just fn) = do
     etG <- initGame ( g ^. T.rgen ) <$> readFile fn
     case etG of
          Left _   -> return etG
-         Right g1 -> return . Right $ g1 & T.items .~ ( g ^. T.items )
-                                         & T.level .~ ( succ $ g ^. T.level )
-
----------------------------------------------------------------------
--- Game state management
-
-wasCaptured :: Game -> Game -> Bool
-wasCaptured g0 g1 = any ( pathsCrossed (p0, p1) ) ( zip gs0 gs1 )
-    where p0 = g0 ^. T.pacman . T.ppos
-          p1 = g1 ^. T.pacman . T.ppos
-          gs0 = map ( ^. T.gpos ) ( g0 ^. T.ghosts )
-          gs1 = map ( ^. T.gpos ) ( g1 ^. T.ghosts )
-
-pathsCrossed :: (Point, Point) -> (Point, Point) -> Bool
-pathsCrossed (p0, p1) (g0, g1) = p1 == g1 || p1 == g0 && p0 == g1
-
-handleCapture :: Game -> Game -> Game
-handleCapture g0 g1
-    | g0 ^. T.oneups == 0 = g1 & T.status .~ GameOver
-    | otherwise           = g1 & T.status .~ ReplayLvl
-
-updateStatus :: Game -> Game -> Game
-updateStatus g0 g1
-    | allPellets        = g1 & T.status .~ LevelOver
-    | wasCaptured g0 g1 = handleCapture g0 g1
-    | otherwise         = g1 & T.status .~ Running
-    where allPellets = g1 ^. T.npellets == 0
-
----------------------------------------------------------------------
--- Player updating
-
-movePlayer :: Game -> Game
-movePlayer g
-    | isFree m0 p1 = g & T.maze .~ m1
-                       & T.items . T.pellets %~ (+ ds)
-                       & T.npellets %~ (subtract ds)
-                       & T.pacman . T.ppos .~ p1
-    | otherwise    = g
-    where p0  = g ^. T.pacman . T.ppos
-          dir = g ^. T.pacman . T.pdir
-          m0  = g ^. T.maze
-          p1  = advance p0 (m0 ! p0) dir
-          (m1, ds) = case (m0 ! p0) of
-                     Pellet    -> (M.setElem Empty p0 m0, 1)
-                     otherwise -> (m0, 0)
-
-advance :: Point -> Tile -> Direction -> Point
-advance p0 (Warp wd p1) d
-    | d == wd   = p1
-    | otherwise = moveOneCell p0 d
-advance p0 _ d = moveOneCell p0 d
-
-moveOneCell :: Point -> Direction -> Point
-moveOneCell p = sumPair p . dirToPair
-
----------------------------------------------------------------------
--- Ghost updating
-
-moveGhosts :: Game -> Game
-moveGhosts g = g & T.maze .~ m & T.ghosts .~ gsts & T.rgen .~ r
-    where (m, gsts, r) = foldr moveGhost start $ g ^. T.ghosts
-          start = (g ^. T.maze, [], g ^. T.rgen )
-
-moveGhost :: Ghost -> (Maze, [Ghost], StdGen) -> (Maze, [Ghost], StdGen)
-moveGhost gst0 (m, gsts, r0) = (m, gst1:gsts, r1)
-    where p0       = gst0 ^. T.gpos
-          dir      = gst0 ^. T.gdir
-          dirs     = [North, South, East, West] ++ replicate 20 dir
-          (r1, ds) = randomDirections r0 dirs
-          ps       = [ (d, advance p0 (m ! p0) d) | d <- ds ]
-          (d1, p1) = head . dropWhile (not . isFree m . snd) $ ps
-          gst1     = gst0 & T.gpos .~ p1 & T.gdir .~ d1
-
-randomDirections :: StdGen -> [Direction] -> (StdGen, [Direction])
-randomDirections r0 [] = (r0, [])
-randomDirections r0 ds0 = (r, d:ds)
-    where (k,r1)  = randomR (0, length ds0 - 1) r0
-          d       = ds0 !! k
-          ds1     = delete d . nub $ ds0
-          (r,ds)  = randomDirections r1 ds1
+         Right g' -> return . Right $ getNxtLevel g g'

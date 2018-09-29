@@ -1,9 +1,5 @@
-module Maze
+module Loading
     ( initGame
-    , dirToPair
-    , isWall
-    , isFree
-    , sumPair
     , levels
     ) where
 
@@ -22,27 +18,6 @@ import Types                        ( Game (..)
                                     , Items (..)
                                     , Status (..)
                                     , Direction (..)        )
-
----------------------------------------------------------------------
--- Utilities
-
-sumPair :: Num a => (a, a) -> (a, a) -> (a, a)
-sumPair (x0,y0) (x1,y1) = (x0 + x1, y0 + y1)
-
-isFree :: Maze -> Point -> Bool
-isFree m (r,c) = case M.safeGet r c m of
-                      Nothing -> False
-                      Just t  -> not . isWall $ t
-
-isWall :: Tile -> Bool
-isWall t = elem t ws
-    where ws = [ HBar, VBar, LTee, UTee, RTee, DTee, RDCr, LDCr, RUCr, LUCr ]
-
-dirToPair :: Direction -> Point
-dirToPair West  = (0,-1)
-dirToPair East  = (0, 1)
-dirToPair North = (-1,0)
-dirToPair South = (1, 0)
 
 ---------------------------------------------------------------------
 -- Game initialization
