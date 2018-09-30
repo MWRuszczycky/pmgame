@@ -23,8 +23,8 @@ import Types                        ( Game (..)
 -- List of levels and associated maze files
 
 levels :: [ (Int, FilePath) ]
-levels = [ ( -1, "data/classicMaze1a.txt" )
-         , ( 1, "data/classicMaze1.txt"   ) ]
+levels = [ ( -1, "levels/classicMaze1-testing1.txt" )
+         , ( 1, "levels/classicMaze1.txt"   ) ]
 
 ---------------------------------------------------------------------
 -- Game initialization

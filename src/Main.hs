@@ -35,7 +35,7 @@ app = App { appDraw         = drawUI
 main :: IO ()
 main = do
     let dt    = 225000
-        mfile = "data/classicMaze1.txt"
+        mfile = "levels/classicMaze1.txt"
     putEnv "TERM=xterm-256color"
     gen  <- getStdGen
     args <- getArgs
