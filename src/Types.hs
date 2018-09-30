@@ -33,6 +33,7 @@ module Types
     , gdir
     , gpos
     , gstrt
+    , gedible
     -- Lenses for Items
     , pellets
     ) where
@@ -60,6 +61,8 @@ data Tile = Player
           | Blinky
           | Inky
           | Clyde
+          | BlueGhost
+          | WhiteGhost
           | HBar
           | VBar
           | Cros
@@ -80,10 +83,11 @@ type Point = (Int, Int)
 
 type GameSt = Either String Game
 
-data Ghost = Ghost { _gname :: Tile
-                   , _gdir  :: Direction
-                   , _gpos  :: Point
-                   , _gstrt :: (Point, Direction)
+data Ghost = Ghost { _gname   :: Tile
+                   , _gdir    :: Direction
+                   , _gpos    :: Point
+                   , _gstrt   :: (Point, Direction)
+                   , _gedible :: Bool
                    } deriving ( Show )
 
 data PacMan = PacMan { _pdir  :: Direction

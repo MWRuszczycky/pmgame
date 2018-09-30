@@ -92,10 +92,11 @@ loadGhost :: [(Point, Char)] -> Char -> Either String Ghost
 loadGhost xs c = do
     pos    <- loadPos xs c
     (t, d) <- initMover c
-    return Ghost { _gname = t
-                 , _gdir  = d
-                 , _gpos  = pos
-                 , _gstrt = (pos, d)
+    return Ghost { _gname   = t
+                 , _gdir    = d
+                 , _gpos    = pos
+                 , _gstrt   = (pos, d)
+                 , _gedible = False
                  }
 
 initMover :: Char -> Either String (Tile, Direction)

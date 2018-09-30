@@ -1,8 +1,7 @@
 module Model
     ( movePlayer
     , moveGhosts
-    , isBlueGhost
-    , isWhiteGhost
+    , tileGhosts
     , isGhost
     , isPlayer
     , isWall
@@ -15,12 +14,12 @@ module Model
 
 import qualified Data.Matrix as M
 import qualified Types       as T
-import Lens.Micro                   ( (&), (^.), (.~), (%~) )
+import Lens.Micro                   ( (&), (^.), (.~), (%~), set    )
 import Data.Matrix                  ( (!) )
 import Data.List                    ( delete
-                                    , nub                   )
+                                    , nub                           )
 import System.Random                ( StdGen
-                                    , randomR               )
+                                    , randomR                       )
 import Types                        ( Tile      (..)
                                     , Game      (..)
                                     , Status    (..)
@@ -28,7 +27,7 @@ import Types                        ( Tile      (..)
                                     , Maze      (..)
                                     , Direction (..)
                                     , PacMan    (..)
-                                    , Ghost     (..)           )
+                                    , Ghost     (..)                )
 
 ---------------------------------------------------------------------
 -- Pure functions for managing game state
@@ -42,7 +41,7 @@ isWall t = elem t ws
 
 isGhost :: Tile -> Bool
 -- ^Evaluate whether a tile is a ghost.
-isGhost t = elem t [ Blinky, Pinky, Inky, Clyde ]
+isGhost t = elem t [ Blinky, Pinky, Inky, Clyde, BlueGhost, WhiteGhost ]
 
 isPellet :: Tile -> Bool
 -- ^Evaluate whether a tile is a pellet.
@@ -86,50 +85,41 @@ getNxtLevel g0 g1 = g1 & T.items  .~ ( g0 ^. T.items )
 
 -- Exported
 
-updateGame :: Int -> Game -> Game -> Game
+updateGame :: Game -> Game -> Game
 -- ^Determine status of a running game at time t.
-updateGame t g0 g1
-    | allPellets        = g1 & T.time .~ t & T.status .~ LevelOver
-    | wasCaptured g0 g1 = handleCapture g0 ( g1 & T.time .~ t )
-    | wasPowered g0 g1  = g1 & T.time .~ t & T.status .~ PwrRunning t
-    | otherwise         = g1 & T.time .~ t & T.status .~ Running
+updateGame g0 g1
+    | allPellets        = g1 & T.status .~ LevelOver
+    | wasCaptured g0 g1 = handleCapture g0 g1
+    | wasPowered g0 g1  = powerGame g1
+    | otherwise         = g1
     where allPellets = g1 ^. T.npellets == 0
 
-updateGamePwr :: Int -> Int -> Game -> Game -> Game
--- ^Determine status of a running game at time t1 after eating a
--- power pellet at time t0.
-updateGamePwr t0 t1 g0 g1
-    | allPellets        = g1 & T.time .~ t1 & T.status .~ LevelOver
-    | wasPowered g0 g1  = g1 & T.time .~ t1 & T.status .~ PwrRunning t1
-    | powerFinished     = g1 & T.time .~ t1 & T.status .~ Running
-    | otherwise         = g1 & T.time .~ t1 & T.status .~ PwrRunning t0
+updateGamePwr :: Game -> Game -> Game
+-- ^Determine status of a running game at time t after eating a
+-- power pellet.
+updateGamePwr g0 g1
+    | allPellets       = g1 & T.status .~ LevelOver
+    | wasPowered g0 g1 = powerGame g1
+    | pwrLeft g1 <= 0  = depowerGame g1
+    | otherwise        = g1
     -- | wasCaptured g0 g1 = handleCapture g0 g1
-    where allPellets    = g1 ^. T.npellets == 0
-          powerFinished = t1 - t0 >= g1 ^. T.pwrtime
-
-isBlueGhost :: Game -> Bool
-isBlueGhost g = case g ^. T.status of
-                     PwrRunning t -> isBlue ( g ^. T.time - t ) g
-                     otherwise    -> False
-
-isWhiteGhost :: Game -> Bool
-isWhiteGhost g = isPowered ( g ^. T.status ) && ( not . isBlueGhost $ g )
-    where isPowered (PwrRunning _) = True
-          isPowered _              = False
+    where allPellets = g1 ^. T.npellets == 0
 
 -- Unexported
+
+powerGame :: Game -> Game
+powerGame g = g & T.ghosts .~ ghsts & T.status .~ PwrRunning ( g ^. T.time )
+    where ghsts = map ( set T.gedible True ) $ g ^. T.ghosts
+
+depowerGame :: Game -> Game
+depowerGame g = g & T.ghosts .~ ghsts & T.status .~ Running
+    where ghsts = map ( set T.gedible False ) $ g ^. T.ghosts
 
 handleCapture :: Game -> Game -> Game
 -- ^Update game state following player capture by a ghost.
 handleCapture g0 g1
     | g0 ^. T.oneups == 0 = g1 & T.status .~ GameOver
     | otherwise           = g1 & T.status .~ ReplayLvl
-
-isBlue :: Int -> Game -> Bool
-isBlue tlft g
-    | tlft < half = True
-    | otherwise   = even . quot tlft $ ( g ^. T.dtime )
-    where half = quot ( g ^. T.pwrtime ) 2
 
 ---------------------------------------------------------------------
 -- Player updating
@@ -162,6 +152,9 @@ moveGhosts g = g & T.maze .~ m & T.ghosts .~ gsts & T.rgen .~ r
     where (m, gsts, r) = foldr moveGhost start $ g ^. T.ghosts
           start = (g ^. T.maze, [], g ^. T.rgen )
 
+tileGhosts :: Game -> [(Point, Tile)]
+tileGhosts g = [ (gst ^. T.gpos, tileGhost g gst) | gst <- g ^. T.ghosts ]
+
 -- Unexported
 
 moveGhost :: Ghost -> (Maze, [Ghost], StdGen) -> (Maze, [Ghost], StdGen)
@@ -173,6 +166,20 @@ moveGhost gst0 (m, gsts, r0) = (m, gst1:gsts, r1)
           ps       = [ (d, getNxtPos p0 (m ! p0) d) | d <- ds ]
           (d1, p1) = head . dropWhile (not . isFree m . snd) $ ps
           gst1     = gst0 & T.gpos .~ p1 & T.gdir .~ d1
+
+tileGhost :: Game -> Ghost -> Tile
+tileGhost g gst
+    | isBlueGhost  = BlueGhost
+    | isWhiteGhost = WhiteGhost
+    | otherwise    = gst ^. T.gname
+    where isBlueGhost  = gst ^. T.gedible && isBlue (pwrLeft g) g
+          isWhiteGhost = gst ^. T.gedible
+
+isBlue :: Int -> Game -> Bool
+isBlue tlft g
+    | tlft < half = True
+    | otherwise   = even . quot tlft $ ( g ^. T.dtime )
+    where half = quot ( g ^. T.pwrtime ) 2
 
 randomDirections :: StdGen -> [Direction] -> (StdGen, [Direction])
 randomDirections r0 [] = (r0, [])
@@ -228,3 +235,13 @@ isFree :: Maze -> Point -> Bool
 isFree m (r,c) = case M.safeGet r c m of
                       Nothing -> False
                       Just t  -> not . isWall $ t
+
+pwrLeft :: Game -> Int
+-- ^Evaluate how much power time is left after eating a power pellet.
+pwrLeft g
+    | pt - dt > 0 = dt
+    | otherwise   = 0
+    where pt = g ^. T.pwrtime
+          dt = case g ^. T.status of
+                    PwrRunning t -> g ^. T.time - t
+                    otherwise    -> 0

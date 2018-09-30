@@ -5,26 +5,26 @@ module Controller
 import qualified Graphics.Vty as V
 import qualified Data.Matrix  as M
 import qualified Types        as T
-import Lens.Micro                   ( (&), (^.), (.~)   )
+import Lens.Micro                   ( (&), (^.), (.~), set  )
 import Brick.Types                  ( BrickEvent (..)
                                     , Next
-                                    , EventM            )
+                                    , EventM                )
 import Brick.Main                   ( continue
                                     , suspendAndResume
-                                    , halt              )
+                                    , halt                  )
 import Types                        ( Game       (..)
                                     , Status     (..)
                                     , TimeEvent  (..)
                                     , Direction  (..)
-                                    , GameSt     (..)   )
+                                    , GameSt     (..)       )
 import Loading                      ( levels
-                                    , initGame          )
+                                    , initGame              )
 import Model                        ( movePlayer
                                     , moveGhosts
                                     , restartLevel
                                     , getNxtLevel
                                     , updateGame
-                                    , updateGamePwr     )
+                                    , updateGamePwr         )
 
 type EventHandler = BrickEvent () TimeEvent -> EventM () ( Next GameSt )
 ---------------------------------------------------------------------
@@ -37,7 +37,7 @@ eventRouter (Right g)  e = case g ^. T.status of
                                 GameOver     -> routeGameOver g e
                                 LevelOver    -> routeLevelOver g e
                                 ReplayLvl    -> routeReplay g e
-                                PwrRunning t -> routePwrRunning t g e
+                                PwrRunning _ -> routePwrRunning g e
 
 routeRunning :: Game -> EventHandler
 routeRunning g (VtyEvent (V.EvKey V.KEsc [] )) =
@@ -49,14 +49,14 @@ routeRunning g (AppEvent (Tick t))             =
 routeRunning g _                               =
     continue . Right $ g
 
-routePwrRunning :: Int -> Game -> EventHandler
-routePwrRunning _ g (VtyEvent (V.EvKey V.KEsc [] )) =
+routePwrRunning :: Game -> EventHandler
+routePwrRunning g (VtyEvent (V.EvKey V.KEsc [] )) =
     halt . Right $ g
-routePwrRunning _ g (VtyEvent (V.EvKey k ms ))      =
+routePwrRunning g (VtyEvent (V.EvKey k ms ))      =
     continue . Right . keyEvent k ms $ g
-routePwrRunning t0 g (AppEvent (Tick t1))             =
-    continue . Right . tickEventPwr t0 t1 $ g
-routePwrRunning _ g _                               =
+routePwrRunning g (AppEvent (Tick t))             =
+    continue . Right . tickEventPwr t $ g
+routePwrRunning g _                               =
     continue . Right $ g
 
 routeReplay :: Game -> EventHandler
@@ -90,12 +90,17 @@ routeGameOver g _                                 =
 
 tickEvent :: Int -> Game -> Game
 -- ^Handle clock ticks at game time t under normal running mode.
-tickEvent t g = updateGame t g . moveGhosts . movePlayer $ g
+tickEvent t g = updateGame g
+                . set T.time t
+                . moveGhosts
+                . movePlayer $ g
 
-tickEventPwr :: Int -> Int -> Game -> Game
--- ^Handle clock ticks under power running mode. The t0 argument is
--- when the power pellet was eaten and t1 is the current game time.
-tickEventPwr t0 t1 g = updateGamePwr t0 t1 g . moveGhosts . movePlayer $ g
+tickEventPwr :: Int -> Game -> Game
+-- ^Handle clock ticks under power running mode at time t.
+tickEventPwr t g = updateGamePwr g
+                   . set T.time t
+                   . moveGhosts
+                   . movePlayer $ g
 
 keyEvent :: V.Key -> [V.Modifier] -> Game -> Game
 keyEvent V.KLeft  ms g = g & T.pacman . T.pdir .~ West

@@ -22,8 +22,7 @@ import Brick.AttrMap                    ( attrMap, AttrMap          )
 import Brick.Util                       ( on, bg, fg                )
 import Brick.Widgets.Center             ( center, hCenter, vCenter  )
 import Model                            ( isGhost ,isWall, isPlayer
-                                        , isPellet, isBlueGhost
-                                        , isWhiteGhost              )
+                                        , isPellet, tileGhosts      )
 import Types                            ( Game      (..)
                                         , GameSt    (..)
                                         , Tile      (..)
@@ -103,16 +102,16 @@ renderFruit g = padLeft Max . withAttr "score" . txt $ "fruit!"
 
 renderMaze :: Game -> Widget ()
 renderMaze g = vBox . map ( hBox . map (renderTile g) ) . M.toLists $ m2
-    where gs = g ^. T.ghosts
+    where gs = tileGhosts g
           m0 = g ^. T.maze
           m1 = M.setElem Player ( g ^. T.pacman . T.ppos ) m0
-          m2 = foldl' (\ m x -> M.setElem (x ^. T.gname) (x ^. T.gpos) m) m1 gs
+          m2 = foldl' (\ m (p,t) -> M.setElem t p m) m1 gs
 
 renderTile :: Game -> Tile -> Widget ()
 renderTile g t
     | isWall t   = renderWall t
     | isPellet t = renderPellet t
-    | isGhost t  = renderGhost g t
+    | isGhost t  = renderGhost t
     | isPlayer t = renderPlayer g
     | otherwise  = withAttr "maze" . txt $ " "
 
@@ -140,15 +139,13 @@ renderPlayer g = withAttr "player" . txt . glyph $ g ^. T.pacman . T.pdir
           glyph West  = ">"
           glyph East  = "<"
 
-renderGhost :: Game -> Tile -> Widget ()
-renderGhost g t
-    | isBlueGhost  g = withAttr "blueGhost" . txt $ "\""
-    | isWhiteGhost g = withAttr "whiteGhost" . txt $ "\""
-    | otherwise    = renderGhost' t
-    where renderGhost' Blinky = withAttr "blinky" . txt $ "\""
-          renderGhost' Inky   = withAttr "inky"   . txt $ "\""
-          renderGhost' Pinky  = withAttr "pinky"  . txt $ "\""
-          renderGhost' Clyde  = withAttr "clyde"  . txt $ "\""
+renderGhost :: Tile -> Widget ()
+renderGhost BlueGhost  = withAttr "blueGhost"  . txt $ "\""
+renderGhost WhiteGhost = withAttr "whiteGhost" . txt $ "\""
+renderGhost Blinky     = withAttr "blinky"     . txt $ "\""
+renderGhost Inky       = withAttr "inky"       . txt $ "\""
+renderGhost Pinky      = withAttr "pinky"      . txt $ "\""
+renderGhost Clyde      = withAttr "clyde"      . txt $ "\""
 
 ---------------------------------------------------------------------
 -- Attributes
