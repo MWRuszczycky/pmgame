@@ -23,8 +23,7 @@ import Model                        ( movePlayer
                                     , moveGhosts
                                     , restartLevel
                                     , getNxtLevel
-                                    , updateGame
-                                    , updateGamePwr         )
+                                    , updateGame            )
 
 type EventHandler = BrickEvent () TimeEvent -> EventM () ( Next GameSt )
 ---------------------------------------------------------------------
@@ -33,11 +32,10 @@ type EventHandler = BrickEvent () TimeEvent -> EventM () ( Next GameSt )
 eventRouter :: GameSt -> EventHandler
 eventRouter (Left err) _ = halt (Left err)
 eventRouter (Right g)  e = case g ^. T.status of
-                                Running      -> routeRunning g e
                                 GameOver     -> routeGameOver g e
                                 LevelOver    -> routeLevelOver g e
                                 ReplayLvl    -> routeReplay g e
-                                PwrRunning _ -> routePwrRunning g e
+                                otherwise    -> routeRunning g e
 
 routeRunning :: Game -> EventHandler
 routeRunning g (VtyEvent (V.EvKey V.KEsc [] )) =
@@ -47,16 +45,6 @@ routeRunning g (VtyEvent (V.EvKey k ms ))      =
 routeRunning g (AppEvent (Tick t))             =
     continue . Right . tickEvent t $ g
 routeRunning g _                               =
-    continue . Right $ g
-
-routePwrRunning :: Game -> EventHandler
-routePwrRunning g (VtyEvent (V.EvKey V.KEsc [] )) =
-    halt . Right $ g
-routePwrRunning g (VtyEvent (V.EvKey k ms ))      =
-    continue . Right . keyEvent k ms $ g
-routePwrRunning g (AppEvent (Tick t))             =
-    continue . Right . tickEventPwr t $ g
-routePwrRunning g _                               =
     continue . Right $ g
 
 routeReplay :: Game -> EventHandler
@@ -89,18 +77,10 @@ routeGameOver g _                                 =
 -- Event handlers for running game
 
 tickEvent :: Int -> Game -> Game
--- ^Handle clock ticks at game time t under normal running mode.
 tickEvent t g = updateGame g
                 . set T.time t
                 . moveGhosts
                 . movePlayer $ g
-
-tickEventPwr :: Int -> Game -> Game
--- ^Handle clock ticks under power running mode at time t.
-tickEventPwr t g = updateGamePwr g
-                   . set T.time t
-                   . moveGhosts
-                   . movePlayer $ g
 
 keyEvent :: V.Key -> [V.Modifier] -> Game -> Game
 keyEvent V.KLeft  ms g = g & T.pacman . T.pdir .~ West
