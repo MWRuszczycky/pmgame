@@ -24,6 +24,7 @@ module Types
     , pwrtime
     , time
     , dtime
+    , pwrmult
     -- Lenses for PacMan
     , pdir
     , ppos
@@ -36,6 +37,7 @@ module Types
     , gedible
     -- Lenses for Items
     , pellets
+    , gstscore
     ) where
 
 import qualified Data.Matrix as M
@@ -90,12 +92,16 @@ data Ghost = Ghost { _gname   :: Tile
                    , _gedible :: Bool
                    } deriving ( Show )
 
+instance Eq Ghost where
+    (==) g1 g2 = _gname g1 == _gname g2
+
 data PacMan = PacMan { _pdir  :: Direction
                      , _ppos  :: Point
                      , _pstrt :: (Point, Direction)
                      } deriving ( Show )
 
-data Items = Items { _pellets :: Int
+data Items = Items { _pellets  :: Int
+                   , _gstscore :: Int
                    } deriving ( Show )
 
 data Game = Game { _maze     :: Maze
@@ -110,6 +116,7 @@ data Game = Game { _maze     :: Maze
                  , _pwrtime  :: Int
                  , _time     :: Int
                  , _dtime    :: Int
+                 , _pwrmult  :: Int
                  } deriving ( Show )
 
 makeLenses ''Game

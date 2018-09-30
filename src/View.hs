@@ -89,8 +89,9 @@ drawReplayUI g = [ withAttr "background" msg]
 -- Widget rendering
 
 renderScore :: Game -> Widget ()
-renderScore g = withAttr "score" . str . show $ s
-    where s = 10 * g ^. T.items . T.pellets
+renderScore g = withAttr "score" . str . show $ pel + gst
+    where pel = 10 * g ^. T.items . T.pellets
+          gst = g ^. T.items . T.gstscore
 
 renderOneups :: Game -> Widget ()
 renderOneups g = hBox . take (2 * g ^. T.oneups) . cycle $ [ oneup, space ]

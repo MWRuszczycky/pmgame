@@ -61,7 +61,14 @@ restartLevel :: Game -> Game
 restartLevel g = g & T.status .~ Running
                    & T.pacman %~ resetPacMan
                    & T.ghosts %~ map resetGhost
+                   & T.pwrmult .~ 1
                    & T.oneups %~ subtract 1
+
+getNxtLevel :: Game -> Game -> Game
+getNxtLevel g0 g1 = g1 & T.items  .~ ( g0 ^. T.items )
+                       & T.level  .~ ( succ $ g0 ^. T.level )
+                       & T.oneups .~ ( g0 ^. T.oneups )
+                       & T.pwrmult .~ 1
 
 -- Unexported
 
@@ -72,13 +79,8 @@ resetPacMan p = p & T.ppos .~ pos0 & T.pdir .~ dir0
 
 resetGhost :: Ghost -> Ghost
 -- ^Reset a ghost to its original position and direction.
-resetGhost g = g & T.gpos .~ pos0 & T.gdir .~ dir0
+resetGhost g = g & T.gpos .~ pos0 & T.gdir .~ dir0 & T.gedible .~ False
     where (pos0, dir0) = g ^. T.gstrt
-
-getNxtLevel :: Game -> Game -> Game
-getNxtLevel g0 g1 = g1 & T.items  .~ ( g0 ^. T.items )
-                       & T.level  .~ ( succ $ g0 ^. T.level )
-                       & T.oneups .~ ( g0 ^. T.oneups )
 
 ---------------------------------------------------------------------
 -- Game status management
@@ -89,10 +91,11 @@ updateGame :: Game -> Game -> Game
 -- ^Determine status of a running game at time t.
 updateGame g0 g1
     | allPellets        = g1 & T.status .~ LevelOver
-    | wasCaptured g0 g1 = handleCapture g0 g1
+    | wasCaptured       = handleCapture g0 g1
     | wasPowered g0 g1  = powerGame g1
     | otherwise         = g1
-    where allPellets = g1 ^. T.npellets == 0
+    where allPellets  = g1 ^. T.npellets == 0
+          wasCaptured = not . null . ghostCapture g0 $ g1
 
 updateGamePwr :: Game -> Game -> Game
 -- ^Determine status of a running game at time t after eating a
@@ -101,9 +104,10 @@ updateGamePwr g0 g1
     | allPellets       = g1 & T.status .~ LevelOver
     | wasPowered g0 g1 = powerGame g1
     | pwrLeft g1 <= 0  = depowerGame g1
-    | otherwise        = g1
-    -- | wasCaptured g0 g1 = handleCapture g0 g1
+    | null gsts        = g1
+    | otherwise        = handlePwrCapture gsts g0 g1
     where allPellets = g1 ^. T.npellets == 0
+          gsts       = ghostCapture g0 g1
 
 -- Unexported
 
@@ -112,7 +116,7 @@ powerGame g = g & T.ghosts .~ ghsts & T.status .~ PwrRunning ( g ^. T.time )
     where ghsts = map ( set T.gedible True ) $ g ^. T.ghosts
 
 depowerGame :: Game -> Game
-depowerGame g = g & T.ghosts .~ ghsts & T.status .~ Running
+depowerGame g = g & T.ghosts .~ ghsts & T.status .~ Running & T.pwrmult .~ 1
     where ghsts = map ( set T.gedible False ) $ g ^. T.ghosts
 
 handleCapture :: Game -> Game -> Game
@@ -120,6 +124,17 @@ handleCapture :: Game -> Game -> Game
 handleCapture g0 g1
     | g0 ^. T.oneups == 0 = g1 & T.status .~ GameOver
     | otherwise           = g1 & T.status .~ ReplayLvl
+
+handlePwrCapture :: [Ghost] -> Game -> Game -> Game
+handlePwrCapture gsts g0 g1
+    | ateGhost  = g1 & T.ghosts .~ eaten : uneaten
+                     & T.items . T.gstscore %~ (+ 100 * pm)
+                     & T.pwrmult %~ (*2)
+    | otherwise = handleCapture g0 . depowerGame $ g1
+    where ateGhost = all ( ^. T.gedible ) gsts
+          eaten    = resetGhost . head $ gsts
+          uneaten  = filter (/= eaten) $ g1 ^. T.ghosts
+          pm       = g1 ^. T.pwrmult
 
 ---------------------------------------------------------------------
 -- Player updating
@@ -198,17 +213,15 @@ wasPowered :: Game -> Game -> Bool
 wasPowered g0 g1 = t1 == PwrPellet
     where t1 = (g0 ^. T.maze) ! (g1 ^. T.pacman . T.ppos)
 
-wasCaptured :: Game -> Game -> Bool
--- ^Determine whether player was captured by a ghost in last move.
-wasCaptured g0 g1 = any ( isCapture (p0, p1) ) ( zip gs0 gs1 )
+ghostCapture :: Game -> Game -> [Ghost]
+-- ^Return a list of all ghosts capturing or captured by player.
+ghostCapture g0 g1 =
+    [ y | (x,y) <- gs, isCapture (p0, p1) (x ^. T.gpos, y ^. T.gpos) ]
     where p0 = g0 ^. T.pacman . T.ppos
           p1 = g1 ^. T.pacman . T.ppos
-          gs0 = map ( ^. T.gpos ) ( g0 ^. T.ghosts )
-          gs1 = map ( ^. T.gpos ) ( g1 ^. T.ghosts )
+          gs = zip ( g0 ^. T.ghosts ) ( g1 ^. T.ghosts )
 
 isCapture :: (Point, Point) -> (Point, Point) -> Bool
--- ^Determine whether player and ghost are either occupying the same
--- tile or have crossed paths in resulting in a capture.
 isCapture (p0, p1) (g0, g1) = p1 == g1 || p1 == g0 && p0 == g1
 
 dirToShift :: Direction -> Point

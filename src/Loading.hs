@@ -36,7 +36,7 @@ initGame r dt s = do
     pman <- loadPacMan xs
     gsts <- mapM ( loadGhost xs ) "pbic"
     return Game { _maze     = m
-                , _items    = Items 0
+                , _items    = Items 0 0
                 , _rgen     = r
                 , _pacman   = pman
                 , _ghosts   = gsts
@@ -45,6 +45,7 @@ initGame r dt s = do
                 , _npellets = countPellets xs
                 , _oneups   = 3
                 , _time     = 0
+                , _pwrmult  = 1
                 , _dtime    = dt
                 , _pwrtime  = 7500000 }
 
