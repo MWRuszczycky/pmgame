@@ -8,15 +8,15 @@ import qualified Data.Vector as V
 import qualified Types       as T
 import Lens.Micro                   ( (&), (^.), (.~), (%~) )
 import System.Random                ( StdGen                )
-import Types                        ( Game (..)
-                                    , GameSt (..)
-                                    , Maze
-                                    , Point (..)
-                                    , Ghost (..)
-                                    , PacMan (..)
-                                    , Tile (..)
-                                    , Items (..)
-                                    , Status (..)
+import Types                        ( Game      (..)
+                                    , GameSt    (..)
+                                    , Maze      (..)
+                                    , Point     (..)
+                                    , Ghost     (..)
+                                    , PacMan    (..)
+                                    , Tile      (..)
+                                    , Items     (..)
+                                    , Status    (..)
                                     , Direction (..)        )
 
 ---------------------------------------------------------------------
@@ -84,9 +84,10 @@ loadPacMan :: [(Point, Char)] -> Either String PacMan
 loadPacMan xs = do
     pos    <- loadPos xs 'P'
     (_, d) <- initMover 'P'
-    return PacMan { _pdir  = d
-                  , _ppos  = pos
-                  , _pstrt = (pos, d)
+    return PacMan { _pdir   = d
+                  , _ppos   = pos
+                  , _pstrt  = (pos, d)
+                  , _ptlast = 0
                   }
 
 loadGhost :: [(Point, Char)] -> Char -> Either String Ghost
@@ -98,6 +99,7 @@ loadGhost xs c = do
                  , _gpos    = pos
                  , _gstrt   = (pos, d)
                  , _gedible = False
+                 , _gtlast  = 0
                  }
 
 initMover :: Char -> Either String (Tile, Direction)

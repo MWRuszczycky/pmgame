@@ -24,6 +24,7 @@ import Types                            ( GameSt    (..)
 import View                             ( drawUI
                                         , attributes                )
 import Loading                          ( initGame                  )
+import Model                            ( playerWaitTime            )
 
 app :: App GameSt TimeEvent ()
 app = App { appDraw         = drawUI
@@ -34,7 +35,7 @@ app = App { appDraw         = drawUI
 
 main :: IO ()
 main = do
-    let dt    = 225000
+    let dt    = playerWaitTime
         mfile = "levels/classicMaze1.txt"
     putEnv "TERM=xterm-256color"
     gen  <- getStdGen

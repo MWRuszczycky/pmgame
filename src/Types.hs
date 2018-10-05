@@ -29,12 +29,14 @@ module Types
     , pdir
     , ppos
     , pstrt
+    , ptlast
     -- Lenses for Ghost
     , gname
     , gdir
     , gpos
     , gstrt
     , gedible
+    , gtlast
     -- Lenses for Items
     , pellets
     , ppellets
@@ -86,19 +88,21 @@ type Point = (Int, Int)
 
 type GameSt = Either String Game
 
-data Ghost = Ghost { _gname   :: Tile
-                   , _gdir    :: Direction
-                   , _gpos    :: Point
-                   , _gstrt   :: (Point, Direction)
-                   , _gedible :: Bool
+data Ghost = Ghost { _gname   :: Tile               -- Name/tile for ghost
+                   , _gdir    :: Direction          -- Current direction
+                   , _gpos    :: Point              -- Current position
+                   , _gstrt   :: (Point, Direction) -- Initial pos. & dir.
+                   , _gedible :: Bool               -- Ghost can be eaten
+                   , _gtlast  :: Int                -- Time of last move
                    } deriving ( Show )
 
 instance Eq Ghost where
     (==) g1 g2 = _gname g1 == _gname g2
 
-data PacMan = PacMan { _pdir  :: Direction
-                     , _ppos  :: Point
-                     , _pstrt :: (Point, Direction)
+data PacMan = PacMan { _pdir   :: Direction          -- Current direction
+                     , _ppos   :: Point              -- Current position
+                     , _pstrt  :: (Point, Direction) -- Initial pos. & dir.
+                     , _ptlast :: Int                -- Time of last move
                      } deriving ( Show )
 
 data Items = Items { _pellets  :: Int

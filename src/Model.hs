@@ -6,9 +6,12 @@ module Model
     , getNxtLevel
     , restartLevel
     , updateGame
+    , playerWaitTime
     , movePlayer
     , moveGhosts
     , tileGhosts
+    , ghostWaitTime
+    , edibleGhostWaitTime
     ) where
 
 import qualified Data.Matrix as M
@@ -208,19 +211,26 @@ dirToShift South = (1, 0)
 
 -- Exported
 
+playerWaitTime :: Int
+playerWaitTime = 225000
+
 movePlayer :: Game -> Game
 movePlayer g
+    | isWaiting       = g
     | isWall t1       = g
     | t1 == PwrPellet = g & T.pacman . T.ppos .~ p1
+                          & T.pacman . T.ptlast .~ ( g ^. T.time )
                           & T.maze %~ M.setElem Empty p1
                           & T.npellets %~ pred
                           & T.items . T.ppellets %~ succ
     | t1 == Pellet    = g & T.pacman . T.ppos .~ p1
+                          & T.pacman . T.ptlast .~ ( g ^. T.time )
                           & T.maze %~ M.setElem Empty p1
                           & T.npellets %~ pred
                           & T.items . T.pellets %~ succ
     | otherwise       = g & T.pacman . T.ppos .~ p1
-    where p0 = g ^. T.pacman . T.ppos
+    where isWaiting = g ^. T.time - g ^. T.pacman . T.ptlast < playerWaitTime
+          p0 = g ^. T.pacman . T.ppos
           m0 = g ^. T.maze
           p1 = getNxtPos p0 (m0 ! p0) $ g ^. T.pacman . T.pdir
           t1 = m0 ! p1
@@ -232,6 +242,12 @@ movePlayer g
 
 tileGhosts :: Game -> [(Point, Tile)]
 tileGhosts gm = [ (g ^. T.gpos, tileGhost gm g) | g <- gm ^. T.ghosts ]
+
+ghostWaitTime :: Int
+ghostWaitTime = 225000
+
+edibleGhostWaitTime :: Int
+edibleGhostWaitTime = 2 * ghostWaitTime
 
 -- Unexported
 
@@ -256,14 +272,20 @@ moveGhosts gm = let (gs, r) = foldr ( moveGhost gm ) start $ gm ^. T.ghosts
                        & T.rgen   .~ r
 
 moveGhost :: Game -> Ghost -> ([Ghost], StdGen) -> ([Ghost], StdGen)
-moveGhost gm g0 (gs, r0) = (g1:gs, r1)
-    where p0      = g0 ^. T.gpos
-          m       = gm ^. T.maze
-          (r1,ds) = proposeDirections gm g0 r0
-          ps      = [ (d, getNxtPos p0 (m ! p0) d) | d <- ds ]
-          (d1,p1) = head . filter (isFree m . snd) $ ps
-          g1      = g0 & T.gpos .~ p1
-                       & T.gdir .~ d1
+moveGhost gm g0 (gs, r0)
+    | isWaiting = (g0:gs, r0)
+    | otherwise = (g1:gs, r1)
+    where dt        = gm ^. T.time - g0 ^. T.gtlast
+          isWaiting | g0 ^. T.gedible = dt < edibleGhostWaitTime
+                    | otherwise       = dt < ghostWaitTime
+          p0        = g0 ^. T.gpos
+          m         = gm ^. T.maze
+          (r1,ds)   = proposeDirections gm g0 r0
+          ps        = [ (d, getNxtPos p0 (m ! p0) d) | d <- ds ]
+          (d1,p1)   = head . filter (isFree m . snd) $ ps
+          g1        = g0 & T.gpos   .~ p1
+                         & T.gdir   .~ d1
+                         & T.gtlast .~ gm ^. T.time
 
 proposeDirections :: Game -> Ghost -> StdGen -> (StdGen, [Direction])
 proposeDirections gm g r = randomDirections r ds
