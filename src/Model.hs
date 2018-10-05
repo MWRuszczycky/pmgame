@@ -151,7 +151,7 @@ depowerGame :: Game -> Game
 depowerGame g = let gsts = map ( set T.gedible False ) $ g ^. T.ghosts
                 in  g & T.ghosts  .~ gsts
                       & T.status  .~ Running
-                      & T.pwrmult .~ 1
+                      & T.pwrmult .~ 2
 
 wasPowered :: Game -> Game -> Bool
 wasPowered g0 g1 = t1 == PwrPellet
@@ -221,9 +221,8 @@ movePlayer g
                           & T.items . T.pellets %~ succ
     | otherwise       = g & T.pacman . T.ppos .~ p1
     where p0 = g ^. T.pacman . T.ppos
-          d  = g ^. T.pacman . T.pdir
           m0 = g ^. T.maze
-          p1 = getNxtPos p0 (m0 ! p0) d
+          p1 = getNxtPos p0 (m0 ! p0) $ g ^. T.pacman . T.pdir
           t1 = m0 ! p1
 
 ---------------------------------------------------------------------
@@ -231,43 +230,55 @@ movePlayer g
 
 -- Exported
 
-moveGhosts :: Game -> Game
-moveGhosts g = let (gsts, r) = foldr (moveGhost g) start $ g ^. T.ghosts
-                   start        = ([], g ^. T.rgen )
-               in  g & T.ghosts .~ gsts
-                     & T.rgen   .~ r
-
 tileGhosts :: Game -> [(Point, Tile)]
-tileGhosts g = [ (gst ^. T.gpos, tileGhost g gst) | gst <- g ^. T.ghosts ]
+tileGhosts gm = [ (g ^. T.gpos, tileGhost gm g) | g <- gm ^. T.ghosts ]
 
 -- Unexported
 
 tileGhost :: Game -> Ghost -> Tile
-tileGhost g gst
+tileGhost gm g
     | isBlueGhost  = BlueGhost
     | isWhiteGhost = WhiteGhost
-    | otherwise    = gst ^. T.gname
-    where isBlueGhost  = gst ^. T.gedible && isBlue (pwrTimeLeft g) g
-          isWhiteGhost = gst ^. T.gedible
+    | otherwise    = g ^. T.gname
+    where isBlueGhost  = g ^. T.gedible && isBlue (pwrTimeLeft gm) gm
+          isWhiteGhost = g ^. T.gedible
 
 isBlue :: Int -> Game -> Bool
-isBlue tlft g
+isBlue tlft gm
     | tlft >= half = True
-    | otherwise    = even . quot tlft $ ( g ^. T.dtime )
-    where half = quot ( g ^. T.pwrtime ) 2
+    | otherwise    = even . quot tlft $ ( gm ^. T.dtime )
+    where half = quot ( gm ^. T.pwrtime ) 2
+
+moveGhosts :: Game -> Game
+moveGhosts gm = let (gs, r) = foldr ( moveGhost gm ) start $ gm ^. T.ghosts
+                    start   = ( [], gm ^. T.rgen )
+                in  gm & T.ghosts .~ gs
+                       & T.rgen   .~ r
 
 moveGhost :: Game -> Ghost -> ([Ghost], StdGen) -> ([Ghost], StdGen)
-moveGhost g gst0 (gsts, r0) = (gst1:gsts, r1)
-    where p0       = gst0 ^. T.gpos
-          m        = g ^. T.maze
-          (r1, ds) = randomDirections r0 dirs
-          ps       = [ (d, getNxtPos p0 (m ! p0) d) | d <- ds ]
-          (d1, p1) = head . dropWhile (not . isFree m . snd) $ ps
-          gst1     = gst0 & T.gpos .~ p1 & T.gdir .~ d1
-          dirs     = [North, South, East, West] ++ replicate 20 pdir
-          pdir     = case chase g gst0 of
-                          Just d  -> d
-                          Nothing -> gst0 ^. T.gdir
+moveGhost gm g0 (gs, r0) = (g1:gs, r1)
+    where p0      = g0 ^. T.gpos
+          m       = gm ^. T.maze
+          (r1,ds) = proposeDirections gm g0 r0
+          ps      = [ (d, getNxtPos p0 (m ! p0) d) | d <- ds ]
+          (d1,p1) = head . filter (isFree m . snd) $ ps
+          g1      = g0 & T.gpos .~ p1
+                       & T.gdir .~ d1
+
+proposeDirections :: Game -> Ghost -> StdGen -> (StdGen, [Direction])
+proposeDirections gm g r = randomDirections r ds
+    where ds = [North, South, East, West] ++ replicate 20 pd
+          pd = case toPacMan gm g of
+                    Nothing -> g ^. T.gdir
+                    Just d  -> if g ^. T.gedible
+                               then runAway d
+                               else d
+
+runAway :: Direction -> Direction
+runAway North = South
+runAway South = North
+runAway West  = East
+runAway East  = West
 
 noWalls :: Int -> Int -> V.Vector Tile -> Bool
 noWalls x y ts
@@ -276,8 +287,8 @@ noWalls x y ts
     | otherwise = False
     where d = abs $ x - y
 
-chase :: Game -> Ghost -> Maybe Direction
-chase g gst
+toPacMan :: Game -> Ghost -> Maybe Direction
+toPacMan g gst
     | pc == gc && pr < gr && noWalls gr pr cPath = Just North
     | pc == gc && pr > gr && noWalls gr pr cPath = Just South
     | pr == gr && pc < gc && noWalls gc pc rPath = Just West

@@ -45,7 +45,7 @@ initGame r dt s = do
                 , _npellets = countPellets xs
                 , _oneups   = 3
                 , _time     = 0
-                , _pwrmult  = 1
+                , _pwrmult  = 2
                 , _dtime    = dt
                 , _pwrtime  = 7500000 }
 
