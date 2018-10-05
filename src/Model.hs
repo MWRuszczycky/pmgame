@@ -12,6 +12,7 @@ module Model
     ) where
 
 import qualified Data.Matrix as M
+import qualified Data.Vector as V
 import qualified Types       as T
 import Lens.Micro                   ( (&), (^.), (.~), (%~), set    )
 import Data.Matrix                  ( (!)                           )
@@ -229,26 +230,15 @@ movePlayer g
 -- Exported
 
 moveGhosts :: Game -> Game
-moveGhosts g = let (m, gsts, r) = foldr moveGhost start $ g ^. T.ghosts
-                   start        = (g ^. T.maze, [], g ^. T.rgen )
-               in  g & T.maze   .~ m
-                     & T.ghosts .~ gsts
+moveGhosts g = let (gsts, r) = foldr (moveGhost g) start $ g ^. T.ghosts
+                   start        = ([], g ^. T.rgen )
+               in  g & T.ghosts .~ gsts
                      & T.rgen   .~ r
 
 tileGhosts :: Game -> [(Point, Tile)]
 tileGhosts g = [ (gst ^. T.gpos, tileGhost g gst) | gst <- g ^. T.ghosts ]
 
 -- Unexported
-
-moveGhost :: Ghost -> (Maze, [Ghost], StdGen) -> (Maze, [Ghost], StdGen)
-moveGhost gst0 (m, gsts, r0) = (m, gst1:gsts, r1)
-    where p0       = gst0 ^. T.gpos
-          dir      = gst0 ^. T.gdir
-          dirs     = [North, South, East, West] ++ replicate 20 dir
-          (r1, ds) = randomDirections r0 dirs
-          ps       = [ (d, getNxtPos p0 (m ! p0) d) | d <- ds ]
-          (d1, p1) = head . dropWhile (not . isFree m . snd) $ ps
-          gst1     = gst0 & T.gpos .~ p1 & T.gdir .~ d1
 
 tileGhost :: Game -> Ghost -> Tile
 tileGhost g gst
@@ -263,6 +253,38 @@ isBlue tlft g
     | tlft >= half = True
     | otherwise    = even . quot tlft $ ( g ^. T.dtime )
     where half = quot ( g ^. T.pwrtime ) 2
+
+moveGhost :: Game -> Ghost -> ([Ghost], StdGen) -> ([Ghost], StdGen)
+moveGhost g gst0 (gsts, r0) = (gst1:gsts, r1)
+    where p0       = gst0 ^. T.gpos
+          m        = g ^. T.maze
+          (r1, ds) = randomDirections r0 dirs
+          ps       = [ (d, getNxtPos p0 (m ! p0) d) | d <- ds ]
+          (d1, p1) = head . dropWhile (not . isFree m . snd) $ ps
+          gst1     = gst0 & T.gpos .~ p1 & T.gdir .~ d1
+          dirs     = [North, South, East, West] ++ replicate 20 pdir
+          pdir     = case chase g gst0 of
+                          Just d  -> d
+                          Nothing -> gst0 ^. T.gdir
+
+noWalls :: Int -> Int -> V.Vector Tile -> Bool
+noWalls x y ts
+    | x < y     = not . V.any (isWall) . V.slice x d $ ts
+    | x > y     = not . V.any (isWall) . V.slice y d $ ts
+    | otherwise = False
+    where d = abs $ x - y
+
+chase :: Game -> Ghost -> Maybe Direction
+chase g gst
+    | pc == gc && pr < gr && noWalls gr pr cPath = Just North
+    | pc == gc && pr > gr && noWalls gr pr cPath = Just South
+    | pr == gr && pc < gc && noWalls gc pc rPath = Just West
+    | pr == gr && pc > gc && noWalls gc pc rPath = Just East
+    | otherwise                                  = Nothing
+    where (gr, gc) = gst ^. T.gpos
+          (pr, pc) = g ^. T.pacman . T.ppos
+          rPath    = M.getRow gr ( g ^. T.maze )
+          cPath    = M.getCol gc ( g ^. T.maze )
 
 randomDirections :: StdGen -> [Direction] -> (StdGen, [Direction])
 randomDirections r0 [] = (r0, [])
