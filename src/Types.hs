@@ -37,6 +37,7 @@ module Types
     , gedible
     -- Lenses for Items
     , pellets
+    , ppellets
     , gstscore
     ) where
 
@@ -101,6 +102,7 @@ data PacMan = PacMan { _pdir  :: Direction
                      } deriving ( Show )
 
 data Items = Items { _pellets  :: Int
+                   , _ppellets :: Int
                    , _gstscore :: Int
                    } deriving ( Show )
 

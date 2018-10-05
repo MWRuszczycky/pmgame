@@ -210,19 +210,21 @@ dirToShift South = (1, 0)
 
 movePlayer :: Game -> Game
 movePlayer g
-    | isFree m0 p1 = g & T.maze .~ m1
-                       & T.items . T.pellets %~ (+ ds)
-                       & T.npellets %~ (subtract ds)
-                       & T.pacman . T.ppos .~ p1
-    | otherwise    = g
-    where p0  = g ^. T.pacman . T.ppos
-          dir = g ^. T.pacman . T.pdir
-          m0  = g ^. T.maze
-          p1  = getNxtPos p0 (m0 ! p0) dir
-          (m1, ds) = case (m0 ! p1) of
-                     Pellet    -> (M.setElem Empty p1 m0, 1)
-                     PwrPellet -> (M.setElem Empty p1 m0, 1)
-                     otherwise -> (m0, 0)
+    | isWall t1       = g
+    | t1 == PwrPellet = g & T.pacman . T.ppos .~ p1
+                          & T.maze %~ M.setElem Empty p1
+                          & T.npellets %~ pred
+                          & T.items . T.ppellets %~ succ
+    | t1 == Pellet    = g & T.pacman . T.ppos .~ p1
+                          & T.maze %~ M.setElem Empty p1
+                          & T.npellets %~ pred
+                          & T.items . T.pellets %~ succ
+    | otherwise       = g & T.pacman . T.ppos .~ p1
+    where p0 = g ^. T.pacman . T.ppos
+          d  = g ^. T.pacman . T.pdir
+          m0 = g ^. T.maze
+          p1 = getNxtPos p0 (m0 ! p0) d
+          t1 = m0 ! p1
 
 ---------------------------------------------------------------------
 -- Moving and updating the ghosts
