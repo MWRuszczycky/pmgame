@@ -23,14 +23,15 @@ import Data.List                    ( delete
                                     , nub                           )
 import System.Random                ( StdGen
                                     , randomR                       )
-import Types                        ( Tile      (..)
-                                    , Game      (..)
-                                    , Status    (..)
-                                    , Point     (..)
-                                    , Maze      (..)
-                                    , Direction (..)
-                                    , PacMan    (..)
-                                    , Ghost     (..)                )
+import Types                        ( Tile          (..)
+                                    , Game          (..)
+                                    , Status        (..)
+                                    , Point         (..)
+                                    , Maze          (..)
+                                    , Direction     (..)
+                                    , PacMan        (..)
+                                    , Ghost         (..)
+                                    , GhostState    (..)            )
 
 ---------------------------------------------------------------------
 ---------------------------------------------------------------------
@@ -43,7 +44,8 @@ import Types                        ( Tile      (..)
 
 isGhost :: Tile -> Bool
 -- ^Evaluate whether a tile is a ghost.
-isGhost t = elem t [ Blinky, Pinky, Inky, Clyde, BlueGhost, WhiteGhost ]
+isGhost t = elem t [ Blinky, Pinky, Inky, Clyde
+                   , BlueGhost, WhiteGhost, GhostEyes ]
 
 isWall :: Tile -> Bool
 -- ^Evaluate whether a tile is a wall tile.
@@ -57,6 +59,12 @@ isPellet t = elem t [ PwrPellet, Pellet ]
 isPlayer :: Tile -> Bool
 -- ^Evaluate whether a tile is the player.
 isPlayer t = t == Player
+
+isFree :: Maze -> Point -> Bool
+-- ^Evaluate whether a point in the maze is free to be entered.
+isFree m (r,c) = case M.safeGet r c m of
+                      Nothing -> False
+                      Just t  -> not . isWall $ t
 
 -- =============================================================== --
 -- Game and level restarting
@@ -88,9 +96,10 @@ resetPacMan p = let (pos0, dir0) = p ^. T.pstrt
 resetGhost :: Ghost -> Ghost
 -- ^Reset a ghost to its original position and direction.
 resetGhost g = let (pos0, dir0) = g ^. T.gstrt
-               in  g & T.gpos    .~ pos0
-                     & T.gdir    .~ dir0
-                     & T.gedible .~ False
+               in  g & T.gpos      .~ pos0
+                     & T.gdir      .~ dir0
+                     & T.gstate    .~ Normal
+                     & T.gpathback .~ []
 
 -- =============================================================== --
 -- Game status management
@@ -125,19 +134,27 @@ checkCaptures g0 g1
     | moreLives = g1 & T.status .~ ReplayLvl
     | otherwise = g1 & T.status .~ GameOver
     where gsts      = ghostCapture g0 g1
-          ateGhost  = all ( ^. T.gedible ) gsts
-          eaten     = resetGhost . head $ gsts
-          uneaten   = filter (/= eaten) $ g1 ^. T.ghosts
+          ateGhost  = all isEdible gsts
+          eaten     = eatGhost g0 . head $ gsts
+          uneaten   = filter (/= eaten) $ g0 ^. T.ghosts
           dscore    = 100 * ( g1 ^. T.pwrmult )
           moreLives = g1 ^. T.oneups > 0
 
+eatGhost :: Game -> Ghost -> Ghost
+eatGhost gm g = let m = gm ^. T.maze
+                    p0 = g ^. T.gpos
+                    p1 = fst $ g ^. T.gstrt
+                in g & T.gstate    .~ EyesOnly
+                     & T.gpathback .~ pathBetween m p0 p1
+
 ghostCapture :: Game -> Game -> [Ghost]
 -- ^Return a list of all ghosts capturing or captured by player.
-ghostCapture g0 g1 =
-    [ y | (x,y) <- gs, isCapture (p0, p1) (x ^. T.gpos, y ^. T.gpos) ]
-    where p0 = g0 ^. T.pacman . T.ppos
-          p1 = g1 ^. T.pacman . T.ppos
-          gs = zip ( g0 ^. T.ghosts ) ( g1 ^. T.ghosts )
+ghostCapture g0 g1 = let p0 = g0 ^. T.pacman . T.ppos
+                         p1 = g1 ^. T.pacman . T.ppos
+                         gs = zip ( g0 ^. T.ghosts ) ( g1 ^. T.ghosts )
+                     in  [ y | (x,y) <- gs
+                             , not . isEyesOnly $ x
+                             , isCapture (p0, p1) (x ^. T.gpos, y ^. T.gpos) ]
 
 isCapture :: (Point, Point) -> (Point, Point) -> Bool
 isCapture (p0, p1) (g0, g1) = p1 == g1 || p1 == g0 && p0 == g1
@@ -154,12 +171,13 @@ checkPower g0 g1
     | otherwise        = g1
 
 powerGame :: Game -> Game
-powerGame g = let gsts = map ( set T.gedible True ) $ g ^. T.ghosts
+powerGame g = let gsts = map ( set T.gstate Edible ) $ g ^. T.ghosts
               in  g & T.ghosts .~ gsts
                     & T.status .~ PwrRunning ( g ^. T.time )
 
 depowerGame :: Game -> Game
-depowerGame g = let gsts = map ( set T.gedible False ) $ g ^. T.ghosts
+depowerGame g = let go x = if isEdible x then set T.gstate Normal x else x
+                    gsts = map go $ g ^. T.ghosts
                 in  g & T.ghosts  .~ gsts
                       & T.status  .~ Running
                       & T.pwrmult .~ 2
@@ -200,12 +218,6 @@ getNxtPos p0 _ d = moveOneCell p0 d
 moveOneCell :: Point -> Direction -> Point
 moveOneCell p = go p . dirToShift
     where go (x0,y0) (x1,y1) = (x0 + x1, y0 + y1)
-
-isFree :: Maze -> Point -> Bool
--- ^Evaluate whether a point in the maze is free to be entered.
-isFree m (r,c) = case M.safeGet r c m of
-                      Nothing -> False
-                      Just t  -> not . isWall $ t
 
 dirToShift :: Direction -> Point
 -- ^Maps directions to single-tick displacements.
@@ -263,10 +275,16 @@ edibleGhostWaitTime = 2 * ghostWaitTime
 tileGhost :: Game -> Ghost -> Tile
 tileGhost gm g
     | isBlueGhost  = BlueGhost
-    | isWhiteGhost = WhiteGhost
+    | isEdible g   = WhiteGhost
+    | isEyesOnly g = GhostEyes
     | otherwise    = g ^. T.gname
-    where isBlueGhost  = g ^. T.gedible && isBlue (pwrTimeLeft gm) gm
-          isWhiteGhost = g ^. T.gedible
+    where isBlueGhost = isEdible g && isBlue (pwrTimeLeft gm) gm
+
+isEdible :: Ghost -> Bool
+isEdible g = g ^. T.gstate == Edible
+
+isEyesOnly :: Ghost -> Bool
+isEyesOnly g = g ^. T.gstate == EyesOnly
 
 isBlue :: Int -> Game -> Bool
 isBlue tlft gm
@@ -282,11 +300,25 @@ moveGhosts gm = let (gs, r) = foldr ( moveGhost gm ) start $ gm ^. T.ghosts
 
 moveGhost :: Game -> Ghost -> ([Ghost], StdGen) -> ([Ghost], StdGen)
 moveGhost gm g0 (gs, r0)
+    | isEyesOnly g0 = (moveEyes gm g0 : gs, r0)
+    | otherwise     = moveWholeGhost gm g0 (gs, r0)
+
+moveEyes :: Game -> Ghost -> Ghost
+moveEyes gm g
+    | isWaiting = g
+    | otherwise = case g ^. T.gpathback of
+                       []     -> resetGhost g
+                       (p:ps) -> g & T.gpathback .~ ps
+                                   & T.gpos      .~ p
+    where isWaiting = gm ^. T.time - g ^. T.gtlast < ghostWaitTime
+
+moveWholeGhost :: Game -> Ghost -> ([Ghost], StdGen) -> ([Ghost], StdGen)
+moveWholeGhost gm g0 (gs, r0)
     | isWaiting = (g0:gs, r0)
     | otherwise = (g1:gs, r1)
     where dt        = gm ^. T.time - g0 ^. T.gtlast
-          isWaiting | g0 ^. T.gedible = dt < edibleGhostWaitTime
-                    | otherwise       = dt < ghostWaitTime
+          isWaiting | isEdible g0 = dt < edibleGhostWaitTime
+                    | otherwise   = dt < ghostWaitTime
           p0        = g0 ^. T.gpos
           m         = gm ^. T.maze
           (r1,ds)   = proposeDirections gm g0 r0
@@ -301,7 +333,7 @@ proposeDirections gm g r = randomDirections r ds
     where ds = [North, South, East, West] ++ replicate 20 pd
           pd = case toPacMan gm g of
                     Nothing -> g ^. T.gdir
-                    Just d  -> if g ^. T.gedible
+                    Just d  -> if isEdible g
                                then runAway d
                                else d
 
@@ -337,3 +369,27 @@ randomDirections r0 ds0 = (r, d:ds)
           d       = ds0 !! k
           ds1     = delete d . nub $ ds0
           (r,ds)  = randomDirections r1 ds1
+
+pathBetween :: Maze -> Point -> Point -> [Point]
+pathBetween m p0 p1
+    | p0 == p1  = []
+    | otherwise = go . reverse . getPaths m p1 [] $ [p0]
+    where go []     = []
+          go (x:xs) = go ( dropWhile (not . connected x ) xs ) ++ [x]
+
+getPaths :: Maze -> Point -> [Point] -> [Point] -> [Point]
+getPaths m p ys (x:xs)
+    | p == x     = ys ++ [x]
+    | elem p nxt = ys' ++ [p]
+    | otherwise  = getPaths m p ys' (xs ++ nxt)
+    where ys' = ys ++ [x]
+          nxt = getNxtPoints m (ys ++ xs) x
+
+getNxtPoints :: Maze -> [Point] -> Point -> [Point]
+getNxtPoints m xs = filter ( not . flip elem xs ) . go
+    where go (r,c) = filter (isFree m) [ (r,c-1), (r,c+1), (r-1,c), (r+1,c) ]
+
+connected :: Point -> Point -> Bool
+connected (r1,c1) (r2,c2) = dr + dc < 2
+    where dr = abs $ r1 - r2
+          dc = abs $ c1 - c2

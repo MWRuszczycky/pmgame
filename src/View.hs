@@ -112,8 +112,8 @@ renderMaze :: Game -> Widget ()
 renderMaze g = vBox . map ( hBox . map (renderTile g) ) . M.toLists $ m2
     where gs = tileGhosts g
           m0 = g ^. T.maze
-          m1 = M.setElem Player ( g ^. T.pacman . T.ppos ) m0
-          m2 = foldl' (\ m (p,t) -> M.setElem t p m) m1 gs
+          m1 = foldl' (\ m (p,t) -> M.setElem t p m) m0 gs
+          m2 = M.setElem Player ( g ^. T.pacman . T.ppos ) m1
 
 renderTile :: Game -> Tile -> Widget ()
 renderTile g t
@@ -154,6 +154,7 @@ renderGhost Blinky     = withAttr "blinky"     . txt $ "\""
 renderGhost Inky       = withAttr "inky"       . txt $ "\""
 renderGhost Pinky      = withAttr "pinky"      . txt $ "\""
 renderGhost Clyde      = withAttr "clyde"      . txt $ "\""
+renderGhost GhostEyes  = withAttr "ghostEyes"  . txt $ "\""
 
 ---------------------------------------------------------------------
 -- Attributes
@@ -170,6 +171,7 @@ attributes = attrMap V.defAttr
     , ( "clyde",  on V.black V.yellow       )
     , ( "blueGhost",  on V.white V.blue     )
     , ( "whiteGhost", on V.black V.white    )
+    , ( "ghostEyes",  on V.cyan V.black     )
     , ( "background", bg V.black            )
     , ( borderAttr,   on V.blue V.black     )
     ]

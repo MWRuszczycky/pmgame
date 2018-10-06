@@ -8,16 +8,17 @@ import qualified Data.Vector as V
 import qualified Types       as T
 import Lens.Micro                   ( (&), (^.), (.~), (%~) )
 import System.Random                ( StdGen                )
-import Types                        ( Game      (..)
-                                    , GameSt    (..)
-                                    , Maze      (..)
-                                    , Point     (..)
-                                    , Ghost     (..)
-                                    , PacMan    (..)
-                                    , Tile      (..)
-                                    , Items     (..)
-                                    , Status    (..)
-                                    , Direction (..)        )
+import Types                        ( Game          (..)
+                                    , GameSt        (..)
+                                    , Maze          (..)
+                                    , Point         (..)
+                                    , Ghost         (..)
+                                    , GhostState    (..)
+                                    , PacMan        (..)
+                                    , Tile          (..)
+                                    , Items         (..)
+                                    , Status        (..)
+                                    , Direction     (..)    )
 
 ---------------------------------------------------------------------
 -- List of levels and associated maze files
@@ -96,12 +97,13 @@ loadGhost :: [(Point, Char)] -> Char -> Either String Ghost
 loadGhost xs c = do
     pos    <- loadPos xs c
     (t, d) <- initMover c
-    return Ghost { _gname   = t
-                 , _gdir    = d
-                 , _gpos    = pos
-                 , _gstrt   = (pos, d)
-                 , _gedible = False
-                 , _gtlast  = 0
+    return Ghost { _gname     = t
+                 , _gdir      = d
+                 , _gpos      = pos
+                 , _gstrt     = (pos, d)
+                 , _gstate    = Normal
+                 , _gtlast    = 0
+                 , _gpathback = []
                  }
 
 initMover :: Char -> Either String (Tile, Direction)

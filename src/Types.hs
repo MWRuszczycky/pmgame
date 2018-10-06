@@ -11,6 +11,7 @@ module Types
     , TimeEvent     (..)
     , Items         (..)
     , Status        (..)
+    , GhostState    (..)
     -- Lenses for Game
     , maze
     , items
@@ -36,8 +37,9 @@ module Types
     , gdir
     , gpos
     , gstrt
-    , gedible
+    , gstate
     , gtlast
+    , gpathback
     -- Lenses for Items
     , pellets
     , ppellets
@@ -69,6 +71,7 @@ data Tile = Player
           | Clyde
           | BlueGhost
           | WhiteGhost
+          | GhostEyes
           | HBar
           | VBar
           | Cros
@@ -89,12 +92,15 @@ type Point = (Int, Int)
 
 type GameSt = Either String Game
 
-data Ghost = Ghost { _gname   :: Tile               -- Name/tile for ghost
-                   , _gdir    :: Direction          -- Current direction
-                   , _gpos    :: Point              -- Current position
-                   , _gstrt   :: (Point, Direction) -- Initial pos. & dir.
-                   , _gedible :: Bool               -- Ghost can be eaten
-                   , _gtlast  :: Int                -- Time of last move
+data GhostState = Normal | Edible | EyesOnly deriving (Show, Eq)
+
+data Ghost = Ghost { _gname     :: Tile               -- Name/tile for ghost
+                   , _gdir      :: Direction          -- Current direction
+                   , _gpos      :: Point              -- Current position
+                   , _gstrt     :: (Point, Direction) -- Initial pos. & dir.
+                   , _gstate    :: GhostState         -- Ghost state
+                   , _gtlast    :: Int                -- Time of last move
+                   , _gpathback :: [Point]            -- Path back to start
                    } deriving ( Show )
 
 instance Eq Ghost where
