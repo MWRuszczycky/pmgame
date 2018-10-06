@@ -110,19 +110,19 @@ data Items = Items { _pellets  :: Int
                    , _gstscore :: Int
                    } deriving ( Show )
 
-data Game = Game { _maze     :: Maze
-                 , _items    :: Items
-                 , _pacman   :: PacMan
-                 , _ghosts   :: [ Ghost ]
-                 , _rgen     :: StdGen
-                 , _npellets :: Int
-                 , _oneups   :: Int
-                 , _status   :: Status
-                 , _level    :: Int
-                 , _pwrtime  :: Int
-                 , _time     :: Int
-                 , _dtime    :: Int
-                 , _pwrmult  :: Int
+data Game = Game { _maze     :: Maze        -- Level maze
+                 , _items    :: Items       -- Summary of items and score
+                 , _pacman   :: PacMan      -- Player
+                 , _ghosts   :: [ Ghost ]   -- List of ghosts
+                 , _rgen     :: StdGen      -- Standard generator
+                 , _npellets :: Int         -- Pellets remaining in level
+                 , _oneups   :: Int         -- Oneups remaining
+                 , _status   :: Status      -- Game status
+                 , _level    :: Int         -- Current level number
+                 , _pwrtime  :: Int         -- Duration of power pellets
+                 , _time     :: Int         -- Current in-game time
+                 , _dtime    :: Int         -- Time between clock ticks
+                 , _pwrmult  :: Int         -- Score multiplier for ghost
                  } deriving ( Show )
 
 makeLenses ''Game
