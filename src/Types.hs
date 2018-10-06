@@ -1,16 +1,16 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Types
-    ( Tile (..)
-    , Maze (..)
-    , Point (..)
-    , Game (..)
-    , GameSt (..)
-    , Ghost (..)
-    , PacMan (..)
-    , Direction (..)
-    , TimeEvent (..)
-    , Items (..)
-    , Status (..)
+    ( Tile          (..)
+    , Maze          (..)
+    , Point         (..)
+    , Game          (..)
+    , GameSt        (..)
+    , Ghost         (..)
+    , PacMan        (..)
+    , Direction     (..)
+    , TimeEvent     (..)
+    , Items         (..)
+    , Status        (..)
     -- Lenses for Game
     , maze
     , items
@@ -25,6 +25,7 @@ module Types
     , time
     , dtime
     , pwrmult
+    , msg
     -- Lenses for PacMan
     , pdir
     , ppos
@@ -123,6 +124,7 @@ data Game = Game { _maze     :: Maze        -- Level maze
                  , _time     :: Int         -- Current in-game time
                  , _dtime    :: Int         -- Time between clock ticks
                  , _pwrmult  :: Int         -- Score multiplier for ghost
+                 , _msg      :: Maybe (String, Int) -- In-game message
                  } deriving ( Show )
 
 makeLenses ''Game

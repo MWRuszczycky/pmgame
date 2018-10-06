@@ -67,14 +67,14 @@ getNxtLevel :: Game -> Game -> Game
 getNxtLevel g0 g1 = g1 & T.items   .~ ( g0 ^. T.items )
                        & T.level   .~ ( succ $ g0 ^. T.level )
                        & T.oneups  .~ ( g0 ^. T.oneups )
-                       & T.pwrmult .~ 1
+                       & T.pwrmult .~ 2
 
 restartLevel :: Game -> Game
 -- ^Restarts the current level.
 restartLevel g = g & T.status  .~ Running
                    & T.pacman  %~ resetPacMan
                    & T.ghosts  %~ map resetGhost
-                   & T.pwrmult .~ 1
+                   & T.pwrmult .~ 2
                    & T.oneups  %~ subtract 1
 
 -- Unexported
@@ -100,7 +100,7 @@ resetGhost g = let (pos0, dir0) = g ^. T.gstrt
 updateGame :: Game -> Game -> Game
 updateGame g0 g1
     | levelFinished = g1 & T.status .~ LevelOver
-    | otherwise     = checkPower g0 . checkCaptures g0 $ g1
+    | otherwise     = checkPower g0 . checkCaptures g0 . updateMessage $ g1
     where levelFinished = g1 ^. T.npellets == 0
 
 ---------------------------------------------------------------------
@@ -108,19 +108,27 @@ updateGame g0 g1
 
 -- Unexported
 
+updateMessage :: Game -> Game
+updateMessage gm = go $ gm ^. T.msg
+    where go Nothing      = gm
+          go (Just (s,t)) | t < 0     = gm & T.msg .~ Nothing
+                          | otherwise = let t' = t - gm ^. T.dtime
+                                        in  gm & T.msg .~ Just (s, t')
+
 checkCaptures :: Game -> Game -> Game
 checkCaptures g0 g1
     | null gsts = g1
     | ateGhost  = g1 & T.ghosts .~ eaten : uneaten
-                     & T.items . T.gstscore %~ (+ 100 * pm)
+                     & T.items . T.gstscore %~ (+ dscore)
                      & T.pwrmult %~ (*2)
+                     & T.msg .~ Just ("Ghost eaten! +" ++ show dscore, 3000000)
     | moreLives = g1 & T.status .~ ReplayLvl
     | otherwise = g1 & T.status .~ GameOver
-    where gsts     = ghostCapture g0 g1
-          ateGhost = all ( ^. T.gedible ) gsts
-          eaten    = resetGhost . head $ gsts
-          uneaten  = filter (/= eaten) $ g1 ^. T.ghosts
-          pm       = g1 ^. T.pwrmult
+    where gsts      = ghostCapture g0 g1
+          ateGhost  = all ( ^. T.gedible ) gsts
+          eaten     = resetGhost . head $ gsts
+          uneaten   = filter (/= eaten) $ g1 ^. T.ghosts
+          dscore    = 100 * ( g1 ^. T.pwrmult )
           moreLives = g1 ^. T.oneups > 0
 
 ghostCapture :: Game -> Game -> [Ghost]
@@ -223,6 +231,7 @@ movePlayer g
                           & T.maze %~ M.setElem Empty p1
                           & T.npellets %~ pred
                           & T.items . T.ppellets %~ succ
+                          & T.msg .~ Just ("Power Pellet! +50", 3000000)
     | t1 == Pellet    = g & T.pacman . T.ppos .~ p1
                           & T.pacman . T.ptlast .~ ( g ^. T.time )
                           & T.maze %~ M.setElem Empty p1

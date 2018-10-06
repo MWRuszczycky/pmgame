@@ -35,19 +35,21 @@ initGame r dt s = do
     m    <- loadMaze xs
     pman <- loadPacMan xs
     gsts <- mapM ( loadGhost xs ) "pbic"
-    return Game { _maze     = m                 -- Level maze
-                , _items    = Items 0 0 0       -- Summary of items and scores
-                , _rgen     = r                 -- Standard generator
-                , _pacman   = pman              -- Player
-                , _ghosts   = gsts              -- List of ghosts
-                , _status   = Running           -- Game status
-                , _level    = 1                 -- Current level number
-                , _npellets = countPellets xs   -- Pellets remaining in level
-                , _oneups   = 3                 -- Oneups remaining
-                , _time     = 0                 -- Current in-game time
-                , _pwrmult  = 2                 -- Score multiplier for ghosts
-                , _dtime    = dt                -- Time between clock ticks
-                , _pwrtime  = 7500000 }         -- Duration of power pellets
+    return Game { _maze     = m
+                , _items    = Items 0 0 0
+                , _rgen     = r
+                , _pacman   = pman
+                , _ghosts   = gsts
+                , _status   = Running
+                , _level    = 1
+                , _npellets = countPellets xs
+                , _oneups   = 3
+                , _time     = 0
+                , _pwrmult  = 2
+                , _dtime    = dt
+                , _pwrtime  = 7500000
+                , _msg      = Just ("Ready!", 1000000)
+                }
 
 ---------------------------------------------------------------------
 -- Parsing level files

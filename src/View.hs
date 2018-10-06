@@ -14,7 +14,7 @@ import Brick.Types                      ( Widget (..), Padding (..) )
 import Brick.Widgets.Core               ( txt, withAttr, vBox, hBox
                                         , str, hLimit, vLimit, fill
                                         , withBorderStyle, padLeft
-                                        , (<+>)                     )
+                                        , (<+>), emptyWidget        )
 import Brick.Widgets.Border.Style       ( unicodeRounded            )
 import Brick.Widgets.Border             ( borderWithLabel
                                         , borderAttr                )
@@ -44,6 +44,7 @@ drawRunningUI g = [ withAttr "background" ui ]
           ws = [ renderScore g
                , renderMaze g
                , renderOneups g <+> renderFruit g
+               , renderMessage g
                ]
 
 drawGameOverUI :: Game -> [ Widget () ]
@@ -101,6 +102,11 @@ renderOneups g = hBox . take (2 * g ^. T.oneups) . cycle $ [ oneup, space ]
 
 renderFruit :: Game -> Widget ()
 renderFruit g = padLeft Max . withAttr "score" . txt $ "fruit!"
+
+renderMessage :: Game -> Widget ()
+renderMessage g = hCenter . go $ g ^. T.msg
+    where go Nothing      = emptyWidget
+          go (Just (s,_)) = withAttr "score" . str $ s
 
 renderMaze :: Game -> Widget ()
 renderMaze g = vBox . map ( hBox . map (renderTile g) ) . M.toLists $ m2
