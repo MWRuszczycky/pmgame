@@ -38,6 +38,18 @@ import Types                        ( Tile          (..)
 -- Pure functions for managing game state
 
 -- =============================================================== --
+-- Values
+
+playerWaitTime :: Int
+playerWaitTime = 225000
+
+ghostWaitTime :: Int
+ghostWaitTime = 225000
+
+edibleGhostWaitTime :: Int
+edibleGhostWaitTime = 2 * ghostWaitTime
+
+-- =============================================================== --
 -- Tile subtypes
 
 -- Exported
@@ -159,6 +171,17 @@ ghostCapture g0 g1 = let p0 = g0 ^. T.pacman . T.ppos
 isCapture :: (Point, Point) -> (Point, Point) -> Bool
 isCapture (p0, p1) (g0, g1) = p1 == g1 || p1 == g0 && p0 == g1
 
+makeEdible :: Ghost -> Ghost
+makeEdible g = case g ^. T.gstate of
+                    EyesOnly  -> g
+                    otherwise -> g & T.gstate .~ Edible
+
+isEdible :: Ghost -> Bool
+isEdible g = g ^. T.gstate == Edible
+
+isEyesOnly :: Ghost -> Bool
+isEyesOnly g = g ^. T.gstate == EyesOnly
+
 ---------------------------------------------------------------------
 -- Dealing with the "powered" state after eating a power pellet
 
@@ -171,7 +194,7 @@ checkPower g0 g1
     | otherwise        = g1
 
 powerGame :: Game -> Game
-powerGame g = let gsts = map ( set T.gstate Edible ) $ g ^. T.ghosts
+powerGame g = let gsts = map makeEdible $ g ^. T.ghosts
               in  g & T.ghosts .~ gsts
                     & T.status .~ PwrRunning ( g ^. T.time )
 
@@ -226,13 +249,24 @@ dirToShift East  = (0, 1)
 dirToShift North = (-1,0)
 dirToShift South = (1, 0)
 
+revDirection :: Direction -> Direction
+revDirection North = South
+revDirection South = North
+revDirection West  = East
+revDirection East  = West
+
+noWalls :: Int -> Int -> V.Vector Tile -> Bool
+-- ^No walls in a vector of tiles between two indices.
+noWalls x y ts
+    | x < y     = not . V.any (isWall) . V.slice x d $ ts
+    | x > y     = not . V.any (isWall) . V.slice y d $ ts
+    | otherwise = False
+    where d = abs $ x - y
+
 ---------------------------------------------------------------------
 -- Moving and updating the player
 
 -- Exported
-
-playerWaitTime :: Int
-playerWaitTime = 225000
 
 movePlayer :: Game -> Game
 movePlayer g
@@ -257,40 +291,34 @@ movePlayer g
           t1 = m0 ! p1
 
 ---------------------------------------------------------------------
--- Moving and updating the ghosts
+-- Tiling the ghosts
 
 -- Exported
 
 tileGhosts :: Game -> [(Point, Tile)]
 tileGhosts gm = [ (g ^. T.gpos, tileGhost gm g) | g <- gm ^. T.ghosts ]
 
-ghostWaitTime :: Int
-ghostWaitTime = 225000
-
-edibleGhostWaitTime :: Int
-edibleGhostWaitTime = 2 * ghostWaitTime
-
 -- Unexported
 
 tileGhost :: Game -> Ghost -> Tile
-tileGhost gm g
-    | isBlueGhost  = BlueGhost
-    | isEdible g   = WhiteGhost
-    | isEyesOnly g = GhostEyes
-    | otherwise    = g ^. T.gname
-    where isBlueGhost = isEdible g && isBlue (pwrTimeLeft gm) gm
+tileGhost gm g = case g ^. T.gstate of
+                      Edible    -> tileEdibleGhost gm g
+                      EyesOnly  -> GhostEyes
+                      otherwise -> g ^. T.gname
 
-isEdible :: Ghost -> Bool
-isEdible g = g ^. T.gstate == Edible
+tileEdibleGhost :: Game -> Ghost -> Tile
+tileEdibleGhost gm g
+    | trem >= half = BlueGhost
+    | isWhite      = WhiteGhost
+    | otherwise    = BlueGhost
+    where trem    = pwrTimeLeft gm
+          half    = quot ( gm ^. T.pwrtime ) 2
+          isWhite = odd . quot trem $ gm ^. T.dtime
 
-isEyesOnly :: Ghost -> Bool
-isEyesOnly g = g ^. T.gstate == EyesOnly
+---------------------------------------------------------------------
+-- Moving the ghosts
 
-isBlue :: Int -> Game -> Bool
-isBlue tlft gm
-    | tlft >= half = True
-    | otherwise    = even . quot tlft $ ( gm ^. T.dtime )
-    where half = quot ( gm ^. T.pwrtime ) 2
+-- Exported
 
 moveGhosts :: Game -> Game
 moveGhosts gm = let (gs, r) = foldr ( moveGhost gm ) start $ gm ^. T.ghosts
@@ -298,57 +326,48 @@ moveGhosts gm = let (gs, r) = foldr ( moveGhost gm ) start $ gm ^. T.ghosts
                 in  gm & T.ghosts .~ gs
                        & T.rgen   .~ r
 
-moveGhost :: Game -> Ghost -> ([Ghost], StdGen) -> ([Ghost], StdGen)
-moveGhost gm g0 (gs, r0)
-    | isEyesOnly g0 = (moveEyes gm g0 : gs, r0)
-    | otherwise     = moveWholeGhost gm g0 (gs, r0)
+-- Unexported
 
-moveEyes :: Game -> Ghost -> Ghost
-moveEyes gm g
-    | isWaiting = g
-    | otherwise = case g ^. T.gpathback of
-                       []     -> resetGhost g
-                       (p:ps) -> g & T.gpathback .~ ps
-                                   & T.gpos      .~ p
-    where isWaiting = gm ^. T.time - g ^. T.gtlast < ghostWaitTime
+moveGhost :: Game -> Ghost -> ([Ghost], StdGen) -> ([Ghost], StdGen)
+moveGhost gm g0 (gs, r0) = case g0 ^. T.gstate of
+                                EyesOnly  -> moveEyes g0 (gs, r0)
+                                otherwise -> moveWholeGhost gm g0 (gs, r0)
+
+moveEyes :: Ghost -> ([Ghost], StdGen) -> ([Ghost], StdGen)
+moveEyes g0 (gs,r) = (g1:gs, r)
+    where g1 = case g0 ^. T.gpathback of
+                    []     -> resetGhost g0
+                    (p:ps) -> g0 & T.gpos      .~ p
+                                 & T.gpathback .~ ps
 
 moveWholeGhost :: Game -> Ghost -> ([Ghost], StdGen) -> ([Ghost], StdGen)
 moveWholeGhost gm g0 (gs, r0)
-    | isWaiting = (g0:gs, r0)
-    | otherwise = (g1:gs, r1)
-    where dt        = gm ^. T.time - g0 ^. T.gtlast
-          isWaiting | isEdible g0 = dt < edibleGhostWaitTime
-                    | otherwise   = dt < ghostWaitTime
-          p0        = g0 ^. T.gpos
-          m         = gm ^. T.maze
-          (r1,ds)   = proposeDirections gm g0 r0
-          ps        = [ (d, getNxtPos p0 (m ! p0) d) | d <- ds ]
-          (d1,p1)   = head . filter (isFree m . snd) $ ps
-          g1        = g0 & T.gpos   .~ p1
-                         & T.gdir   .~ d1
-                         & T.gtlast .~ gm ^. T.time
+    | isGhostWaiting gm g0 = (g0:gs, r0)
+    | otherwise            = (g1:gs, r1)
+    where p0      = g0 ^. T.gpos
+          m       = gm ^. T.maze
+          (r1,ds) = proposeDirections gm g0 r0
+          ps      = [ (d, getNxtPos p0 (m ! p0) d) | d <- ds ]
+          (d1,p1) = head . filter (isFree m . snd) $ ps
+          g1      = g0 & T.gpos   .~ p1
+                       & T.gdir   .~ d1
+                       & T.gtlast .~ gm ^. T.time
+
+isGhostWaiting :: Game -> Ghost -> Bool
+isGhostWaiting gm g = let dt = gm ^. T.time - g ^. T.gtlast
+                      in  case g ^. T.gstate of
+                               Normal    -> dt < ghostWaitTime
+                               Edible    -> dt < edibleGhostWaitTime
+                               EyesOnly  -> dt < ghostWaitTime
 
 proposeDirections :: Game -> Ghost -> StdGen -> (StdGen, [Direction])
 proposeDirections gm g r = randomDirections r ds
     where ds = [North, South, East, West] ++ replicate 20 pd
           pd = case toPacMan gm g of
                     Nothing -> g ^. T.gdir
-                    Just d  -> if isEdible g
-                               then runAway d
-                               else d
-
-runAway :: Direction -> Direction
-runAway North = South
-runAway South = North
-runAway West  = East
-runAway East  = West
-
-noWalls :: Int -> Int -> V.Vector Tile -> Bool
-noWalls x y ts
-    | x < y     = not . V.any (isWall) . V.slice x d $ ts
-    | x > y     = not . V.any (isWall) . V.slice y d $ ts
-    | otherwise = False
-    where d = abs $ x - y
+                    Just d  -> if g ^. T.gstate == Edible
+                                  then revDirection d
+                                  else d
 
 toPacMan :: Game -> Ghost -> Maybe Direction
 toPacMan g gst
@@ -369,6 +388,9 @@ randomDirections r0 ds0 = (r, d:ds)
           d       = ds0 !! k
           ds1     = delete d . nub $ ds0
           (r,ds)  = randomDirections r1 ds1
+
+-- =============================================================== --
+-- Path-finding
 
 pathBetween :: Maze -> Point -> Point -> [Point]
 pathBetween m p0 p1
