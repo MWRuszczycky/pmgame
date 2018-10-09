@@ -22,8 +22,7 @@ import Brick.AttrMap                    ( attrMap, AttrMap          )
 import Brick.Util                       ( on, bg, fg                )
 import Brick.Widgets.Center             ( center, hCenter, vCenter  )
 import Model.Model                      ( tileGhosts                )
-import Model.Utilities                  ( isGhost ,isWall, isPlayer
-                                        , isPellet                  )
+import Model.Utilities                  ( isGhost                   )
 import Model.Types                      ( Game      (..)
                                         , GameSt    (..)
                                         , Tile      (..)
@@ -117,29 +116,13 @@ renderMaze g = vBox . map ( hBox . map (renderTile g) ) . M.toLists $ m2
           m2 = M.setElem Player ( g ^. T.pacman . T.ppos ) m1
 
 renderTile :: Game -> Tile -> Widget ()
-renderTile g t
-    | isWall t   = renderWall t
-    | isPellet t = renderPellet t
+renderTile gm (Wall s)  = withAttr "maze"   . txt $ s
+renderTile _  Pellet    = withAttr "pellet" . txt $ "."
+renderTile _  PwrPellet = withAttr "pellet" . txt $ "*"
+renderTile gm Player    = renderPlayer gm
+renderTile _  t
     | isGhost t  = renderGhost t
-    | isPlayer t = renderPlayer g
     | otherwise  = withAttr "maze" . txt $ " "
-
-renderWall :: Tile -> Widget ()
-renderWall HBar = withAttr "maze" . txt $ "═"
-renderWall VBar = withAttr "maze" . txt $ "║"
-renderWall Cros = withAttr "maze" . txt $ "╬"
-renderWall LTee = withAttr "maze" . txt $ "╣"
-renderWall RTee = withAttr "maze" . txt $ "╠"
-renderWall DTee = withAttr "maze" . txt $ "╦"
-renderWall UTee = withAttr "maze" . txt $ "╩"
-renderWall LUCr = withAttr "maze" . txt $ "╔"
-renderWall RUCr = withAttr "maze" . txt $ "╗"
-renderWall LDCr = withAttr "maze" . txt $ "╚"
-renderWall RDCr = withAttr "maze" . txt $ "╝"
-
-renderPellet :: Tile -> Widget ()
-renderPellet Pellet    = withAttr "pellet" . txt $ "."
-renderPellet PwrPellet = withAttr "pellet" . txt $ "*"
 
 renderPlayer :: Game -> Widget ()
 renderPlayer g = withAttr "player" . txt . glyph $ g ^. T.pacman . T.pdir

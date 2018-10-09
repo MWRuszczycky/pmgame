@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 module Loading
     ( initGame
     , levels
@@ -147,17 +148,17 @@ resolveWarp xs (r,c)
 
 resolveWall :: [(Point, Char)] -> Point -> Char -> Tile
 resolveWall xs (r,c) x
-    | nw && sw && ww && ew = Cros
-    | nw && sw && ww       = LTee
-    | nw && ww && ew       = UTee
-    | nw && sw && ew       = RTee
-    | sw && ww && ew       = DTee
-    | nw && ww             = RDCr
-    | nw && ew             = LDCr
-    | sw && ww             = RUCr
-    | sw && ew             = LUCr
-    | sw || nw             = VBar
-    | otherwise            = HBar
+    | nw && sw && ww && ew = Wall "╬"
+    | nw && sw && ww       = Wall "╣"
+    | nw && ww && ew       = Wall "╩"
+    | nw && sw && ew       = Wall "╠"
+    | sw && ww && ew       = Wall "╦"
+    | nw && ww             = Wall "╝"
+    | nw && ew             = Wall "╚"
+    | sw && ww             = Wall "╗"
+    | sw && ew             = Wall "╔"
+    | sw || nw             = Wall "║"
+    | otherwise            = Wall "═"
     where nw  = verWallLink x . lookup (r-1, c) $ xs
           sw  = verWallLink x . lookup (r+1, c) $ xs
           ww  = horWallLink x . lookup (r, c-1) $ xs

@@ -192,6 +192,22 @@ movePlayer g
           p1 = moveFrom m0 p0 $ g ^. T.pacman . T.pdir
           t1 = m0 ! p1
 
+-- movePlayer :: Game -> Game
+-- mavePlayer gm
+--     | isPlayerWaiting gm = gm
+--     | otherwise          = let p0 = gm ^. T.pacman . T.ppos
+--                                m  = gm ^. T.maze
+--                                p1 = moveFrom m p0 $ gm ^. T.pacman . T.pdir
+--                            in  case m ! p1 of
+--                                PwrPellet -> powerPlayer gm p1
+--                                Pellet    -> eatPellet gm p1
+--                                Wall _    -> gm
+--                                otheriwes -> gm & T.pacman . T.ppos .~ p1
+
+isPlayerWaiting :: Game -> Bool
+isPlayerWaiting gm = dt < playerWaitTime
+    where dt = gm ^. T.time - gm  ^. T.pacman . T.ptlast
+
 ---------------------------------------------------------------------
 -- Tiling the ghosts
 

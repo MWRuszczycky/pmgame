@@ -47,6 +47,7 @@ module Model.Types
     ) where
 
 import qualified Data.Matrix as M
+import qualified Data.Text   as Txt
 import System.Random                ( StdGen )
 import Lens.Micro.TH                ( makeLenses )
 
@@ -78,18 +79,8 @@ data Tile = Player
           | WhiteGhost
           | GhostEyes
           -- Maze walls
-          | HBar
-          | VBar
-          | Cros
-          | LTee
-          | RTee
-          | DTee
-          | UTee
-          | LUCr
-          | RUCr
-          | LDCr
-          | RDCr
-          -- Warps
+          | Wall Txt.Text
+          -- Warp tiles
           | Warp Direction Point
           deriving (Show, Eq)
 

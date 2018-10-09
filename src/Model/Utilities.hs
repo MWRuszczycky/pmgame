@@ -76,8 +76,10 @@ isPlayer t = t == Player
 
 isWall :: Tile -> Bool
 -- ^Evaluate whether a tile is a wall tile.
-isWall t = elem t ws
-    where ws = [ HBar, VBar, LTee, UTee, RTee, DTee, RDCr, LDCr, RUCr, LUCr ]
+isWall (Wall _) = True
+isWall _        = False
+-- isWall t = elem t ws
+--     where ws = [ HBar, VBar, LTee, UTee, RTee, DTee, RDCr, LDCr, RUCr, LUCr ]
 
 noWalls :: Int -> Int -> V.Vector Tile -> Bool
 -- ^Determine if there are no wall tiles between two elements in a
