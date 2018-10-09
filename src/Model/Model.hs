@@ -99,14 +99,14 @@ updateCaptures g0 g1
     | moreLives = g1 & T.status .~ ReplayLvl
     | otherwise = g1 & T.status .~ GameOver
     where gsts      = ghostCapture g0 g1
-          ateGhost  = all isEdible gsts
+          ateGhost  = all ( (== Edible) . (^. T.gstate) ) gsts
           eaten     = eatGhost g0 . head $ gsts
           uneaten   = filter (/= eaten) $ g0 ^. T.ghosts
           dscore    = 100 * ( g1 ^. T.pwrmult )
           moreLives = g1 ^. T.oneups > 0
 
 eatGhost :: Game -> Ghost -> Ghost
-eatGhost gm g = let m = gm ^. T.maze
+eatGhost gm g = let m  = gm ^. T.maze
                     p0 = g ^. T.gpos
                     p1 = fst $ g ^. T.gstrt
                 in g & T.gstate    .~ EyesOnly
@@ -114,12 +114,12 @@ eatGhost gm g = let m = gm ^. T.maze
 
 ghostCapture :: Game -> Game -> [Ghost]
 -- ^Return a list of all ghosts capturing or captured by player.
-ghostCapture g0 g1 = let p0 = g0 ^. T.pacman . T.ppos
-                         p1 = g1 ^. T.pacman . T.ppos
-                         gs = zip ( g0 ^. T.ghosts ) ( g1 ^. T.ghosts )
-                     in  [ y | (x,y) <- gs
-                             , not . isEyesOnly $ x
-                             , isCapture (p0, p1) (x ^. T.gpos, y ^. T.gpos) ]
+ghostCapture gm0 gm1 = let p0 = gm0 ^. T.pacman . T.ppos
+                           p1 = gm1 ^. T.pacman . T.ppos
+                           gs = zip ( gm0 ^. T.ghosts ) ( gm1 ^. T.ghosts )
+                     in  [ g1 | (g0, g1) <- gs
+                             , g0 ^. T.gstate /= EyesOnly
+                             , isCapture (p0, p1) (g0 ^. T.gpos, g1 ^. T.gpos) ]
 
 isCapture :: (Point, Point) -> (Point, Point) -> Bool
 isCapture (p0, p1) (g0, g1) = p1 == g1 || p1 == g0 && p0 == g1
@@ -129,11 +129,10 @@ makeEdible g = case g ^. T.gstate of
                     EyesOnly  -> g
                     otherwise -> g & T.gstate .~ Edible
 
-isEdible :: Ghost -> Bool
-isEdible g = g ^. T.gstate == Edible
-
-isEyesOnly :: Ghost -> Bool
-isEyesOnly g = g ^. T.gstate == EyesOnly
+makeInedible :: Ghost -> Ghost
+makeInedible g = case g ^. T.gstate of
+                      Edible    -> g & T.gstate .~ Normal
+                      otherwise -> g
 
 ---------------------------------------------------------------------
 -- Dealing with the "powered" state after eating a power pellet
@@ -147,16 +146,13 @@ updatePower g0 g1
     | otherwise        = g1
 
 powerGame :: Game -> Game
-powerGame g = let gsts = map makeEdible $ g ^. T.ghosts
-              in  g & T.ghosts .~ gsts
-                    & T.status .~ PwrRunning ( g ^. T.time )
+powerGame gm = gm & T.ghosts %~ map makeEdible
+                  & T.status .~ PwrRunning ( gm ^. T.time )
 
 depowerGame :: Game -> Game
-depowerGame gm = let go g = if isEdible g then set T.gstate Normal g else g
-                     gs   = map go $ gm ^. T.ghosts
-                 in  gm & T.ghosts  .~ gs
-                        & T.status  .~ Running
-                        & T.pwrmult .~ 2
+depowerGame gm = gm & T.ghosts  %~ map makeInedible
+                    & T.status  .~ Running
+                    & T.pwrmult .~ 2
 
 wasPowered :: Game -> Game -> Bool
 -- ^Determine whether a power pellet was eaten in the last iteration.
