@@ -105,7 +105,7 @@ renderFruit g = padLeft Max . withAttr "score" . txt $ "fruit!"
 
 renderMessage :: Game -> Widget ()
 renderMessage g = hCenter . go $ g ^. T.msg
-    where go Nothing      = emptyWidget
+    where go Nothing      = withAttr "background" . str $ " "
           go (Just (s,_)) = withAttr "score" . str $ s
 
 renderMaze :: Game -> Widget ()
