@@ -140,14 +140,20 @@ makeInedible g = case g ^. T.gstate of
 -- Unexported
 
 updatePower :: Game -> Game
-updatePower gm
-    | isPowered = gm
-    | otherwise = gm & T.ghosts  %~ map makeInedible
-                     & T.status  .~ Running
-                     & T.pwrmult .~ 2
-    where isPowered = case gm ^. T.status of
-                           PwrRunning _ -> powerTimeLeft gm > 0
-                           otherwise    -> False
+updatePower gm = case gm ^. T.status of
+                      Running      -> gm
+                      LevelOver    -> gm
+                      ReplayLvl    -> gm
+                      GameOver     -> gm
+                      PwrRunning _ -> depowerGame gm
+
+depowerGame :: Game -> Game
+depowerGame gm
+    | powerTimeLeft gm > 0 = gm
+    | otherwise            = depoweredGame
+    where depoweredGame = gm & T.ghosts  %~ map makeInedible
+                             & T.status  .~ Running
+                             & T.pwrmult .~ 2
 
 -- =============================================================== --
 -- Moving ghosts and player
