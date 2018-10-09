@@ -5,8 +5,6 @@ module Model.Utilities
     , powerTimeLeft
     , isFree
     , isGhost
-    , isPellet
-    , isPlayer
     , isWall
     , noWalls
     , moveFrom
@@ -65,14 +63,6 @@ isGhost :: Tile -> Bool
 -- ^Evaluate whether a tile is a ghost.
 isGhost t = elem t [ Blinky, Pinky, Inky, Clyde
                    , BlueGhost, WhiteGhost, GhostEyes ]
-
-isPellet :: Tile -> Bool
--- ^Evaluate whether a tile is a pellet.
-isPellet t = elem t [ PwrPellet, Pellet ]
-
-isPlayer :: Tile -> Bool
--- ^Evaluate whether a tile is the player.
-isPlayer t = t == Player
 
 isWall :: Tile -> Bool
 -- ^Evaluate whether a tile is a wall tile.

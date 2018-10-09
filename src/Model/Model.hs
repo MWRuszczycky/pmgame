@@ -74,7 +74,7 @@ resetGhost g = let (pos0, dir0) = g ^. T.gstrt
 updateGame :: Game -> Game -> Game
 updateGame g0 g1
     | levelFinished = g1 & T.status .~ LevelOver
-    | otherwise     = updatePower g0 . updateCaptures g0 . updateMessage $ g1
+    | otherwise     = updatePower . updateCaptures g0 . updateMessage $ g1
     where levelFinished = g1 ^. T.npellets == 0
 
 ---------------------------------------------------------------------
@@ -139,30 +139,15 @@ makeInedible g = case g ^. T.gstate of
 
 -- Unexported
 
-updatePower :: Game -> Game -> Game
-updatePower g0 g1
-    | wasPowered g0 g1 = powerGame g1
-    | wasDepowered g1  = depowerGame g1
-    | otherwise        = g1
-
-powerGame :: Game -> Game
-powerGame gm = gm & T.ghosts %~ map makeEdible
-                  & T.status .~ PwrRunning ( gm ^. T.time )
-
-depowerGame :: Game -> Game
-depowerGame gm = gm & T.ghosts  %~ map makeInedible
-                    & T.status  .~ Running
-                    & T.pwrmult .~ 2
-
-wasPowered :: Game -> Game -> Bool
--- ^Determine whether a power pellet was eaten in the last iteration.
-wasPowered g0 g1 = t1 == PwrPellet
-    where t1 = (g0 ^. T.maze) ! (g1 ^. T.pacman . T.ppos)
-
-wasDepowered :: Game -> Bool
-wasDepowered g = case g ^. T.status of
-                      PwrRunning _ -> powerTimeLeft g == 0
-                      otherwise    -> False
+updatePower :: Game -> Game
+updatePower gm
+    | isPowered = gm
+    | otherwise = gm & T.ghosts  %~ map makeInedible
+                     & T.status  .~ Running
+                     & T.pwrmult .~ 2
+    where isPowered = case gm ^. T.status of
+                           PwrRunning _ -> powerTimeLeft gm > 0
+                           otherwise    -> False
 
 -- =============================================================== --
 -- Moving ghosts and player
@@ -171,38 +156,35 @@ wasDepowered g = case g ^. T.status of
 -- Moving and updating the player
 
 movePlayer :: Game -> Game
-movePlayer g
-    | isWaiting       = g
-    | isWall t1       = g
-    | t1 == PwrPellet = g & T.pacman . T.ppos .~ p1
-                          & T.pacman . T.ptlast .~ ( g ^. T.time )
-                          & T.maze %~ M.setElem Empty p1
-                          & T.npellets %~ pred
-                          & T.items . T.ppellets %~ succ
-                          & T.msg .~ Just ("Power Pellet! +50", 3000000)
-    | t1 == Pellet    = g & T.pacman . T.ppos .~ p1
-                          & T.pacman . T.ptlast .~ ( g ^. T.time )
-                          & T.maze %~ M.setElem Empty p1
-                          & T.npellets %~ pred
-                          & T.items . T.pellets %~ succ
-    | otherwise       = g & T.pacman . T.ppos .~ p1
-    where isWaiting = g ^. T.time - g ^. T.pacman . T.ptlast < playerWaitTime
-          p0 = g ^. T.pacman . T.ppos
-          m0 = g ^. T.maze
-          p1 = moveFrom m0 p0 $ g ^. T.pacman . T.pdir
-          t1 = m0 ! p1
+movePlayer gm
+    | isPlayerWaiting gm = gm
+    | otherwise          = let p0 = gm ^. T.pacman . T.ppos
+                               m  = gm ^. T.maze
+                               p1 = moveFrom m p0 $ gm ^. T.pacman . T.pdir
+                           in  case m ! p1 of
+                                    PwrPellet -> eatPwrPellet gm p1
+                                    Pellet    -> eatPellet gm p1
+                                    Wall _    -> gm
+                                    otherwise -> gm & T.pacman . T.ppos .~ p1
 
--- movePlayer :: Game -> Game
--- mavePlayer gm
---     | isPlayerWaiting gm = gm
---     | otherwise          = let p0 = gm ^. T.pacman . T.ppos
---                                m  = gm ^. T.maze
---                                p1 = moveFrom m p0 $ gm ^. T.pacman . T.pdir
---                            in  case m ! p1 of
---                                PwrPellet -> powerPlayer gm p1
---                                Pellet    -> eatPellet gm p1
---                                Wall _    -> gm
---                                otheriwes -> gm & T.pacman . T.ppos .~ p1
+-- Unexported
+
+eatPellet :: Game -> Point -> Game
+eatPellet gm p = gm & T.pacman . T.ppos .~ p
+                    & T.pacman . T.ptlast .~ ( gm ^. T.time )
+                    & T.maze %~ M.setElem Empty p
+                    & T.npellets %~ pred
+                    & T.items . T.pellets %~ succ
+
+eatPwrPellet :: Game -> Point -> Game
+eatPwrPellet gm p = gm & T.pacman . T.ppos .~ p
+                       & T.pacman . T.ptlast .~ ( gm ^. T.time )
+                       & T.maze %~ M.setElem Empty p
+                       & T.npellets %~ pred
+                       & T.items . T.ppellets %~ succ
+                       & T.msg .~ Just ("Power Pellet! +50", 3000000) 
+                       & T.ghosts %~ map makeEdible
+                       & T.status .~ PwrRunning ( gm ^. T.time )
 
 isPlayerWaiting :: Game -> Bool
 isPlayerWaiting gm = dt < playerWaitTime
