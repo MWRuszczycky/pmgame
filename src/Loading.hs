@@ -5,10 +5,10 @@ module Loading
 
 import qualified Data.Matrix as M
 import qualified Data.Vector as V
-import qualified Types       as T
+import qualified Model.Types as T
 import Lens.Micro                   ( (&), (^.), (.~), (%~) )
 import System.Random                ( StdGen                )
-import Types                        ( Game          (..)
+import Model.Types                  ( Game          (..)
                                     , GameSt        (..)
                                     , Maze          (..)
                                     , Point         (..)

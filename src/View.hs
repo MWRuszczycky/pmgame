@@ -7,7 +7,7 @@ module View
 import qualified Graphics.Vty as V
 import qualified Data.Text    as Txt
 import qualified Data.Matrix  as M
-import qualified Types        as T
+import qualified Model.Types  as T
 import Data.List                        ( foldl'                    )
 import Lens.Micro                       ( (.~), (^.), (&)           )
 import Brick.Types                      ( Widget (..), Padding (..) )
@@ -21,9 +21,10 @@ import Brick.Widgets.Border             ( borderWithLabel
 import Brick.AttrMap                    ( attrMap, AttrMap          )
 import Brick.Util                       ( on, bg, fg                )
 import Brick.Widgets.Center             ( center, hCenter, vCenter  )
-import Model                            ( isGhost ,isWall, isPlayer
-                                        , isPellet, tileGhosts      )
-import Types                            ( Game      (..)
+import Model.Model                      ( tileGhosts                )
+import Model.Utilities                  ( isGhost ,isWall, isPlayer
+                                        , isPellet                  )
+import Model.Types                      ( Game      (..)
                                         , GameSt    (..)
                                         , Tile      (..)
                                         , Direction (..)

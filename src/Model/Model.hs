@@ -1,29 +1,31 @@
-module Model
-    ( isGhost
-    , isPellet
-    , isPlayer
-    , isWall
-    , getNxtLevel
-    , restartLevel
+module Model.Model
+    ( restartLevel
     , updateGame
-    , playerWaitTime
     , movePlayer
     , moveGhosts
     , tileGhosts
-    , ghostWaitTime
-    , edibleGhostWaitTime
     ) where
 
 import qualified Data.Matrix as M
-import qualified Data.Vector as V
-import qualified Types       as T
+-- import qualified Data.Vector as V
+import qualified Model.Types as T
 import Lens.Micro                   ( (&), (^.), (.~), (%~), set    )
 import Data.Matrix                  ( (!)                           )
 import Data.List                    ( delete
                                     , nub                           )
 import System.Random                ( StdGen
                                     , randomR                       )
-import Types                        ( Tile          (..)
+import Model.Utilities              ( isWall
+                                    , isFree
+                                    , noWalls
+                                    , powerTimeLeft
+                                    , playerWaitTime
+                                    , ghostWaitTime
+                                    , edibleGhostWaitTime
+                                    , revDirection
+                                    , moveFrom
+                                    , pathBetween                   )
+import Model.Types                  ( Tile          (..)
                                     , Game          (..)
                                     , Status        (..)
                                     , Point         (..)
@@ -38,59 +40,12 @@ import Types                        ( Tile          (..)
 -- Pure functions for managing game state
 
 -- =============================================================== --
--- Values
-
-playerWaitTime :: Int
-playerWaitTime = 225000
-
-ghostWaitTime :: Int
-ghostWaitTime = 225000
-
-edibleGhostWaitTime :: Int
-edibleGhostWaitTime = 2 * ghostWaitTime
-
--- =============================================================== --
--- Tile subtypes
-
--- Exported
-
-isGhost :: Tile -> Bool
--- ^Evaluate whether a tile is a ghost.
-isGhost t = elem t [ Blinky, Pinky, Inky, Clyde
-                   , BlueGhost, WhiteGhost, GhostEyes ]
-
-isWall :: Tile -> Bool
--- ^Evaluate whether a tile is a wall tile.
-isWall t = elem t ws
-    where ws = [ HBar, VBar, LTee, UTee, RTee, DTee, RDCr, LDCr, RUCr, LUCr ]
-
-isPellet :: Tile -> Bool
--- ^Evaluate whether a tile is a pellet.
-isPellet t = elem t [ PwrPellet, Pellet ]
-
-isPlayer :: Tile -> Bool
--- ^Evaluate whether a tile is the player.
-isPlayer t = t == Player
-
-isFree :: Maze -> Point -> Bool
--- ^Evaluate whether a point in the maze is free to be entered.
-isFree m (r,c) = case M.safeGet r c m of
-                      Nothing -> False
-                      Just t  -> not . isWall $ t
-
--- =============================================================== --
 -- Game and level restarting
 
 -- Exported
 
-getNxtLevel :: Game -> Game -> Game
-getNxtLevel g0 g1 = g1 & T.items   .~ ( g0 ^. T.items )
-                       & T.level   .~ ( succ $ g0 ^. T.level )
-                       & T.oneups  .~ ( g0 ^. T.oneups )
-                       & T.pwrmult .~ 2
-
 restartLevel :: Game -> Game
--- ^Restarts the current level.
+-- ^Restarts the current level after player is captured by a ghost.
 restartLevel g = g & T.status  .~ Running
                    & T.pacman  %~ resetPacMan
                    & T.ghosts  %~ map resetGhost
@@ -100,13 +55,11 @@ restartLevel g = g & T.status  .~ Running
 -- Unexported
 
 resetPacMan :: PacMan -> PacMan
--- ^Resets player to origin position and direction.
 resetPacMan p = let (pos0, dir0) = p ^. T.pstrt
                 in  p & T.ppos .~ pos0
                       & T.pdir .~ dir0
 
 resetGhost :: Ghost -> Ghost
--- ^Reset a ghost to its original position and direction.
 resetGhost g = let (pos0, dir0) = g ^. T.gstrt
                in  g & T.gpos      .~ pos0
                      & T.gdir      .~ dir0
@@ -114,14 +67,14 @@ resetGhost g = let (pos0, dir0) = g ^. T.gstrt
                      & T.gpathback .~ []
 
 -- =============================================================== --
--- Game status management
+-- Game status updating
 
 -- Exported
 
 updateGame :: Game -> Game -> Game
 updateGame g0 g1
     | levelFinished = g1 & T.status .~ LevelOver
-    | otherwise     = checkPower g0 . checkCaptures g0 . updateMessage $ g1
+    | otherwise     = updatePower g0 . updateCaptures g0 . updateMessage $ g1
     where levelFinished = g1 ^. T.npellets == 0
 
 ---------------------------------------------------------------------
@@ -136,8 +89,8 @@ updateMessage gm = go $ gm ^. T.msg
                           | otherwise = let t' = t - gm ^. T.dtime
                                         in  gm & T.msg .~ Just (s, t')
 
-checkCaptures :: Game -> Game -> Game
-checkCaptures g0 g1
+updateCaptures :: Game -> Game -> Game
+updateCaptures g0 g1
     | null gsts = g1
     | ateGhost  = g1 & T.ghosts .~ eaten : uneaten
                      & T.items . T.gstscore %~ (+ dscore)
@@ -187,8 +140,8 @@ isEyesOnly g = g ^. T.gstate == EyesOnly
 
 -- Unexported
 
-checkPower :: Game -> Game -> Game
-checkPower g0 g1
+updatePower :: Game -> Game -> Game
+updatePower g0 g1
     | wasPowered g0 g1 = powerGame g1
     | wasDepowered g1  = depowerGame g1
     | otherwise        = g1
@@ -199,74 +152,27 @@ powerGame g = let gsts = map makeEdible $ g ^. T.ghosts
                     & T.status .~ PwrRunning ( g ^. T.time )
 
 depowerGame :: Game -> Game
-depowerGame g = let go x = if isEdible x then set T.gstate Normal x else x
-                    gsts = map go $ g ^. T.ghosts
-                in  g & T.ghosts  .~ gsts
-                      & T.status  .~ Running
-                      & T.pwrmult .~ 2
+depowerGame gm = let go g = if isEdible g then set T.gstate Normal g else g
+                     gs   = map go $ gm ^. T.ghosts
+                 in  gm & T.ghosts  .~ gs
+                        & T.status  .~ Running
+                        & T.pwrmult .~ 2
 
 wasPowered :: Game -> Game -> Bool
+-- ^Determine whether a power pellet was eaten in the last iteration.
 wasPowered g0 g1 = t1 == PwrPellet
     where t1 = (g0 ^. T.maze) ! (g1 ^. T.pacman . T.ppos)
 
 wasDepowered :: Game -> Bool
 wasDepowered g = case g ^. T.status of
-                      PwrRunning _ -> pwrTimeLeft g == 0
+                      PwrRunning _ -> powerTimeLeft g == 0
                       otherwise    -> False
-
-pwrTimeLeft :: Game -> Int
-pwrTimeLeft g
-    | dt > 0    = dt
-    | otherwise = 0
-    where dt = case g ^. T.status of
-                    PwrRunning t0 -> g ^. T.pwrtime - ( g ^. T.time - t0 )
-                    otherwise     -> 0
 
 -- =============================================================== --
 -- Moving ghosts and player
 
 ---------------------------------------------------------------------
--- General utilities
-
--- Unexported
-
-getNxtPos :: Point -> Tile -> Direction -> Point
--- ^Get next maze position based on current position, tile and
--- direction of movement.
-getNxtPos p0 (Warp wd p1) d
-    | d == wd   = p1
-    | otherwise = moveOneCell p0 d
-getNxtPos p0 _ d = moveOneCell p0 d
-
-moveOneCell :: Point -> Direction -> Point
-moveOneCell p = go p . dirToShift
-    where go (x0,y0) (x1,y1) = (x0 + x1, y0 + y1)
-
-dirToShift :: Direction -> Point
--- ^Maps directions to single-tick displacements.
-dirToShift West  = (0,-1)
-dirToShift East  = (0, 1)
-dirToShift North = (-1,0)
-dirToShift South = (1, 0)
-
-revDirection :: Direction -> Direction
-revDirection North = South
-revDirection South = North
-revDirection West  = East
-revDirection East  = West
-
-noWalls :: Int -> Int -> V.Vector Tile -> Bool
--- ^No walls in a vector of tiles between two indices.
-noWalls x y ts
-    | x < y     = not . V.any (isWall) . V.slice x d $ ts
-    | x > y     = not . V.any (isWall) . V.slice y d $ ts
-    | otherwise = False
-    where d = abs $ x - y
-
----------------------------------------------------------------------
 -- Moving and updating the player
-
--- Exported
 
 movePlayer :: Game -> Game
 movePlayer g
@@ -287,7 +193,7 @@ movePlayer g
     where isWaiting = g ^. T.time - g ^. T.pacman . T.ptlast < playerWaitTime
           p0 = g ^. T.pacman . T.ppos
           m0 = g ^. T.maze
-          p1 = getNxtPos p0 (m0 ! p0) $ g ^. T.pacman . T.pdir
+          p1 = moveFrom m0 p0 $ g ^. T.pacman . T.pdir
           t1 = m0 ! p1
 
 ---------------------------------------------------------------------
@@ -311,7 +217,7 @@ tileEdibleGhost gm g
     | trem >= half = BlueGhost
     | isWhite      = WhiteGhost
     | otherwise    = BlueGhost
-    where trem    = pwrTimeLeft gm
+    where trem    = powerTimeLeft gm
           half    = quot ( gm ^. T.pwrtime ) 2
           isWhite = odd . quot trem $ gm ^. T.dtime
 
@@ -347,7 +253,7 @@ moveWholeGhost gm g0 (gs, r0)
     where p0      = g0 ^. T.gpos
           m       = gm ^. T.maze
           (r1,ds) = proposeDirections gm g0 r0
-          ps      = [ (d, getNxtPos p0 (m ! p0) d) | d <- ds ]
+          ps      = [ (d, moveFrom m p0 d) | d <- ds ]
           (d1,p1) = head . filter (isFree m . snd) $ ps
           g1      = g0 & T.gpos   .~ p1
                        & T.gdir   .~ d1
@@ -388,30 +294,3 @@ randomDirections r0 ds0 = (r, d:ds)
           d       = ds0 !! k
           ds1     = delete d . nub $ ds0
           (r,ds)  = randomDirections r1 ds1
-
--- =============================================================== --
--- Path-finding
-
-pathBetween :: Maze -> Point -> Point -> [Point]
-pathBetween m p0 p1
-    | p0 == p1  = []
-    | otherwise = go . reverse . getPaths m p1 [] $ [p0]
-    where go []     = []
-          go (x:xs) = go ( dropWhile (not . connected x ) xs ) ++ [x]
-
-getPaths :: Maze -> Point -> [Point] -> [Point] -> [Point]
-getPaths m p ys (x:xs)
-    | p == x     = ys ++ [x]
-    | elem p nxt = ys' ++ [p]
-    | otherwise  = getPaths m p ys' (xs ++ nxt)
-    where ys' = ys ++ [x]
-          nxt = getNxtPoints m (ys ++ xs) x
-
-getNxtPoints :: Maze -> [Point] -> Point -> [Point]
-getNxtPoints m xs = filter ( not . flip elem xs ) . go
-    where go (r,c) = filter (isFree m) [ (r,c-1), (r,c+1), (r-1,c), (r+1,c) ]
-
-connected :: Point -> Point -> Bool
-connected (r1,c1) (r2,c2) = dr + dc < 2
-    where dr = abs $ r1 - r2
-          dc = abs $ c1 - c2

@@ -3,7 +3,7 @@ module Main where
 
 import qualified Graphics.Vty as V
 import qualified Data.Matrix  as M
-import qualified Types        as T
+import qualified Model.Types  as T
 import Lens.Micro                       ( (^.)                      )
 import System.Random                    ( getStdGen                 )
 import System.Environment               ( getArgs                   )
@@ -18,13 +18,13 @@ import Brick.Main                       ( App (..)
                                         , neverShowCursor
                                         , customMain                )
 import Controller                       ( eventRouter               )
-import Types                            ( GameSt    (..)
+import Model.Types                      ( GameSt    (..)
                                         , Status    (..)
                                         , TimeEvent (..)            )
 import View                             ( drawUI
                                         , attributes                )
 import Loading                          ( initGame                  )
-import Model                            ( playerWaitTime            )
+import Model.Utilities                  ( playerWaitTime            )
 
 app :: App GameSt TimeEvent ()
 app = App { appDraw         = drawUI

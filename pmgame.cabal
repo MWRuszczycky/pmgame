@@ -28,8 +28,9 @@ executable pmgame
                      , unix
                      , microlens
                      , microlens-th
- other-modules:        Types
-                     , Model
+ other-modules:        Model.Types
+                     , Model.Model
+                     , Model.Utilities
                      , Controller
                      , View
                      , Loading

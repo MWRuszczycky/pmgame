@@ -4,7 +4,7 @@ module Controller
 
 import qualified Graphics.Vty as V
 import qualified Data.Matrix  as M
-import qualified Types        as T
+import qualified Model.Types  as T
 import Lens.Micro                   ( (&), (^.), (.~), set  )
 import Brick.Types                  ( BrickEvent (..)
                                     , Next
@@ -12,17 +12,16 @@ import Brick.Types                  ( BrickEvent (..)
 import Brick.Main                   ( continue
                                     , suspendAndResume
                                     , halt                  )
-import Types                        ( Game       (..)
+import Model.Types                  ( Game       (..)
                                     , Status     (..)
                                     , TimeEvent  (..)
                                     , Direction  (..)
                                     , GameSt     (..)       )
 import Loading                      ( levels
                                     , initGame              )
-import Model                        ( movePlayer
+import Model.Model                  ( movePlayer
                                     , moveGhosts
                                     , restartLevel
-                                    , getNxtLevel
                                     , updateGame            )
 
 type EventHandler = BrickEvent () TimeEvent -> EventM () ( Next GameSt )
@@ -109,4 +108,6 @@ startNextLevel g (Just fn) = do
     etG <- initGame ( g ^. T.rgen ) ( g ^. T.dtime ) <$> readFile fn
     case etG of
          Left _   -> return etG
-         Right g' -> return . Right $ getNxtLevel g g'
+         Right g' -> return . Right $ g' & T.items  .~ ( g ^. T.items )
+                                         & T.level  .~ ( succ $ g ^. T.level )
+                                         & T.oneups .~ ( g ^. T.oneups)

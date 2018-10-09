@@ -1,5 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
-module Types
+module Model.Types
     ( Tile          (..)
     , Maze          (..)
     , Point         (..)
@@ -61,10 +61,15 @@ data Status = Running
             | ReplayLvl
             deriving ( Show, Eq )
 
+-- |Most of these are self-explanatory. However, the Warp tile also
+-- specifies the point where the warp leads to and the direction you
+-- have to go in from the Warp tile to activate the warp.
 data Tile = Player
           | Empty
+          -- Pellets
           | Pellet
           | PwrPellet
+          -- Ghosts
           | Pinky
           | Blinky
           | Inky
@@ -72,6 +77,7 @@ data Tile = Player
           | BlueGhost
           | WhiteGhost
           | GhostEyes
+          -- Maze walls
           | HBar
           | VBar
           | Cros
@@ -83,6 +89,7 @@ data Tile = Player
           | RUCr
           | LDCr
           | RDCr
+          -- Warps
           | Warp Direction Point
           deriving (Show, Eq)
 
