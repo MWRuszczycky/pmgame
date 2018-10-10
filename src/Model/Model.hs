@@ -163,14 +163,17 @@ depowerGame gm
 movePlayer :: Game -> Game
 movePlayer gm
     | isPlayerWaiting gm = gm
-    | otherwise          = let p0 = gm ^. T.pacman . T.ppos
-                               m  = gm ^. T.maze
-                               p1 = moveFrom m p0 $ gm ^. T.pacman . T.pdir
+    | otherwise          = let p0  = gm ^. T.pacman . T.ppos
+                               d0  = gm ^. T.pacman . T.pdir
+                               m   = gm ^. T.maze
+                               p1  = moveFrom m p0 $ gm ^. T.pacman . T.pdir
+                               gm' = gm & T.pacman . T.ppos .~ p1
                            in  case m ! p1 of
                                     PwrPellet -> eatPwrPellet gm p1
                                     Pellet    -> eatPellet gm p1
                                     Wall _    -> gm
-                                    otherwise -> gm & T.pacman . T.ppos .~ p1
+                                    OneWay d  -> if d == d0 then gm' else gm
+                                    otherwise -> gm'
 
 -- Unexported
 
@@ -251,7 +254,9 @@ moveWholeGhost gm g0 (gs, r0)
     | otherwise            = (g1:gs, r1)
     where p0      = g0 ^. T.gpos
           m       = gm ^. T.maze
-          (r1,ds) = proposeDirections gm g0 r0
+          atStart = g0 ^. T.gpos == fst ( g0 ^. T.gstrt )
+          bias    = if atStart then 0 else 20
+          (r1,ds) = proposeDirections gm g0 r0 bias
           (d1,p1) = chooseDirection gm g0 ds
           g1      = g0 & T.gpos   .~ p1
                        & T.gdir   .~ d1
@@ -266,15 +271,18 @@ isGhostWaiting gm g = let dt = gm ^. T.time - g ^. T.gtlast
 
 chooseDirection :: Game -> Ghost -> [Direction] -> (Direction, Point)
 chooseDirection gm g []     = (g ^. T.gdir, g ^. T.gpos)
-chooseDirection gm g (d:ds) = let m = gm ^. T.maze
-                                  p = moveFrom (gm ^. T.maze) (g ^. T.gpos) d
-                              in  case m ! p of
-                                       Wall _    -> chooseDirection gm g ds
-                                       otherwise -> (d, p)
+chooseDirection gm g (d:ds) =
+    let m   = gm ^. T.maze
+        p   = moveFrom m (g ^. T.gpos) d
+        nxt = chooseDirection gm g ds
+    in  case m ! p of
+             Wall _     -> nxt
+             OneWay owd -> if d == owd then (d, p) else nxt
+             otherwise  -> (d, p)
 
-proposeDirections :: Game -> Ghost -> StdGen -> (StdGen, [Direction])
-proposeDirections gm g r = randomDirections r ds
-    where ds = [North, South, East, West] ++ replicate 20 pd
+proposeDirections :: Game -> Ghost -> StdGen -> Int -> (StdGen, [Direction])
+proposeDirections gm g r bias = randomDirections r ds
+    where ds = [North, South, East, West] ++ replicate bias pd
           pd = case toPacMan gm g of
                     Nothing -> g ^. T.gdir
                     Just d  -> if g ^. T.gstate == Edible
@@ -298,5 +306,5 @@ randomDirections r0 [] = (r0, [])
 randomDirections r0 ds0 = (r, d:ds)
     where (k,r1)  = randomR (0, length ds0 - 1) r0
           d       = ds0 !! k
-          ds1     = delete d . nub $ ds0
+          ds1     = [ x | x <- ds0, x /= d ]
           (r,ds)  = randomDirections r1 ds1

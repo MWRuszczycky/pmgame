@@ -65,7 +65,7 @@ data Status = Running
 -- |Most of these are self-explanatory. However, the Warp tile also
 -- specifies the point where the warp leads to and the direction you
 -- have to go in from the Warp tile to activate the warp. A door can
--- only be entered and exited in a single direction. Doors are used
+-- only be entered and exited in a single direction. OneWays are used
 -- to prevent ghosts from rentering the starting ghost box.
 data Tile = Player
           | Empty
@@ -82,10 +82,9 @@ data Tile = Player
           | GhostEyes
           -- Maze walls
           | Wall Txt.Text
+          | OneWay Direction
           -- Warp tiles
           | Warp Direction Point
-          -- Door tiles
-          | Door Direction
           deriving (Show, Eq)
 
 type Maze = M.Matrix Tile

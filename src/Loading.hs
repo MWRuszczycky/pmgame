@@ -109,10 +109,10 @@ loadGhost xs c = do
 
 initMover :: Char -> Either String (Tile, Direction)
 initMover 'P' = Right ( Player, West  )
-initMover 'p' = Right ( Pinky,  North )
+initMover 'p' = Right ( Pinky,  East  )
 initMover 'b' = Right ( Blinky, West  )
-initMover 'i' = Right ( Inky,   East  )
-initMover 'c' = Right ( Clyde,  South )
+initMover 'i' = Right ( Inky,   West  )
+initMover 'c' = Right ( Clyde,  North )
 initMover x   = Left $ "Character '" ++ [x] ++ "' not recognized"
 
 -- Reading the maze
@@ -129,10 +129,10 @@ readTile :: [(Point, Char)] -> (Point, Char) -> Either String Tile
 readTile _  (_, '.') = Right Pellet
 readTile _  (_, '*') = Right PwrPellet
 readTile xs (p, 'w') = resolveWarp xs p
-readTile _  (_, '^') = Right . Door $ North
-readTile _  (_, 'v') = Right . Door $ South
-readTile _  (_, '<') = Right . Door $ West
-readTile _  (_, '>') = Right . Door $ East
+readTile _  (_, '^') = Right . OneWay $ North
+readTile _  (_, 'v') = Right . OneWay $ South
+readTile _  (_, '<') = Right . OneWay $ West
+readTile _  (_, '>') = Right . OneWay $ East
 readTile xs (p, '|') = Right . resolveWall xs p $ '|'
 readTile xs (p, '=') = Right . resolveWall xs p $ '='
 readTile _  _        = Right Empty

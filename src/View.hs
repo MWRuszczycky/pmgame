@@ -116,10 +116,14 @@ renderMaze g = vBox . map ( hBox . map (renderTile g) ) . M.toLists $ m2
           m2 = M.setElem Player ( g ^. T.pacman . T.ppos ) m1
 
 renderTile :: Game -> Tile -> Widget ()
-renderTile gm (Wall s)  = withAttr "maze"   . txt $ s
-renderTile _  Pellet    = withAttr "pellet" . txt $ "."
-renderTile _  PwrPellet = withAttr "pellet" . txt $ "*"
-renderTile gm Player    = renderPlayer gm
+renderTile gm (Wall s)       = withAttr "maze"   . txt $ s
+renderTile gm (OneWay North) = withAttr "oneway" . txt $ "-"
+renderTile gm (OneWay South) = withAttr "oneway" . txt $ "-"
+renderTile gm (OneWay West)  = withAttr "oneway" . txt $ "|"
+renderTile gm (OneWay East)  = withAttr "oneway" . txt $ "|"
+renderTile _  Pellet         = withAttr "pellet" . txt $ "."
+renderTile _  PwrPellet      = withAttr "pellet" . txt $ "*"
+renderTile gm Player         = renderPlayer gm
 renderTile _  t
     | isGhost t  = renderGhost t
     | otherwise  = withAttr "maze" . txt $ " "
@@ -147,6 +151,7 @@ attributes :: AttrMap
 attributes = attrMap V.defAttr
     [ ( "player", on V.black V.brightYellow )
     , ( "maze",   on V.blue V.black         )
+    , ( "oneway", on V.red V.black          )
     , ( "pellet", on V.white V.black        )
     , ( "score",  on V.white V.black        )
     , ( "blinky", on V.black V.red          )

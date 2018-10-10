@@ -89,6 +89,7 @@ moveFrom m p d = let go (x0,y0) (x1,y1) = (x0 + x1, y0 + y1)
                      nxt                = go p . dirToShift $ d
                  in  case m ! p of
                           Warp wd wp -> if wd == d then wp else nxt
+                          OneWay owd -> if owd == d then nxt else p
                           otherwise  -> nxt
 
 revDirection :: Direction -> Direction
