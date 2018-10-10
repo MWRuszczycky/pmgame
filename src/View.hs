@@ -14,7 +14,7 @@ import Brick.Types                      ( Widget (..), Padding (..) )
 import Brick.Widgets.Core               ( txt, withAttr, vBox, hBox
                                         , str, hLimit, vLimit, fill
                                         , withBorderStyle, padLeft
-                                        , (<+>), emptyWidget        )
+                                        , (<+>) , emptyWidget       )
 import Brick.Widgets.Border.Style       ( unicodeRounded            )
 import Brick.Widgets.Border             ( borderWithLabel
                                         , borderAttr                )
@@ -41,10 +41,9 @@ drawUI (Right g)  = case g ^. T.status of
 drawRunningUI :: Game -> [ Widget () ]
 drawRunningUI g = [ withAttr "background" ui ]
     where ui = center . hLimit ( M.ncols $ g ^. T.maze ) . vBox $ ws
-          ws = [ renderScore g
+          ws = [ renderHeader g
                , renderMaze g
                , renderOneups g <+> renderFruit g
-               , renderMessage g
                ]
 
 drawGameOverUI :: Game -> [ Widget () ]
@@ -89,6 +88,16 @@ drawReplayUI g = [ withAttr "background" msg]
 ---------------------------------------------------------------------
 -- Widget rendering
 
+renderHeader :: Game -> Widget ()
+renderHeader g = vLimit 3 . vBox $ [ fstRow, sndRow, thdRow ]
+    where fstRow  = padLeft Max . withAttr "score" . txt $ "High"
+          sndRow  = hBox [ renderMessage g, hsLabel ]
+          thdRow  = hBox [ renderScore g, padLeft Max . renderHighScore $ g ]
+          hsLabel = padLeft Max . withAttr "score" . txt $ "Score"
+
+renderHighScore :: Game -> Widget ()
+renderHighScore g = renderScore g
+
 renderScore :: Game -> Widget ()
 renderScore g = withAttr "score" . str . show $ pel + gst + ppel
     where pel  = 10 * g ^. T.items . T.pellets
@@ -104,8 +113,8 @@ renderFruit :: Game -> Widget ()
 renderFruit g = padLeft Max . withAttr "score" . txt $ "fruit!"
 
 renderMessage :: Game -> Widget ()
-renderMessage g = hCenter . go $ g ^. T.msg
-    where go Nothing      = withAttr "background" . str $ " "
+renderMessage g = go $ g ^. T.msg
+    where go Nothing      = emptyWidget
           go (Just (s,_)) = withAttr "score" . str $ s
 
 renderMaze :: Game -> Widget ()

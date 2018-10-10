@@ -94,7 +94,7 @@ updateCaptures g0 g1
     | ateGhost  = g1 & T.ghosts .~ eaten : uneaten
                      & T.items . T.gstscore %~ (+ dscore)
                      & T.pwrmult %~ (*2)
-                     & T.msg .~ Just ("Ghost eaten! +" ++ show dscore, 3000000)
+                     & T.msg .~ Just ("Ghost +" ++ show dscore ++ "!", 3000000)
     | moreLives = g1 & T.status .~ ReplayLvl
     | otherwise = g1 & T.status .~ GameOver
     where gsts      = ghostCapture g0 g1
@@ -190,7 +190,7 @@ eatPwrPellet gm p = gm & T.pacman . T.ppos .~ p
                        & T.maze %~ M.setElem Empty p
                        & T.npellets %~ pred
                        & T.items . T.ppellets %~ succ
-                       & T.msg .~ Just ("Power Pellet! +50", 3000000) 
+                       & T.msg .~ Just ("Power Pellet +50!", 3000000) 
                        & T.ghosts %~ map makeEdible
                        & T.status .~ PwrRunning ( gm ^. T.time )
 
