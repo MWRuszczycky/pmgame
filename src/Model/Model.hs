@@ -7,7 +7,6 @@ module Model.Model
     ) where
 
 import qualified Data.Matrix as M
--- import qualified Data.Vector as V
 import qualified Model.Types as T
 import Lens.Micro                   ( (&), (^.), (.~), (%~), set    )
 import Data.Matrix                  ( (!)                           )
@@ -253,8 +252,7 @@ moveWholeGhost gm g0 (gs, r0)
     where p0      = g0 ^. T.gpos
           m       = gm ^. T.maze
           (r1,ds) = proposeDirections gm g0 r0
-          ps      = [ (d, moveFrom m p0 d) | d <- ds ]
-          (d1,p1) = head . filter (isFree m . snd) $ ps
+          (d1,p1) = chooseDirection gm g0 ds
           g1      = g0 & T.gpos   .~ p1
                        & T.gdir   .~ d1
                        & T.gtlast .~ gm ^. T.time
@@ -265,6 +263,14 @@ isGhostWaiting gm g = let dt = gm ^. T.time - g ^. T.gtlast
                                Normal    -> dt < ghostWaitTime
                                Edible    -> dt < edibleGhostWaitTime
                                EyesOnly  -> dt < ghostWaitTime
+
+chooseDirection :: Game -> Ghost -> [Direction] -> (Direction, Point)
+chooseDirection gm g []     = (g ^. T.gdir, g ^. T.gpos)
+chooseDirection gm g (d:ds) = let m = gm ^. T.maze
+                                  p = moveFrom (gm ^. T.maze) (g ^. T.gpos) d
+                              in  case m ! p of
+                                       Wall _    -> chooseDirection gm g ds
+                                       otherwise -> (d, p)
 
 proposeDirections :: Game -> Ghost -> StdGen -> (StdGen, [Direction])
 proposeDirections gm g r = randomDirections r ds
