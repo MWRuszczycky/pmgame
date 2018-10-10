@@ -10,8 +10,6 @@ import qualified Data.Matrix as M
 import qualified Model.Types as T
 import Lens.Micro                   ( (&), (^.), (.~), (%~), set    )
 import Data.Matrix                  ( (!)                           )
-import Data.List                    ( delete
-                                    , nub                           )
 import System.Random                ( StdGen
                                     , randomR                       )
 import Model.Utilities              ( isWall
@@ -304,7 +302,6 @@ toPacMan g gst
 randomDirections :: StdGen -> [Direction] -> (StdGen, [Direction])
 randomDirections r0 [] = (r0, [])
 randomDirections r0 ds0 = (r, d:ds)
-    where (k,r1)  = randomR (0, length ds0 - 1) r0
-          d       = ds0 !! k
-          ds1     = [ x | x <- ds0, x /= d ]
-          (r,ds)  = randomDirections r1 ds1
+    where (k,r1) = randomR (0, length ds0 - 1) r0
+          d      = ds0 !! k
+          (r,ds) = randomDirections r1 . filter (/= d) $ ds0
