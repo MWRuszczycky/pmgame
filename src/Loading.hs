@@ -126,12 +126,16 @@ isWallChar :: Char -> Bool
 isWallChar x = x == '|' || x == '='
 
 readTile :: [(Point, Char)] -> (Point, Char) -> Either String Tile
-readTile xs ((r,c), x)
-    | isWallChar x = Right . resolveWall xs (r,c) $ x
-    | x == '.'     = Right Pellet
-    | x == '*'     = Right PwrPellet
-    | x == 'w'     = resolveWarp xs (r,c)
-    | otherwise    = Right Empty
+readTile _  (_, '.') = Right Pellet
+readTile _  (_, '*') = Right PwrPellet
+readTile xs (p, 'w') = resolveWarp xs p
+readTile _  (_, '^') = Right . Door $ North
+readTile _  (_, 'v') = Right . Door $ South
+readTile _  (_, '<') = Right . Door $ West
+readTile _  (_, '>') = Right . Door $ East
+readTile xs (p, '|') = Right . resolveWall xs p $ '|'
+readTile xs (p, '=') = Right . resolveWall xs p $ '='
+readTile _  _        = Right Empty
 
 resolveWarp :: [(Point, Char)] -> Point -> Either String Tile
 resolveWarp xs (r,c)
