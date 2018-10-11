@@ -5,7 +5,7 @@ module Controller
 import qualified Graphics.Vty as V
 import qualified Data.Matrix  as M
 import qualified Model.Types  as T
-import Lens.Micro                   ( (&), (^.), (.~), set  )
+import Lens.Micro                   ( (&), (^.), (.~), over )
 import Brick.Types                  ( BrickEvent (..)
                                     , Next
                                     , EventM                )
@@ -22,6 +22,7 @@ import Loading                      ( levels
 import Model.Model                  ( movePlayer
                                     , moveGhosts
                                     , restartLevel
+                                    , updateTime
                                     , updateGame            )
 
 type EventHandler = BrickEvent () TimeEvent -> EventM () ( Next GameSt )
@@ -77,7 +78,7 @@ routeGameOver g _                                 =
 
 tickEvent :: Int -> Game -> Game
 tickEvent t g = updateGame g
-                . set T.time t
+                . updateTime t
                 . moveGhosts
                 . movePlayer $ g
 

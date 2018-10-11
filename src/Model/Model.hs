@@ -1,6 +1,7 @@
 module Model.Model
     ( restartLevel
     , updateGame
+    , updateTime
     , movePlayer
     , moveGhosts
     , tileGhosts
@@ -8,7 +9,7 @@ module Model.Model
 
 import qualified Data.Matrix as M
 import qualified Model.Types as T
-import Lens.Micro                   ( (&), (^.), (.~), (%~), set    )
+import Lens.Micro                   ( (&), (^.), (.~), (%~)         )
 import Data.Matrix                  ( (!)                           )
 import System.Random                ( StdGen
                                     , randomR                       )
@@ -18,6 +19,7 @@ import Model.Utilities              ( isWall
                                     , powerTimeLeft
                                     , playerWaitTime
                                     , ghostWaitTime
+                                    , messageTime
                                     , edibleGhostWaitTime
                                     , revDirection
                                     , moveFrom
@@ -74,6 +76,9 @@ updateGame g0 g1
     | otherwise     = updatePower . updateCaptures g0 . updateMessage $ g1
     where levelFinished = g1 ^. T.npellets == 0
 
+updateTime :: Int -> Game -> Game
+updateTime t gm = gm & T.time .~ t
+
 ---------------------------------------------------------------------
 -- Eating ghosts and getting captured by ghosts
 
@@ -90,16 +95,16 @@ updateCaptures :: Game -> Game -> Game
 updateCaptures g0 g1
     | null gsts = g1
     | ateGhost  = g1 & T.ghosts .~ eaten : uneaten
-                     & T.items . T.gstscore %~ (+ dscore)
+                     & T.items . T.gstscore %~ (+ ds)
                      & T.pwrmult %~ (*2)
-                     & T.msg .~ Just ("Ghost +" ++ show dscore ++ "!", 3000000)
+                     & T.msg .~ Just ("Ghost +" ++ show ds ++ "!", messageTime)
     | moreLives = g1 & T.status .~ ReplayLvl
     | otherwise = g1 & T.status .~ GameOver
     where gsts      = ghostCapture g0 g1
           ateGhost  = all ( (== Edible) . (^. T.gstate) ) gsts
           eaten     = eatGhost g0 . head $ gsts
           uneaten   = filter (/= eaten) $ g0 ^. T.ghosts
-          dscore    = 100 * ( g1 ^. T.pwrmult )
+          ds        = 100 * ( g1 ^. T.pwrmult )
           moreLives = g1 ^. T.oneups > 0
 
 eatGhost :: Game -> Ghost -> Ghost
@@ -138,14 +143,11 @@ makeInedible g = case g ^. T.gstate of
 
 updatePower :: Game -> Game
 updatePower gm = case gm ^. T.status of
-                      Running      -> gm
-                      LevelOver    -> gm
-                      ReplayLvl    -> gm
-                      GameOver     -> gm
-                      PwrRunning _ -> depowerGame gm
+                      PwrRunning _ -> managePower gm
+                      otherwise    -> gm
 
-depowerGame :: Game -> Game
-depowerGame gm
+managePower :: Game -> Game
+managePower gm
     | powerTimeLeft gm > 0 = gm
     | otherwise            = depoweredGame
     where depoweredGame = gm & T.ghosts  %~ map makeInedible
@@ -188,7 +190,7 @@ eatPwrPellet gm p = gm & T.pacman . T.ppos .~ p
                        & T.maze %~ M.setElem Empty p
                        & T.npellets %~ pred
                        & T.items . T.ppellets %~ succ
-                       & T.msg .~ Just ("Power Pellet +50!", 3000000) 
+                       & T.msg .~ Just ("Power Pellet +50!", messageTime)
                        & T.ghosts %~ map makeEdible
                        & T.status .~ PwrRunning ( gm ^. T.time )
 

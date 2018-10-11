@@ -1,7 +1,10 @@
 module Model.Utilities
-    ( playerWaitTime
+    ( tickPeriod
+    , playerWaitTime
     , ghostWaitTime
     , edibleGhostWaitTime
+    , messageTime
+    , powerDuration
     , powerTimeLeft
     , isFree
     , isGhost
@@ -27,14 +30,29 @@ import Model.Types                      ( Tile      (..)
 ---------------------------------------------------------------------
 -- Default constants
 
+tickPeriod :: Int
+-- ^Time between clock ticks.
+tickPeriod = 225000 -- microseconds
+
 playerWaitTime :: Int
-playerWaitTime = 225000
+-- ^Wait time for player between moves.
+playerWaitTime = tickPeriod
 
 ghostWaitTime :: Int
-ghostWaitTime = 225000
+-- ^Wait time for normal ghosts between moves.
+ghostWaitTime = tickPeriod
 
 edibleGhostWaitTime :: Int
+-- ^Wait time for edible ghosts between moves.
 edibleGhostWaitTime = 2 * ghostWaitTime
+
+messageTime :: Int
+-- ^Length of time messages are displayed.
+messageTime = 3000000 -- microseconds
+
+powerDuration :: Int
+-- ^Length of time ghosts remain edible after eating a power pellet.
+powerDuration = 7500000 -- microseconds
 
 ---------------------------------------------------------------------
 -- Game state query utilities

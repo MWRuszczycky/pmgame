@@ -64,7 +64,7 @@ data Status = Running
 
 -- |Most of these are self-explanatory. However, the Warp tile also
 -- specifies the point where the warp leads to and the direction you
--- have to go in from the Warp tile to activate the warp. A door can
+-- have to go in from the Warp tile to activate the warp. OneWays can
 -- only be entered and exited in a single direction. OneWays are used
 -- to prevent ghosts from rentering the starting ghost box.
 data Tile = Player
