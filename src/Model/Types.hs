@@ -6,6 +6,7 @@ module Model.Types
     , Game          (..)
     , GameSt        (..)
     , Ghost         (..)
+    , Fruit         (..)
     , PacMan        (..)
     , Direction     (..)
     , TimeEvent     (..)
@@ -25,6 +26,7 @@ module Model.Types
     , pwrtime
     , time
     , dtime
+    , fruit
     , pwrmult
     , msg
     -- Lenses for PacMan
@@ -44,6 +46,13 @@ module Model.Types
     , pellets
     , ppellets
     , gstscore
+    , fruits
+    -- Lenses for Fruit
+    , fname
+    , fduration
+    , fdelay
+    , fpos
+    , fpoints
     ) where
 
 import qualified Data.Matrix as M
@@ -80,6 +89,12 @@ data Tile = Player
           | BlueGhost
           | WhiteGhost
           | GhostEyes
+          -- Fruit
+          | Cherry
+          | Strawberry
+          | Orange
+          | Apple
+          | Melon
           -- Maze walls
           | Wall Txt.Text
           | OneWay Direction
@@ -107,6 +122,16 @@ data Ghost = Ghost { _gname     :: Tile               -- Name/tile for ghost
 instance Eq Ghost where
     (==) g1 g2 = _gname g1 == _gname g2
 
+data Fruit = Fruit { _fname     :: Tile         -- Name/tile for fruit
+                   , _fduration :: Int          -- How long fruit lasts
+                   , _fdelay    :: Int          -- Time before it appears
+                   , _fpos      :: Point        -- Where the fruit appears
+                   , _fpoints   :: Int          -- Point value of the fruit
+                   } deriving ( Show )
+
+instance Eq Fruit where
+    (==) f1 f2 = _fname f1 == _fname f2
+
 data PacMan = PacMan { _pdir   :: Direction          -- Current direction
                      , _ppos   :: Point              -- Current position
                      , _pstrt  :: (Point, Direction) -- Initial pos. & dir.
@@ -116,12 +141,14 @@ data PacMan = PacMan { _pdir   :: Direction          -- Current direction
 data Items = Items { _pellets  :: Int
                    , _ppellets :: Int
                    , _gstscore :: Int
+                   , _fruits   :: [(Tile, Int)]
                    } deriving ( Show )
 
 data Game = Game { _maze     :: Maze        -- Level maze
                  , _items    :: Items       -- Summary of items and score
                  , _pacman   :: PacMan      -- Player
                  , _ghosts   :: [ Ghost ]   -- List of ghosts
+                 , _fruit    :: Maybe Fruit -- Fruit for the level
                  , _rgen     :: StdGen      -- Standard generator
                  , _npellets :: Int         -- Pellets remaining in level
                  , _oneups   :: Int         -- Oneups remaining
@@ -138,3 +165,4 @@ makeLenses ''Game
 makeLenses ''Items
 makeLenses ''PacMan
 makeLenses ''Ghost
+makeLenses ''Fruit

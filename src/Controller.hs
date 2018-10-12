@@ -1,5 +1,5 @@
 module Controller
-    ( eventRouter
+    ( routeEvent
     ) where
 
 import qualified Graphics.Vty as V
@@ -29,9 +29,9 @@ type EventHandler = BrickEvent () TimeEvent -> EventM () ( Next GameSt )
 ---------------------------------------------------------------------
 -- Event routers
 
-eventRouter :: GameSt -> EventHandler
-eventRouter (Left err) _ = halt (Left err)
-eventRouter (Right g)  e = case g ^. T.status of
+routeEvent :: GameSt -> EventHandler
+routeEvent (Left err) _ = halt (Left err)
+routeEvent (Right g)  e = case g ^. T.status of
                                 GameOver     -> routeGameOver g e
                                 LevelOver    -> routeLevelOver g e
                                 ReplayLvl    -> routeReplay g e

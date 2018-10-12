@@ -26,6 +26,7 @@ import Model.Utilities                  ( isGhost                   )
 import Model.Types                      ( Game      (..)
                                         , GameSt    (..)
                                         , Tile      (..)
+                                        , Fruit     (..)
                                         , Direction (..)
                                         , Status    (..)
                                         , Maze      (..)            )
@@ -99,10 +100,11 @@ renderHighScore :: Game -> Widget ()
 renderHighScore g = renderScore g
 
 renderScore :: Game -> Widget ()
-renderScore g = withAttr "score" . str . show $ pel + gst + ppel
+renderScore g = withAttr "score" . str . show $ pel + gst + ppel + frt
     where pel  = 10 * g ^. T.items . T.pellets
           ppel = 50 * g ^. T.items . T.ppellets
           gst  = g ^. T.items . T.gstscore
+          frt  = foldl' ( \ s (_,fs) -> s + fs ) 0 $ g ^. T.items . T.fruits
 
 renderOneups :: Game -> Widget ()
 renderOneups g = hBox . take (2 * g ^. T.oneups) . cycle $ [ oneup, space ]
@@ -119,18 +121,26 @@ renderMessage g = go $ g ^. T.msg
           go (Just (s,_)) = withAttr "info" . str $ s
 
 renderMaze :: Game -> Widget ()
-renderMaze g = vBox . map ( hBox . map (renderTile g) ) . M.toLists $ m2
+renderMaze g = vBox . map ( hBox . map (renderTile g) ) . M.toLists $ m3
     where gs = tileGhosts g
           m0 = g ^. T.maze
-          m1 = foldl' (\ m (p,t) -> M.setElem t p m) m0 gs
-          m2 = M.setElem Player ( g ^. T.pacman . T.ppos ) m1
+          m1 = addFruit (g ^. T.fruit) m0
+          m2 = foldl' (\ m (p,t) -> M.setElem t p m) m1 gs
+          m3 = M.setElem Player ( g ^. T.pacman . T.ppos ) m2
+
+addFruit :: Maybe Fruit -> Maze -> Maze
+addFruit Nothing m = m
+addFruit (Just frt) m
+    | isWaiting = m
+    | otherwise = M.setElem (frt ^. T.fname) (frt ^. T.fpos) m
+    where isWaiting = frt ^. T.fdelay > 0
 
 renderTile :: Game -> Tile -> Widget ()
-renderTile gm (Wall s)       = withAttr "maze"       . txt $ s
-renderTile gm (OneWay North) = withAttr "oneway"     . txt $ "-"
-renderTile gm (OneWay South) = withAttr "oneway"     . txt $ "-"
-renderTile gm (OneWay West)  = withAttr "oneway"     . txt $ "|"
-renderTile gm (OneWay East)  = withAttr "oneway"     . txt $ "|"
+renderTile _ (Wall s)       = withAttr "maze"       . txt $ s
+renderTile _ (OneWay North) = withAttr "oneway"     . txt $ "-"
+renderTile _ (OneWay South) = withAttr "oneway"     . txt $ "-"
+renderTile _ (OneWay West)  = withAttr "oneway"     . txt $ "|"
+renderTile _ (OneWay East)  = withAttr "oneway"     . txt $ "|"
 renderTile _  Pellet         = withAttr "pellet"     . txt $ "."
 renderTile _  PwrPellet      = withAttr "pellet"     . txt $ "*"
 renderTile _  BlueGhost      = withAttr "blueGhost"  . txt $ "\""
@@ -140,6 +150,11 @@ renderTile _  Inky           = withAttr "inky"       . txt $ "\""
 renderTile _  Pinky          = withAttr "pinky"      . txt $ "\""
 renderTile _  Clyde          = withAttr "clyde"      . txt $ "\""
 renderTile _  GhostEyes      = withAttr "ghostEyes"  . txt $ "\""
+renderTile _  Cherry         = withAttr "cherry"     . txt $ "c"
+renderTile _  Strawberry     = withAttr "strawberry" . txt $ "s"
+renderTile _  Orange         = withAttr "orange"     . txt $ "o"
+renderTile _  Apple          = withAttr "apple"      . txt $ "a"
+renderTile _  Melon          = withAttr "melon"      . txt $ "m"
 renderTile gm Player         = renderPlayer gm
 renderTile _  _              = withAttr "maze"       . txt $ " "
 
@@ -168,6 +183,11 @@ attributes = attrMap V.defAttr
     , ( "blueGhost",  on V.white V.blue          )
     , ( "whiteGhost", on V.black V.white         )
     , ( "ghostEyes",  on V.cyan V.black          )
+    , ( "cherry",     on V.red V.black           )
+    , ( "strawberry", on V.red V.black           )
+    , ( "orange",     on V.yellow V.black        )
+    , ( "apple",      on V.green V.black         )
+    , ( "melon",      on V.green V.black         )
     , ( "background", bg V.black                 )
     , ( borderAttr,   on V.blue V.black          )
     ]

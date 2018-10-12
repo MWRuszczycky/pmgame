@@ -32,6 +32,7 @@ import Model.Types                  ( Tile          (..)
                                     , Direction     (..)
                                     , PacMan        (..)
                                     , Ghost         (..)
+                                    , Fruit         (..)
                                     , GhostState    (..)            )
 
 ---------------------------------------------------------------------
@@ -68,12 +69,10 @@ resetGhost g = let (pos0, dir0) = g ^. T.gstrt
 -- =============================================================== --
 -- Game status updating
 
--- Exported
-
 updateGame :: Game -> Game -> Game
 updateGame g0 g1
     | levelFinished = g1 & T.status .~ LevelOver
-    | otherwise     = updatePower . updateCaptures g0 . updateMessage $ g1
+    | otherwise     = runUpdate g0 g1
     where levelFinished = g1 ^. T.npellets == 0
 
 updateTime :: Int -> Game -> Game
@@ -84,12 +83,39 @@ updateTime t gm = gm & T.time .~ t
 
 -- Unexported
 
+runUpdate :: Game -> Game -> Game
+runUpdate g0 g1 = updatePower
+                  . updateFruit
+                  . updateCaptures g0
+                  . updateMessage $ g1
+
 updateMessage :: Game -> Game
 updateMessage gm = go $ gm ^. T.msg
     where go Nothing      = gm
           go (Just (s,t)) | t < 0     = gm & T.msg .~ Nothing
                           | otherwise = let t' = t - gm ^. T.dtime
                                         in  gm & T.msg .~ Just (s, t')
+
+updateFruit :: Game -> Game
+updateFruit gm = go (gm ^. T.fruit)
+    where go Nothing                 = gm
+          go (Just frt)
+              | isWaiting = gm & T.fruit .~ Just stepWaiting
+              | capture   = fruitEaten
+              | isVisible = gm & T.fruit .~ Just stepVisible
+              | otherwise = gm & T.fruit .~ Nothing
+              where isWaiting   = frt ^. T.fdelay > 0
+                    stepWaiting = frt & T.fdelay %~ adjustTime
+                    isVisible   = frt ^. T.fduration > 0
+                    stepVisible = frt & T.fduration %~ adjustTime
+                    capture     = frt ^. T.fpos == gm ^. T.pacman . T.ppos
+                    adjustTime  = subtract (gm ^. T.dtime)
+                    fruitEaten  = let dscore = frt ^. T.fpoints
+                                      msg  = "Fruit +" ++ show dscore ++ "!"
+                                      item = (frt ^. T.fname, frt ^. T.fpoints)
+                                  in  gm & T.fruit .~ Nothing
+                                         & T.msg   .~ Just (msg, messageTime)
+                                         & T.items . T.fruits %~ (item :)
 
 updateCaptures :: Game -> Game -> Game
 updateCaptures g0 g1

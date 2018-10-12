@@ -17,7 +17,7 @@ import Brick.BChan                      ( BChan
 import Brick.Main                       ( App (..)
                                         , neverShowCursor
                                         , customMain                )
-import Controller                       ( eventRouter               )
+import Controller                       ( routeEvent                )
 import Model.Types                      ( GameSt    (..)
                                         , Status    (..)
                                         , TimeEvent (..)            )
@@ -28,7 +28,7 @@ import Model.Utilities                  ( tickPeriod                )
 
 app :: App GameSt TimeEvent ()
 app = App { appDraw         = drawUI
-          , appHandleEvent  = eventRouter
+          , appHandleEvent  = routeEvent
           , appAttrMap      = const attributes
           , appStartEvent   = return
           , appChooseCursor = neverShowCursor }
