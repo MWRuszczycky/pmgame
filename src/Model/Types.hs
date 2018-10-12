@@ -1,6 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Model.Types
     ( Tile          (..)
+    , Time          (..)
     , Maze          (..)
     , Point         (..)
     , Game          (..)
@@ -60,16 +61,24 @@ import qualified Data.Text   as Txt
 import System.Random                ( StdGen )
 import Lens.Micro.TH                ( makeLenses )
 
-data TimeEvent = Tick Int deriving ( Show )
+---------------------------------------------------------------------
+-- Time management
+
+type Time = Int
+
+data TimeEvent = Tick Time deriving ( Show )
+
+---------------------------------------------------------------------
+-- Positioning and movement of movabel characters
 
 data Direction = North | South | East | West deriving ( Show, Eq )
 
-data Status = Running
-            | PwrRunning Int
-            | GameOver
-            | LevelOver
-            | ReplayLvl
-            deriving ( Show, Eq )
+type Point = (Int, Int)
+
+---------------------------------------------------------------------
+-- Maze management
+
+type Maze = M.Matrix Tile
 
 -- |Most of these are self-explanatory. However, the Warp tile also
 -- specifies the point where the warp leads to and the direction you
@@ -102,11 +111,19 @@ data Tile = Player
           | Warp Direction Point
           deriving (Show, Eq)
 
-type Maze = M.Matrix Tile
+---------------------------------------------------------------------
+-- Player management
 
-type Point = (Int, Int)
+data PacMan = PacMan { _pdir   :: Direction          -- Current direction
+                     , _ppos   :: Point              -- Current position
+                     , _pstrt  :: (Point, Direction) -- Initial pos. & dir.
+                     , _ptlast :: Time               -- Time of last move
+                     } deriving ( Show )
 
-type GameSt = Either String Game
+makeLenses ''PacMan
+
+---------------------------------------------------------------------
+-- Ghost management
 
 data GhostState = Normal | Edible | EyesOnly deriving (Show, Eq)
 
@@ -115,16 +132,27 @@ data Ghost = Ghost { _gname     :: Tile               -- Name/tile for ghost
                    , _gpos      :: Point              -- Current position
                    , _gstrt     :: (Point, Direction) -- Initial pos. & dir.
                    , _gstate    :: GhostState         -- Ghost state
-                   , _gtlast    :: Int                -- Time of last move
+                   , _gtlast    :: Time               -- Time of last move
                    , _gpathback :: [Point]            -- Path back to start
                    } deriving ( Show )
 
 instance Eq Ghost where
     (==) g1 g2 = _gname g1 == _gname g2
 
+makeLenses ''Ghost
+
+---------------------------------------------------------------------
+-- Fruit and item management
+
+data Items = Items { _pellets  :: Int
+                   , _ppellets :: Int
+                   , _gstscore :: Int
+                   , _fruits   :: [(Tile, Int)]
+                   } deriving ( Show )
+
 data Fruit = Fruit { _fname     :: Tile         -- Name/tile for fruit
-                   , _fduration :: Int          -- How long fruit lasts
-                   , _fdelay    :: Int          -- Time before it appears
+                   , _fduration :: Time         -- How long fruit lasts
+                   , _fdelay    :: Time         -- Time before it appears
                    , _fpos      :: Point        -- Where the fruit appears
                    , _fpoints   :: Int          -- Point value of the fruit
                    } deriving ( Show )
@@ -132,17 +160,20 @@ data Fruit = Fruit { _fname     :: Tile         -- Name/tile for fruit
 instance Eq Fruit where
     (==) f1 f2 = _fname f1 == _fname f2
 
-data PacMan = PacMan { _pdir   :: Direction          -- Current direction
-                     , _ppos   :: Point              -- Current position
-                     , _pstrt  :: (Point, Direction) -- Initial pos. & dir.
-                     , _ptlast :: Int                -- Time of last move
-                     } deriving ( Show )
+makeLenses ''Items
+makeLenses ''Fruit
 
-data Items = Items { _pellets  :: Int
-                   , _ppellets :: Int
-                   , _gstscore :: Int
-                   , _fruits   :: [(Tile, Int)]
-                   } deriving ( Show )
+---------------------------------------------------------------------
+-- Managing the game state
+
+type GameSt = Either String Game
+
+data Status = Running
+            | PwrRunning Int
+            | GameOver
+            | LevelOver
+            | ReplayLvl
+            deriving ( Show, Eq )
 
 data Game = Game { _maze     :: Maze        -- Level maze
                  , _items    :: Items       -- Summary of items and score
@@ -154,15 +185,11 @@ data Game = Game { _maze     :: Maze        -- Level maze
                  , _oneups   :: Int         -- Oneups remaining
                  , _status   :: Status      -- Game status
                  , _level    :: Int         -- Current level number
-                 , _pwrtime  :: Int         -- Duration of power pellets
-                 , _time     :: Int         -- Current in-game time
-                 , _dtime    :: Int         -- Time since last update
+                 , _pwrtime  :: Time        -- Duration of power pellets
+                 , _time     :: Time        -- Current in-game time
+                 , _dtime    :: Time        -- Time since last update
                  , _pwrmult  :: Int         -- Score multiplier for ghost
-                 , _msg      :: Maybe (String, Int) -- In-game message
+                 , _msg      :: Maybe (String, Time) -- In-game message
                  } deriving ( Show )
 
 makeLenses ''Game
-makeLenses ''Items
-makeLenses ''PacMan
-makeLenses ''Ghost
-makeLenses ''Fruit

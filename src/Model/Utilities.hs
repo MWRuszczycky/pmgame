@@ -21,6 +21,7 @@ import Data.Matrix                      ( (!)            )
 import Data.List                        ( foldl'         )
 import Lens.Micro                       ( (^.)           )
 import Model.Types                      ( Tile      (..)
+                                        , Time      (..)
                                         , Game      (..)
                                         , Maze      (..)
                                         , Point     (..)
@@ -30,34 +31,34 @@ import Model.Types                      ( Tile      (..)
 ---------------------------------------------------------------------
 -- Default constants
 
-tickPeriod :: Int
+tickPeriod :: Time
 -- ^Time between clock ticks.
 tickPeriod = 225000 -- microseconds
 
-playerWaitTime :: Int
+playerWaitTime :: Time
 -- ^Wait time for player between moves.
 playerWaitTime = tickPeriod
 
-ghostWaitTime :: Int
+ghostWaitTime :: Time
 -- ^Wait time for normal ghosts between moves.
 ghostWaitTime = tickPeriod
 
-edibleGhostWaitTime :: Int
+edibleGhostWaitTime :: Time
 -- ^Wait time for edible ghosts between moves.
 edibleGhostWaitTime = 2 * ghostWaitTime
 
-messageTime :: Int
+messageTime :: Time
 -- ^Length of time messages are displayed.
 messageTime = 3000000 -- microseconds
 
-powerDuration :: Int
+powerDuration :: Time
 -- ^Length of time ghosts remain edible after eating a power pellet.
 powerDuration = 7500000 -- microseconds
 
 ---------------------------------------------------------------------
 -- Game state query utilities
 
-powerTimeLeft :: Game -> Int
+powerTimeLeft :: Game -> Time
 -- ^Query how much time is left for the curret powered state (i.e.,
 -- after the player has eaten a power pellet). If the game state is
 -- not powered, evaluate to 0.

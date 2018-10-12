@@ -20,6 +20,7 @@ import Brick.Main                       ( App (..)
 import Controller                       ( routeEvent                )
 import Model.Types                      ( GameSt    (..)
                                         , Status    (..)
+                                        , Time      (..)
                                         , TimeEvent (..)            )
 import View                             ( drawUI
                                         , attributes                )
@@ -47,13 +48,13 @@ main = do
          Left err -> putStrLn err
          Right g  -> runGame dt etGame
 
-runTimer :: BChan TimeEvent -> Int -> Int -> IO ()
+runTimer :: BChan TimeEvent -> Time -> Time -> IO ()
 runTimer chan t dt = do
     writeBChan chan (Tick t)
     threadDelay dt
     runTimer chan (t+dt) dt
 
-runGame :: Int -> GameSt -> IO ()
+runGame :: Time -> GameSt -> IO ()
 runGame dt etG = do
     chan <- newBChan 10 :: IO ( BChan TimeEvent )
     defaultConfig <- V.standardIOConfig
