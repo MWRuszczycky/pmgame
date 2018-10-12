@@ -24,7 +24,7 @@ import Model.Types                  ( Game          (..)
                                     , Tile          (..)
                                     , Time          (..)
                                     , Items         (..)
-                                    , Status        (..)
+                                    , Mode          (..)
                                     , Direction     (..)    )
 
 type MazeChars = [(Point, Char)]
@@ -52,7 +52,7 @@ initGame r0 dt s = do
                 , _pacman   = pman
                 , _ghosts   = gsts
                 , _fruit    = mbFruit
-                , _status   = Running
+                , _mode     = Running
                 , _level    = 1
                 , _npellets = countPellets xs
                 , _oneups   = 3

@@ -14,7 +14,7 @@ module Model.Types
     , Direction     (..)
     , TimeEvent     (..)
     , Items         (..)
-    , Status        (..)
+    , Mode          (..)
     , GhostState    (..)
     -- Lenses for Game
     , maze
@@ -24,7 +24,7 @@ module Model.Types
     , rgen
     , npellets
     , oneups
-    , status
+    , mode
     , level
     , pwrtime
     , time
@@ -91,11 +91,13 @@ makeLenses ''PacMan
 ---------------------------------------------------------------------
 -- Ghost management
 
+-- | Normal ghosts can eat Pac-Man, Edible ghosts can be eaten by
+-- Pac-Man, EyesOnly ghosts have been eaten and need to regenerate.
 data GhostState = Normal | Edible | EyesOnly deriving (Show, Eq)
 
 data GhostName = Blinky | Pinky | Inky | Clyde deriving (Show, Eq)
 
-data Ghost = Ghost { _gname     :: GhostName          -- Name/tile for ghost
+data Ghost = Ghost { _gname     :: GhostName          -- Name for the ghost
                    , _gdir      :: Direction          -- Current direction
                    , _gpos      :: Point              -- Current position
                    , _gstrt     :: (Point, Direction) -- Initial pos. & dir.
@@ -119,13 +121,13 @@ data FruitName = Cherry
                | Melon
                deriving (Show, Eq)
 
-data Items = Items { _pellets  :: Int
-                   , _ppellets :: Int
-                   , _gstscore :: Int
-                   , _fruits   :: [(FruitName, Int)]
+data Items = Items { _pellets  :: Int           -- Total normal pellets eaten
+                   , _ppellets :: Int           -- Total power pellets eaten
+                   , _gstscore :: Int           -- Score from all ghosts eaten
+                   , _fruits   :: [(FruitName, Int)] -- Fruits eaten and counts
                    } deriving ( Show )
 
-data Fruit = Fruit { _fname     :: FruitName    -- Name/tile for fruit
+data Fruit = Fruit { _fname     :: FruitName    -- Name for the fruit
                    , _fduration :: Time         -- How long fruit lasts
                    , _fdelay    :: Time         -- Time before it appears
                    , _fpos      :: Point        -- Where the fruit appears
@@ -172,12 +174,15 @@ data Tile = Player
 
 type GameSt = Either String Game
 
-data Status = Running
-            | PwrRunning Int
-            | GameOver
-            | LevelOver
-            | ReplayLvl
-            deriving ( Show, Eq )
+-- |After eating a power pellet during regular (Running) play mode,
+-- the mode switches to PwrRunnig t0, where t0 is the in-game time at
+-- which the power pellet was eaten.
+data Mode = Running           -- Normal play mode
+          | PwrRunning Time   -- Play mode after eating a power pellet
+          | GameOver          -- All oneups have have been used
+          | LevelOver         -- Current level has been completed
+          | ReplayLvl         -- Player was captured and about to try again
+          deriving ( Show, Eq )
 
 data Game = Game { _maze     :: Maze        -- Level maze
                  , _items    :: Items       -- Summary of items and score
@@ -187,7 +192,7 @@ data Game = Game { _maze     :: Maze        -- Level maze
                  , _rgen     :: StdGen      -- Standard generator
                  , _npellets :: Int         -- Pellets remaining in level
                  , _oneups   :: Int         -- Oneups remaining
-                 , _status   :: Status      -- Game status
+                 , _mode     :: Mode        -- Current game mode
                  , _level    :: Int         -- Current level number
                  , _pwrtime  :: Time        -- Duration of power pellets
                  , _time     :: Time        -- Current in-game time

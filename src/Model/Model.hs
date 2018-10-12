@@ -25,7 +25,7 @@ import Model.Utilities              ( tickPeriod
 import Model.Types                  ( Tile          (..)
                                     , Time          (..)
                                     , Game          (..)
-                                    , Status        (..)
+                                    , Mode          (..)
                                     , Point         (..)
                                     , Maze          (..)
                                     , Direction     (..)
@@ -45,7 +45,7 @@ import Model.Types                  ( Tile          (..)
 
 restartLevel :: Game -> Game
 -- ^Restarts the current level after player is captured by a ghost.
-restartLevel g = g & T.status  .~ Running
+restartLevel g = g & T.mode  .~ Running
                    & T.pacman  %~ resetPacMan
                    & T.ghosts  %~ map resetGhost
                    & T.pwrmult .~ 2
@@ -66,11 +66,11 @@ resetGhost g = let (pos0, dir0) = g ^. T.gstrt
                      & T.gpathback .~ []
 
 -- =============================================================== --
--- Game status updating
+-- Game state updating
 
 updateGame :: Game -> Game -> Game
 updateGame g0 g1
-    | levelFinished = g1 & T.status .~ LevelOver
+    | levelFinished = g1 & T.mode .~ LevelOver
     | otherwise     = runUpdate g0 g1
     where levelFinished = g1 ^. T.npellets == 0
 
@@ -104,8 +104,8 @@ updateCaptures g0 g1
                      & T.items . T.gstscore %~ (+ ds)
                      & T.pwrmult %~ (*2)
                      & T.msg .~ Just ("Ghost +" ++ show ds ++ "!", messageTime)
-    | moreLives = g1 & T.status .~ ReplayLvl
-    | otherwise = g1 & T.status .~ GameOver
+    | moreLives = g1 & T.mode .~ ReplayLvl
+    | otherwise = g1 & T.mode .~ GameOver
     where gsts      = ghostCapture g0 g1
           ateGhost  = all ( (== Edible) . (^. T.gstate) ) gsts
           eaten     = eatGhost g0 . head $ gsts
@@ -174,7 +174,7 @@ updateFruit gm = go (gm ^. T.fruit)
 -- Unexported
 
 updatePower :: Game -> Game
-updatePower gm = case gm ^. T.status of
+updatePower gm = case gm ^. T.mode of
                       PwrRunning _ -> managePower gm
                       otherwise    -> gm
 
@@ -183,7 +183,7 @@ managePower gm
     | powerTimeLeft gm > 0 = gm
     | otherwise            = depoweredGame
     where depoweredGame = gm & T.ghosts  %~ map makeInedible
-                             & T.status  .~ Running
+                             & T.mode  .~ Running
                              & T.pwrmult .~ 2
 
 -- =============================================================== --
@@ -224,7 +224,7 @@ eatPwrPellet gm p = gm & T.pacman . T.ppos .~ p
                        & T.items . T.ppellets %~ succ
                        & T.msg .~ Just ("Power Pellet +50!", messageTime)
                        & T.ghosts %~ map makeEdible
-                       & T.status .~ PwrRunning ( gm ^. T.time )
+                       & T.mode .~ PwrRunning ( gm ^. T.time )
 
 isPlayerWaiting :: Game -> Bool
 isPlayerWaiting gm = dt < playerWaitTime

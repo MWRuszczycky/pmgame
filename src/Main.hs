@@ -19,7 +19,7 @@ import Brick.Main                       ( App (..)
                                         , customMain                )
 import Controller                       ( routeEvent                )
 import Model.Types                      ( GameSt    (..)
-                                        , Status    (..)
+                                        , Mode      (..)
                                         , Time      (..)
                                         , TimeEvent (..)            )
 import View                             ( drawUI
@@ -62,7 +62,7 @@ runGame dt etG = do
     etG' <- customMain (V.mkVty defaultConfig) (Just chan) app etG
     case etG' of
          Left msg -> putStrLn msg
-         Right g  -> case g ^. T.status of
+         Right g  -> case g ^. T.mode of
                           GameOver  -> putStrLn "Game Over"
                           LevelOver -> putStrLn "Level Finished!"
                           otherwise -> putStrLn "Looks like you gave up..."

@@ -13,7 +13,7 @@ import Brick.Main                   ( continue
                                     , suspendAndResume
                                     , halt                  )
 import Model.Types                  ( Game       (..)
-                                    , Status     (..)
+                                    , Mode       (..)
                                     , TimeEvent  (..)
                                     , Direction  (..)
                                     , GameSt     (..)       )
@@ -31,7 +31,7 @@ type EventHandler = BrickEvent () TimeEvent -> EventM () ( Next GameSt )
 
 routeEvent :: GameSt -> EventHandler
 routeEvent (Left err) _ = halt (Left err)
-routeEvent (Right g)  e = case g ^. T.status of
+routeEvent (Right g)  e = case g ^. T.mode of
                                 GameOver     -> routeGameOver g e
                                 LevelOver    -> routeLevelOver g e
                                 ReplayLvl    -> routeReplay g e

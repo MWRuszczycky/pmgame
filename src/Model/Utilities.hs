@@ -25,7 +25,7 @@ import Model.Types                      ( Tile      (..)
                                         , Game      (..)
                                         , Maze      (..)
                                         , Point     (..)
-                                        , Status    (..)
+                                        , Mode      (..)
                                         , Direction (..) )
 
 ---------------------------------------------------------------------
@@ -65,7 +65,7 @@ powerTimeLeft :: Game -> Time
 powerTimeLeft g
     | dt > 0    = dt
     | otherwise = 0
-    where dt = case g ^. T.status of
+    where dt = case g ^. T.mode of
                     PwrRunning t0 -> g ^. T.pwrtime - ( g ^. T.time - t0 )
                     otherwise     -> 0
 

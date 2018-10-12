@@ -34,7 +34,7 @@ import Model.Types                      ( Game          (..)
                                         , FruitName     (..)
                                         , Point         (..)
                                         , Direction     (..)
-                                        , Status        (..)
+                                        , Mode          (..)
                                         , Maze          (..)        )
 
 -- =============================================================== --
@@ -42,7 +42,7 @@ import Model.Types                      ( Game          (..)
 
 drawUI :: GameSt -> [ Widget () ]
 drawUI (Left msg) = [ str msg ]
-drawUI (Right gm) = case gm ^. T.status of
+drawUI (Right gm) = case gm ^. T.mode of
                          GameOver  -> drawGameOverUI gm
                          LevelOver -> drawLevelOverUI gm
                          ReplayLvl -> drawReplayUI gm
