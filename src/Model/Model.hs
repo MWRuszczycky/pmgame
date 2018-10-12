@@ -13,8 +13,7 @@ import Lens.Micro                   ( (&), (^.), (.~), (%~)         )
 import Data.Matrix                  ( (!)                           )
 import System.Random                ( StdGen
                                     , randomR                       )
-import Model.Utilities              ( isWall
-                                    , isFree
+import Model.Utilities              ( tickPeriod
                                     , noWalls
                                     , powerTimeLeft
                                     , playerWaitTime
@@ -76,7 +75,9 @@ updateGame g0 g1
     where levelFinished = g1 ^. T.npellets == 0
 
 updateTime :: Int -> Game -> Game
-updateTime t gm = gm & T.time .~ t
+updateTime t gm = let dt = t - gm ^. T.time
+                  in  gm & T.time  .~ t
+                         & T.dtime .~ dt
 
 ---------------------------------------------------------------------
 -- Eating ghosts and getting captured by ghosts
@@ -247,7 +248,7 @@ tileEdibleGhost gm g
     | otherwise    = BlueGhost
     where trem    = powerTimeLeft gm
           half    = quot ( gm ^. T.pwrtime ) 2
-          isWhite = odd . quot trem $ gm ^. T.dtime
+          isWhite = odd . quot trem $ tickPeriod
 
 ---------------------------------------------------------------------
 -- Moving the ghosts

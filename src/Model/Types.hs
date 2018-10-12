@@ -156,7 +156,7 @@ data Game = Game { _maze     :: Maze        -- Level maze
                  , _level    :: Int         -- Current level number
                  , _pwrtime  :: Int         -- Duration of power pellets
                  , _time     :: Int         -- Current in-game time
-                 , _dtime    :: Int         -- Time between clock ticks
+                 , _dtime    :: Int         -- Time since last update
                  , _pwrmult  :: Int         -- Score multiplier for ghost
                  , _msg      :: Maybe (String, Int) -- In-game message
                  } deriving ( Show )

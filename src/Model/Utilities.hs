@@ -7,7 +7,6 @@ module Model.Utilities
     , powerDuration
     , powerTimeLeft
     , isFree
-    , isGhost
     , isWall
     , noWalls
     , moveFrom
@@ -76,11 +75,6 @@ isFree :: Maze -> Point -> Bool
 isFree m (r,c) = case M.safeGet r c m of
                       Nothing -> False
                       Just t  -> not . isWall $ t
-
-isGhost :: Tile -> Bool
--- ^Evaluate whether a tile is a ghost.
-isGhost t = elem t [ Blinky, Pinky, Inky, Clyde
-                   , BlueGhost, WhiteGhost, GhostEyes ]
 
 isWall :: Tile -> Bool
 -- ^Evaluate whether a tile is a wall tile.
