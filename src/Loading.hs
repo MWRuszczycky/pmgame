@@ -20,6 +20,7 @@ import Model.Types                  ( Game          (..)
                                     , GhostState    (..)
                                     , PacMan        (..)
                                     , Tile          (..)
+                                    , Time          (..)
                                     , Items         (..)
                                     , Status        (..)
                                     , Direction     (..)    )
@@ -36,7 +37,7 @@ levels = [ ( -1, "levels/classicMaze1-testing1.txt" )
 ---------------------------------------------------------------------
 -- Game initialization
 
-initGame :: StdGen -> Int -> String -> GameSt
+initGame :: StdGen -> Time -> String -> GameSt
 initGame r0 dt s = do
     xs   <- indexMazeString s
     m    <- loadMaze xs
