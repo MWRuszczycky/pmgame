@@ -83,11 +83,18 @@ tickEvent t g = updateGame g
                 . movePlayer $ g
 
 keyEvent :: V.Key -> [V.Modifier] -> Game -> Game
-keyEvent V.KLeft  ms g = g & T.pacman . T.pdir .~ West
-keyEvent V.KRight ms g = g & T.pacman . T.pdir .~ East
-keyEvent V.KUp    ms g = g & T.pacman . T.pdir .~ North
-keyEvent V.KDown  ms g = g & T.pacman . T.pdir .~ South
-keyEvent _        _  g = g
+keyEvent  V.KLeft      _ gm = gm & T.pacman . T.pdir .~ West
+keyEvent (V.KChar 'a') _ gm = gm & T.pacman . T.pdir .~ West
+keyEvent  V.KRight     _ gm = gm & T.pacman . T.pdir .~ East
+keyEvent (V.KChar 'd') _ gm = gm & T.pacman . T.pdir .~ East
+keyEvent (V.KChar 'e') _ gm = gm & T.pacman . T.pdir .~ East
+keyEvent  V.KUp        _ gm = gm & T.pacman . T.pdir .~ North
+keyEvent (V.KChar 'w') _ gm = gm & T.pacman . T.pdir .~ North
+keyEvent (V.KChar ',') _ gm = gm & T.pacman . T.pdir .~ North
+keyEvent  V.KDown      _ gm = gm & T.pacman . T.pdir .~ South
+keyEvent (V.KChar 's') _ gm = gm & T.pacman . T.pdir .~ South
+keyEvent (V.KChar 'o') _ gm = gm & T.pacman . T.pdir .~ South
+keyEvent _             _ gm = gm
 
 ---------------------------------------------------------------------
 -- Event handlers for restarts

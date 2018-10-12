@@ -20,7 +20,7 @@ Right now things are not setup for a proper installation and only for testing, b
 
 ## Controls
 
-Use the arrow keys to change direction. Use `Esc` to quit the game at any time.
+Use the arrow keys, "awsd" (Querty) or "a,oe" (Dvorak) to change direction. Use `Esc` to quit the game at any time.
 
 ## Things to do
 
