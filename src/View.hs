@@ -28,8 +28,10 @@ import Model.Types                      ( Game          (..)
                                         , PacMan        (..)
                                         , Ghost         (..)
                                         , GhostState    (..)
+                                        , GhostName     (..)
                                         , Tile          (..)
                                         , Fruit         (..)
+                                        , FruitName     (..)
                                         , Point         (..)
                                         , Direction     (..)
                                         , Status        (..)
@@ -112,8 +114,9 @@ tileFruit :: Maybe Fruit -> Maze -> Maze
 tileFruit Nothing m = m
 tileFruit (Just frt) m
     | isWaiting = m
-    | otherwise = M.setElem (frt ^. T.fname) (frt ^. T.fpos) m
+    | otherwise = M.setElem frtTile (frt ^. T.fpos) m
     where isWaiting = frt ^. T.fdelay > 0
+          frtTile   = FruitTile $ frt ^. T.fname
 
 ---------------------------------------------------------------------
 -- Tiling the ghosts
@@ -126,7 +129,7 @@ tileGhost :: Game -> Ghost -> Tile
 tileGhost gm g = case g ^. T.gstate of
                       Edible    -> tileEdibleGhost gm g
                       EyesOnly  -> GhostEyes
-                      otherwise -> g ^. T.gname
+                      otherwise -> NormalGhost $ g ^. T.gname
 
 tileEdibleGhost :: Game -> Ghost -> Tile
 tileEdibleGhost gm g
@@ -154,27 +157,27 @@ renderMaze gm = vBox . renderTiles . M.toLists . tileMaze $ gm
     where renderTiles = map ( hBox . map (renderTile gm) )
 
 renderTile :: Game -> Tile -> Widget ()
-renderTile _ (Wall s)        = withAttr "maze"       . txt $ s
-renderTile _ (OneWay North)  = withAttr "oneway"     . txt $ "-"
-renderTile _ (OneWay South)  = withAttr "oneway"     . txt $ "-"
-renderTile _ (OneWay West)   = withAttr "oneway"     . txt $ "|"
-renderTile _ (OneWay East)   = withAttr "oneway"     . txt $ "|"
-renderTile _  Pellet         = withAttr "pellet"     . txt $ "."
-renderTile _  PwrPellet      = withAttr "pellet"     . txt $ "*"
-renderTile _  BlueGhost      = withAttr "blueGhost"  . txt $ "\""
-renderTile _  WhiteGhost     = withAttr "whiteGhost" . txt $ "\""
-renderTile _  Blinky         = withAttr "blinky"     . txt $ "\""
-renderTile _  Inky           = withAttr "inky"       . txt $ "\""
-renderTile _  Pinky          = withAttr "pinky"      . txt $ "\""
-renderTile _  Clyde          = withAttr "clyde"      . txt $ "\""
-renderTile _  GhostEyes      = withAttr "ghostEyes"  . txt $ "\""
-renderTile _  Cherry         = withAttr "cherry"     . txt $ "c"
-renderTile _  Strawberry     = withAttr "strawberry" . txt $ "s"
-renderTile _  Orange         = withAttr "orange"     . txt $ "o"
-renderTile _  Apple          = withAttr "apple"      . txt $ "a"
-renderTile _  Melon          = withAttr "melon"      . txt $ "m"
-renderTile gm Player         = renderPlayer gm
-renderTile _  _              = withAttr "maze"       . txt $ " "
+renderTile _ (Wall s)               = withAttr "maze"       . txt $ s
+renderTile _ (OneWay North)         = withAttr "oneway"     . txt $ "-"
+renderTile _ (OneWay South)         = withAttr "oneway"     . txt $ "-"
+renderTile _ (OneWay West )         = withAttr "oneway"     . txt $ "|"
+renderTile _ (OneWay East )         = withAttr "oneway"     . txt $ "|"
+renderTile _  Pellet                = withAttr "pellet"     . txt $ "."
+renderTile _  PwrPellet             = withAttr "pellet"     . txt $ "*"
+renderTile _ (NormalGhost Blinky)   = withAttr "blinky"     . txt $ "\""
+renderTile _ (NormalGhost Inky  )   = withAttr "inky"       . txt $ "\""
+renderTile _ (NormalGhost Pinky )   = withAttr "pinky"      . txt $ "\""
+renderTile _ (NormalGhost Clyde )   = withAttr "clyde"      . txt $ "\""
+renderTile _  BlueGhost             = withAttr "blueGhost"  . txt $ "\""
+renderTile _  WhiteGhost            = withAttr "whiteGhost" . txt $ "\""
+renderTile _  GhostEyes             = withAttr "ghostEyes"  . txt $ "\""
+renderTile _ (FruitTile Cherry    ) = withAttr "cherry"     . txt $ "c"
+renderTile _ (FruitTile Strawberry) = withAttr "strawberry" . txt $ "s"
+renderTile _ (FruitTile Orange    ) = withAttr "orange"     . txt $ "o"
+renderTile _ (FruitTile Apple     ) = withAttr "apple"      . txt $ "a"
+renderTile _ (FruitTile Melon     ) = withAttr "melon"      . txt $ "m"
+renderTile gm Player                = renderPlayer gm
+renderTile _  _                     = withAttr "maze"       . txt $ " "
 
 renderPlayer :: Game -> Widget ()
 renderPlayer g = withAttr "player" . txt . glyph $ g ^. T.pacman . T.pdir

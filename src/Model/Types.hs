@@ -7,7 +7,9 @@ module Model.Types
     , Game          (..)
     , GameSt        (..)
     , Ghost         (..)
+    , GhostName     (..)
     , Fruit         (..)
+    , FruitName     (..)
     , PacMan        (..)
     , Direction     (..)
     , TimeEvent     (..)
@@ -76,42 +78,6 @@ data Direction = North | South | East | West deriving ( Show, Eq )
 type Point = (Int, Int)
 
 ---------------------------------------------------------------------
--- Maze management
-
-type Maze = M.Matrix Tile
-
--- |Most of these are self-explanatory. However, the Warp tile also
--- specifies the point where the warp leads to and the direction you
--- have to go in from the Warp tile to activate the warp. OneWays can
--- only be entered and exited in a single direction. OneWays are used
--- to prevent ghosts from rentering the starting ghost box.
-data Tile = Player
-          | Empty
-          -- Pellets
-          | Pellet
-          | PwrPellet
-          -- Ghosts
-          | Pinky
-          | Blinky
-          | Inky
-          | Clyde
-          | BlueGhost
-          | WhiteGhost
-          | GhostEyes
-          -- Fruit
-          | Cherry
-          | Strawberry
-          | Orange
-          | Apple
-          | Melon
-          -- Maze walls
-          | Wall Txt.Text
-          | OneWay Direction
-          -- Warp tiles
-          | Warp Direction Point
-          deriving (Show, Eq)
-
----------------------------------------------------------------------
 -- Player management
 
 data PacMan = PacMan { _pdir   :: Direction          -- Current direction
@@ -127,7 +93,9 @@ makeLenses ''PacMan
 
 data GhostState = Normal | Edible | EyesOnly deriving (Show, Eq)
 
-data Ghost = Ghost { _gname     :: Tile               -- Name/tile for ghost
+data GhostName = Blinky | Pinky | Inky | Clyde deriving (Show, Eq)
+
+data Ghost = Ghost { _gname     :: GhostName          -- Name/tile for ghost
                    , _gdir      :: Direction          -- Current direction
                    , _gpos      :: Point              -- Current position
                    , _gstrt     :: (Point, Direction) -- Initial pos. & dir.
@@ -144,13 +112,20 @@ makeLenses ''Ghost
 ---------------------------------------------------------------------
 -- Fruit and item management
 
+data FruitName = Cherry
+               | Strawberry
+               | Orange
+               | Apple
+               | Melon
+               deriving (Show, Eq)
+
 data Items = Items { _pellets  :: Int
                    , _ppellets :: Int
                    , _gstscore :: Int
-                   , _fruits   :: [(Tile, Int)]
+                   , _fruits   :: [(FruitName, Int)]
                    } deriving ( Show )
 
-data Fruit = Fruit { _fname     :: Tile         -- Name/tile for fruit
+data Fruit = Fruit { _fname     :: FruitName    -- Name/tile for fruit
                    , _fduration :: Time         -- How long fruit lasts
                    , _fdelay    :: Time         -- Time before it appears
                    , _fpos      :: Point        -- Where the fruit appears
@@ -162,6 +137,35 @@ instance Eq Fruit where
 
 makeLenses ''Items
 makeLenses ''Fruit
+
+---------------------------------------------------------------------
+-- Maze management
+
+type Maze = M.Matrix Tile
+
+-- |Most of these are self-explanatory. However, the Warp tile also
+-- specifies the point where the warp leads to and the direction you
+-- have to go in from the Warp tile to activate the warp. OneWays can
+-- only be entered and exited in a single direction. OneWays are used
+-- to prevent ghosts from rentering the starting ghost box.
+data Tile = Player
+          | Empty
+          -- Pellets
+          | Pellet
+          | PwrPellet
+          -- Ghosts
+          | NormalGhost GhostName
+          | BlueGhost
+          | WhiteGhost
+          | GhostEyes
+          -- Fruit
+          | FruitTile FruitName
+          -- Maze walls
+          | Wall Txt.Text
+          | OneWay Direction
+          -- Warp tiles
+          | Warp Direction Point
+          deriving (Show, Eq)
 
 ---------------------------------------------------------------------
 -- Managing the game state

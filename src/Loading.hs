@@ -16,7 +16,9 @@ import Model.Types                  ( Game          (..)
                                     , Maze          (..)
                                     , Point         (..)
                                     , Ghost         (..)
+                                    , GhostName     (..)
                                     , Fruit         (..)
+                                    , FruitName     (..)
                                     , GhostState    (..)
                                     , PacMan        (..)
                                     , Tile          (..)
@@ -95,18 +97,17 @@ loadPos xs x
 loadPacMan :: MazeChars -> Either String PacMan
 loadPacMan xs = do
     pos    <- loadPos xs 'P'
-    (_, d) <- initMover 'P'
-    return PacMan { _pdir   = d
+    return PacMan { _pdir   = West
                   , _ppos   = pos
-                  , _pstrt  = (pos, d)
+                  , _pstrt  = (pos, West)
                   , _ptlast = 0
                   }
 
 loadGhost :: MazeChars -> Char -> Either String Ghost
 loadGhost xs c = do
     pos    <- loadPos xs c
-    (t, d) <- initMover c
-    return Ghost { _gname     = t
+    (n, d) <- readGhost c
+    return Ghost { _gname     = n
                  , _gdir      = d
                  , _gpos      = pos
                  , _gstrt     = (pos, d)
@@ -120,13 +121,12 @@ loadFruit r0 xs = case getFruitPosition r0 xs of
                        (Nothing, r1) -> Right (Nothing, r1)
                        (Just p, r1 ) -> Right . getFruit r1 $ p
 
-initMover :: Char -> Either String (Tile, Direction)
-initMover 'P' = Right ( Player, West  )
-initMover 'p' = Right ( Pinky,  East  )
-initMover 'b' = Right ( Blinky, West  )
-initMover 'i' = Right ( Inky,   West  )
-initMover 'c' = Right ( Clyde,  North )
-initMover x   = Left $ "Character '" ++ [x] ++ "' not recognized"
+readGhost :: Char -> Either String (GhostName, Direction)
+readGhost 'p' = Right ( Pinky,  East  )
+readGhost 'b' = Right ( Blinky, West  )
+readGhost 'i' = Right ( Inky,   West  )
+readGhost 'c' = Right ( Clyde,  North )
+readGhost x   = Left $ "Character '" ++ [x] ++ "' not recognized as ghost"
 
 -- Reading the maze
 

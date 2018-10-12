@@ -30,7 +30,6 @@ Use the arrow keys to change direction. Use `Esc` to quit the game at any time.
 * Improve the entry point and add a start screen.
 * Add game pausing.
 * Add recording and loading of high scores (right now it just redisplays the current score).
-* Add dedicated data types for ghost and fruit names rather than using tiles.
 * Allow capture of multiple ghosts simultaneously.
 * Refactor the `Loading` module.
 * Refactor the fruit updating function (it's really ugly right now).
