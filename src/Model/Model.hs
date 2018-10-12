@@ -4,7 +4,6 @@ module Model.Model
     , updateTime
     , movePlayer
     , moveGhosts
-    , tileGhosts
     ) where
 
 import qualified Data.Matrix as M
@@ -224,31 +223,6 @@ eatPwrPellet gm p = gm & T.pacman . T.ppos .~ p
 isPlayerWaiting :: Game -> Bool
 isPlayerWaiting gm = dt < playerWaitTime
     where dt = gm ^. T.time - gm  ^. T.pacman . T.ptlast
-
----------------------------------------------------------------------
--- Tiling the ghosts
-
--- Exported
-
-tileGhosts :: Game -> [(Point, Tile)]
-tileGhosts gm = [ (g ^. T.gpos, tileGhost gm g) | g <- gm ^. T.ghosts ]
-
--- Unexported
-
-tileGhost :: Game -> Ghost -> Tile
-tileGhost gm g = case g ^. T.gstate of
-                      Edible    -> tileEdibleGhost gm g
-                      EyesOnly  -> GhostEyes
-                      otherwise -> g ^. T.gname
-
-tileEdibleGhost :: Game -> Ghost -> Tile
-tileEdibleGhost gm g
-    | trem >= half = BlueGhost
-    | isWhite      = WhiteGhost
-    | otherwise    = BlueGhost
-    where trem    = powerTimeLeft gm
-          half    = quot ( gm ^. T.pwrtime ) 2
-          isWhite = odd . quot trem $ tickPeriod
 
 ---------------------------------------------------------------------
 -- Moving the ghosts

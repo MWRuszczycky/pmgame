@@ -6,7 +6,6 @@ module Model.Utilities
     , messageTime
     , powerDuration
     , powerTimeLeft
-    , isFree
     , isWall
     , noWalls
     , moveFrom
@@ -70,18 +69,10 @@ powerTimeLeft g
 ---------------------------------------------------------------------
 -- Determining tile subtypes
 
-isFree :: Maze -> Point -> Bool
--- ^Evaluate whether a point in the maze is free to be entered.
-isFree m (r,c) = case M.safeGet r c m of
-                      Nothing -> False
-                      Just t  -> not . isWall $ t
-
 isWall :: Tile -> Bool
 -- ^Evaluate whether a tile is a wall tile.
 isWall (Wall _) = True
 isWall _        = False
--- isWall t = elem t ws
---     where ws = [ HBar, VBar, LTee, UTee, RTee, DTee, RDCr, LDCr, RUCr, LUCr ]
 
 noWalls :: Int -> Int -> V.Vector Tile -> Bool
 -- ^Determine if there are no wall tiles between two elements in a
@@ -150,7 +141,10 @@ getPaths m p ys (x:xs)
 
 getNxtPoints :: Maze -> [Point] -> Point -> [Point]
 getNxtPoints m xs = filter ( not . flip elem xs ) . go
-    where go (r,c) = filter (isFree m) [ (r,c-1), (r,c+1), (r-1,c), (r+1,c) ]
+    where go  (r,c) = filter chk [ (r,c-1), (r,c+1), (r-1,c), (r+1,c) ]
+          chk (r,c) = case M.safeGet r c m of
+                           Nothing -> False
+                           Just t  -> not . isWall $ t
 
 connected :: Point -> Point -> Bool
 connected (r1,c1) (r2,c2) = dr + dc < 2

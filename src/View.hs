@@ -21,33 +21,40 @@ import Brick.Widgets.Border             ( borderWithLabel
 import Brick.AttrMap                    ( attrMap, AttrMap          )
 import Brick.Util                       ( on, bg, fg                )
 import Brick.Widgets.Center             ( center, hCenter, vCenter  )
-import Model.Model                      ( tileGhosts                )
-import Model.Types                      ( Game      (..)
-                                        , GameSt    (..)
-                                        , Tile      (..)
-                                        , Fruit     (..)
-                                        , Direction (..)
-                                        , Status    (..)
-                                        , Maze      (..)            )
+import Model.Utilities                  ( powerTimeLeft, tickPeriod )
+import Model.Types                      ( Game          (..)
+                                        , GameSt        (..)
+                                        , PacMan        (..)
+                                        , Ghost         (..)
+                                        , GhostState    (..)
+                                        , Tile          (..)
+                                        , Fruit         (..)
+                                        , Point         (..)
+                                        , Direction     (..)
+                                        , Status        (..)
+                                        , Maze          (..)        )
+
+-- =============================================================== --
+-- Drawing the UI for different game states
 
 drawUI :: GameSt -> [ Widget () ]
 drawUI (Left msg) = [ str msg ]
-drawUI (Right g)  = case g ^. T.status of
-                         GameOver  -> drawGameOverUI g
-                         LevelOver -> drawLevelOverUI g
-                         ReplayLvl -> drawReplayUI g
-                         otherwise -> drawRunningUI g
+drawUI (Right gm) = case gm ^. T.status of
+                         GameOver  -> drawGameOverUI gm
+                         LevelOver -> drawLevelOverUI gm
+                         ReplayLvl -> drawReplayUI gm
+                         otherwise -> drawRunningUI gm
 
 drawRunningUI :: Game -> [ Widget () ]
-drawRunningUI g = [ withAttr "background" ui ]
-    where ui = center . hLimit ( M.ncols $ g ^. T.maze ) . vBox $ ws
-          ws = [ renderHeader g
-               , renderMaze g
-               , renderOneups g <+> renderFruit g
+drawRunningUI gm = [ withAttr "background" ui ]
+    where ui = center . hLimit ( M.ncols $ gm ^. T.maze ) . vBox $ ws
+          ws = [ renderHeader gm
+               , renderMaze gm
+               , renderOneups gm <+> renderFruit gm
                ]
 
 drawGameOverUI :: Game -> [ Widget () ]
-drawGameOverUI g = [ withAttr "background" msg ]
+drawGameOverUI gm = [ withAttr "background" msg ]
     where hdr = withAttr "info" . txt $ "GAME OVER!"
           ent = withAttr "info" . txt $ "Enter to play again"
           esc = withAttr "info" . txt $ "Esc to quit"
@@ -57,10 +64,10 @@ drawGameOverUI g = [ withAttr "background" msg ]
                 . hLimit 25
                 . vLimit 3
                 . center
-                . vBox $ [ renderScore g, ent, esc ]
+                . vBox $ [ renderScore gm, ent, esc ]
 
 drawLevelOverUI :: Game -> [ Widget () ]
-drawLevelOverUI g = [ withAttr "background" msg]
+drawLevelOverUI gm = [ withAttr "background" msg]
     where hdr = withAttr "info" . txt $ "LEVEL COMPLETED!"
           ent = withAttr "info" . txt $ "Enter to play next level"
           esc = withAttr "info" . txt $ "Esc to quit"
@@ -70,10 +77,10 @@ drawLevelOverUI g = [ withAttr "background" msg]
                 . hLimit 25
                 . vLimit 3
                 . center
-                . vBox $ [ renderScore g, ent, esc ]
+                . vBox $ [ renderScore gm, ent, esc ]
 
 drawReplayUI :: Game -> [ Widget () ]
-drawReplayUI g = [ withAttr "background" msg]
+drawReplayUI gm = [ withAttr "background" msg]
     where hdr = withAttr "info" . txt $ "YOU GOT CAPTURED!"
           ent = withAttr "info" . txt $ "Enter to keep trying"
           esc = withAttr "info" . txt $ "Esc to quit"
@@ -83,63 +90,74 @@ drawReplayUI g = [ withAttr "background" msg]
                 . hLimit 25
                 . vLimit 3
                 . center
-                . vBox $ [ renderScore g, ent, esc ]
+                . vBox $ [ renderScore gm, ent, esc ]
+
+-- =============================================================== --
+-- Tiling functions for constructing the maze prior to rendering
 
 ---------------------------------------------------------------------
--- Widget rendering
+-- Overall maze construction
 
-renderHeader :: Game -> Widget ()
-renderHeader g = vLimit 3 . vBox $ [ fstRow, sndRow, thdRow ]
-    where fstRow  = padLeft Max . withAttr "score" . txt $ "High"
-          sndRow  = hBox [ renderMessage g, hsLabel ]
-          thdRow  = hBox [ renderScore g, padLeft Max . renderHighScore $ g ]
-          hsLabel = padLeft Max . withAttr "score" . txt $ "Score"
+tileMaze :: Game -> Maze
+tileMaze gm = tilePlayer   ( gm ^. T.pacman )
+              . tileGhosts   gm
+              . tileFruit  ( gm ^. T.fruit  )
+              $ gm ^. T.maze
 
-renderHighScore :: Game -> Widget ()
-renderHighScore g = renderScore g
+---------------------------------------------------------------------
+-- Tiling the fruit
 
-renderScore :: Game -> Widget ()
-renderScore g = withAttr "score" . str . show $ pel + gst + ppel + frt
-    where pel  = 10 * g ^. T.items . T.pellets
-          ppel = 50 * g ^. T.items . T.ppellets
-          gst  = g ^. T.items . T.gstscore
-          frt  = foldl' ( \ s (_,fs) -> s + fs ) 0 $ g ^. T.items . T.fruits
-
-renderOneups :: Game -> Widget ()
-renderOneups g = hBox . take (2 * g ^. T.oneups) . cycle $ [ oneup, space ]
-    where oneup = withAttr "player" . txt $ ">"
-          space = withAttr "background" . txt $ " "
-
-renderFruit :: Game -> Widget ()
-renderFruit g = padLeft Max . withAttr "score" . txt $ "fruit!"
-
-renderMessage :: Game -> Widget ()
-renderMessage g = go $ g ^. T.msg
-    where time            = quot (g ^. T.time) 1000000
-          go Nothing      = withAttr "info" . str . show $ time
-          go (Just (s,_)) = withAttr "info" . str $ s
-
-renderMaze :: Game -> Widget ()
-renderMaze g = vBox . map ( hBox . map (renderTile g) ) . M.toLists $ m3
-    where gs = tileGhosts g
-          m0 = g ^. T.maze
-          m1 = addFruit (g ^. T.fruit) m0
-          m2 = foldl' (\ m (p,t) -> M.setElem t p m) m1 gs
-          m3 = M.setElem Player ( g ^. T.pacman . T.ppos ) m2
-
-addFruit :: Maybe Fruit -> Maze -> Maze
-addFruit Nothing m = m
-addFruit (Just frt) m
+tileFruit :: Maybe Fruit -> Maze -> Maze
+tileFruit Nothing m = m
+tileFruit (Just frt) m
     | isWaiting = m
     | otherwise = M.setElem (frt ^. T.fname) (frt ^. T.fpos) m
     where isWaiting = frt ^. T.fdelay > 0
 
+---------------------------------------------------------------------
+-- Tiling the ghosts
+
+tileGhosts :: Game -> Maze -> Maze
+tileGhosts gm m0 = foldl' ( \ m (p,t) -> M.setElem t p m) m0 gs
+    where gs = [ (g ^. T.gpos, tileGhost gm g) | g <- gm ^. T.ghosts ]
+
+tileGhost :: Game -> Ghost -> Tile
+tileGhost gm g = case g ^. T.gstate of
+                      Edible    -> tileEdibleGhost gm g
+                      EyesOnly  -> GhostEyes
+                      otherwise -> g ^. T.gname
+
+tileEdibleGhost :: Game -> Ghost -> Tile
+tileEdibleGhost gm g
+    | trem >= half = BlueGhost
+    | isWhite      = WhiteGhost
+    | otherwise    = BlueGhost
+    where trem    = powerTimeLeft gm
+          half    = quot ( gm ^. T.pwrtime ) 2
+          isWhite = odd . quot trem $ tickPeriod
+
+---------------------------------------------------------------------
+-- Tiling the player
+
+tilePlayer :: PacMan -> Maze -> Maze
+tilePlayer pm = M.setElem Player (pm ^. T.ppos)
+
+-- =============================================================== --
+-- Widget rendering
+
+---------------------------------------------------------------------
+-- Rendering the maze
+
+renderMaze :: Game -> Widget ()
+renderMaze gm = vBox . renderTiles . M.toLists . tileMaze $ gm
+    where renderTiles = map ( hBox . map (renderTile gm) )
+
 renderTile :: Game -> Tile -> Widget ()
-renderTile _ (Wall s)       = withAttr "maze"       . txt $ s
-renderTile _ (OneWay North) = withAttr "oneway"     . txt $ "-"
-renderTile _ (OneWay South) = withAttr "oneway"     . txt $ "-"
-renderTile _ (OneWay West)  = withAttr "oneway"     . txt $ "|"
-renderTile _ (OneWay East)  = withAttr "oneway"     . txt $ "|"
+renderTile _ (Wall s)        = withAttr "maze"       . txt $ s
+renderTile _ (OneWay North)  = withAttr "oneway"     . txt $ "-"
+renderTile _ (OneWay South)  = withAttr "oneway"     . txt $ "-"
+renderTile _ (OneWay West)   = withAttr "oneway"     . txt $ "|"
+renderTile _ (OneWay East)   = withAttr "oneway"     . txt $ "|"
 renderTile _  Pellet         = withAttr "pellet"     . txt $ "."
 renderTile _  PwrPellet      = withAttr "pellet"     . txt $ "*"
 renderTile _  BlueGhost      = withAttr "blueGhost"  . txt $ "\""
@@ -165,6 +183,43 @@ renderPlayer g = withAttr "player" . txt . glyph $ g ^. T.pacman . T.pdir
           glyph East  = "<"
 
 ---------------------------------------------------------------------
+-- Rendering score information and messages in header
+
+renderHeader :: Game -> Widget ()
+renderHeader gm = vLimit 3 . vBox $ [ fstRow, sndRow, thdRow ]
+    where fstRow  = padLeft Max . withAttr "score" . txt $ "High"
+          sndRow  = hBox [ renderMessage gm, hsLabel ]
+          thdRow  = hBox [ renderScore gm, padLeft Max . renderHighScore $ gm ]
+          hsLabel = padLeft Max . withAttr "score" . txt $ "Score"
+
+renderHighScore :: Game -> Widget ()
+renderHighScore = renderScore
+
+renderScore :: Game -> Widget ()
+renderScore gm = withAttr "score" . str . show $ pel + gst + ppel + frt
+    where pel  = 10 * gm ^. T.items . T.pellets
+          ppel = 50 * gm ^. T.items . T.ppellets
+          gst  = gm ^. T.items . T.gstscore
+          frt  = foldl' ( \ s (_,fs) -> s + fs ) 0 $ gm ^. T.items . T.fruits
+
+renderMessage :: Game -> Widget ()
+renderMessage gm = go $ gm ^. T.msg
+    where time            = quot (gm ^. T.time) 1000000
+          go Nothing      = withAttr "info" . str . show $ time
+          go (Just (s,_)) = withAttr "info" . str $ s
+
+---------------------------------------------------------------------
+-- Rendering fruit and oneups
+
+renderOneups :: Game -> Widget ()
+renderOneups gm = hBox . take (2 * gm ^. T.oneups) . cycle $ [ oneup, space ]
+    where oneup = withAttr "player" . txt $ ">"
+          space = withAttr "background" . txt $ " "
+
+renderFruit :: Game -> Widget ()
+renderFruit _ = padLeft Max . withAttr "score" . txt $ "fruit!"
+
+-- =============================================================== --
 -- Attributes
 
 attributes :: AttrMap
