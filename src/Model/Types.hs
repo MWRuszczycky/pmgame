@@ -118,6 +118,9 @@ data FruitName = Cherry
                | Orange
                | Apple
                | Melon
+               | Galaxian
+               | Bell
+               | Key
                deriving (Show, Eq)
 
 data Items = Items { _pellets  :: Int           -- Total normal pellets eaten

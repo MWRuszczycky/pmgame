@@ -176,6 +176,9 @@ renderTile _ (FruitTile Strawberry) = withAttr "strawberry" . txt $ "s"
 renderTile _ (FruitTile Orange    ) = withAttr "orange"     . txt $ "o"
 renderTile _ (FruitTile Apple     ) = withAttr "apple"      . txt $ "a"
 renderTile _ (FruitTile Melon     ) = withAttr "melon"      . txt $ "m"
+renderTile _ (FruitTile Galaxian  ) = withAttr "galaxian"   . txt $ "g"
+renderTile _ (FruitTile Bell      ) = withAttr "bell"       . txt $ "b"
+renderTile _ (FruitTile Key       ) = withAttr "key"        . txt $ "k"
 renderTile gm Player                = renderPlayer gm
 renderTile _  _                     = withAttr "maze"       . txt $ " "
 
@@ -243,10 +246,13 @@ attributes = attrMap V.defAttr
     , ( "whiteGhost", on V.black V.white         )
     , ( "ghostEyes",  on V.cyan V.black          )
     , ( "cherry",     on V.red V.black           )
-    , ( "strawberry", on V.red V.black           )
+    , ( "strawberry", on V.magenta V.black       )
     , ( "orange",     on V.yellow V.black        )
-    , ( "apple",      on V.green V.black         )
+    , ( "apple",      on V.brightRed V.black     )
     , ( "melon",      on V.green V.black         )
+    , ( "galaxian",   on V.cyan V.black          )
+    , ( "bell",       on V.blue V.black          )
+    , ( "key",        on V.brightYellow V.black  )
     , ( "background", bg V.black                 )
     , ( borderAttr,   on V.blue V.black          )
     ]

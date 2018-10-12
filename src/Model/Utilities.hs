@@ -100,6 +100,9 @@ scoreFruit Strawberry = 300
 scoreFruit Orange     = 500
 scoreFruit Apple      = 700
 scoreFruit Melon      = 1000
+scoreFruit Galaxian   = 2000
+scoreFruit Bell       = 3000
+scoreFruit Key        = 5000
 
 fruitDuration :: FruitName -> Time
 fruitDuration Cherry     = toMicroSeconds 60
@@ -107,6 +110,9 @@ fruitDuration Strawberry = toMicroSeconds 50
 fruitDuration Orange     = toMicroSeconds 40
 fruitDuration Apple      = toMicroSeconds 30
 fruitDuration Melon      = toMicroSeconds 20
+fruitDuration Galaxian   = toMicroSeconds 15
+fruitDuration Bell       = toMicroSeconds 10
+fruitDuration Key        = toMicroSeconds 5
 
 ---------------------------------------------------------------------
 -- Determining tile subtypes

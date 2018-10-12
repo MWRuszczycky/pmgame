@@ -213,15 +213,18 @@ getFruitPosition r0 xs
 
 getFruitName :: StdGen -> Maybe (FruitName, StdGen)
 getFruitName r0
-    | k < 20    = Just ( Cherry,     r1 )
-    | k < 40    = Just ( Strawberry, r1 )
-    | k < 60    = Just ( Orange,     r1 )
-    | k < 80    = Just ( Apple,      r1 )
-    | k < 100   = Just ( Melon,      r1 )
+    | k < 480   = Just ( Cherry,     r1 )
+    | k < 640   = Just ( Strawberry, r1 )
+    | k < 736   = Just ( Orange,     r1 )
+    | k < 805   = Just ( Apple,      r1 )
+    | k < 843   = Just ( Melon,      r1 )
+    | k < 877   = Just ( Galaxian,   r1 )
+    | k < 893   = Just ( Bell,       r1 )
+    | k < 900   = Just ( Key,        r1 )
     | otherwise = Nothing
-    where (k, r1) = randomR (0, 99 :: Int) r0
+    where (k, r1) = randomR (0, 999 :: Int) r0
 
 getFruitDelay :: StdGen -> (Time, StdGen)
 getFruitDelay = randomR (tmin, tmax)
     where tmin = toMicroSeconds 5
-          tmax = toMicroSeconds 20
+          tmax = toMicroSeconds 25

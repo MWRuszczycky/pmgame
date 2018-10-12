@@ -24,8 +24,8 @@ Use the arrow keys to change direction. Use `Esc` to quit the game at any time.
 
 ## Things to do
 
-* Improve parameters for the fruit and add the full list (right now they are just for testing purposes).
 * Add display for control information.
+* Refactor level advancement.
 * Improve the entry point and add a start screen.
 * Add game pausing.
 * Add recording and loading of high scores (right now it just redisplays the current score).
