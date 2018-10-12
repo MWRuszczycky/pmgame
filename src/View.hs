@@ -21,7 +21,8 @@ import Brick.Widgets.Border             ( borderWithLabel
 import Brick.AttrMap                    ( attrMap, AttrMap          )
 import Brick.Util                       ( on, bg, fg                )
 import Brick.Widgets.Center             ( center, hCenter, vCenter  )
-import Model.Utilities                  ( powerTimeLeft, tickPeriod )
+import Model.Utilities                  ( powerTimeLeft, tickPeriod
+                                        , playerScore               )
 import Model.Types                      ( Game          (..)
                                         , GameSt        (..)
                                         , PacMan        (..)
@@ -196,11 +197,7 @@ renderHighScore :: Game -> Widget ()
 renderHighScore = renderScore
 
 renderScore :: Game -> Widget ()
-renderScore gm = withAttr "score" . str . show $ pel + gst + ppel + frt
-    where pel  = 10 * gm ^. T.items . T.pellets
-          ppel = 50 * gm ^. T.items . T.ppellets
-          gst  = gm ^. T.items . T.gstscore
-          frt  = foldl' ( \ s (_,fs) -> s + fs ) 0 $ gm ^. T.items . T.fruits
+renderScore = withAttr "score" . str . show . playerScore
 
 renderMessage :: Game -> Widget ()
 renderMessage gm = go $ gm ^. T.msg

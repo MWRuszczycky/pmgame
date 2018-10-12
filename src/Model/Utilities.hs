@@ -6,6 +6,7 @@ module Model.Utilities
     , messageTime
     , powerDuration
     , powerTimeLeft
+    , playerScore
     , isWall
     , noWalls
     , moveFrom
@@ -17,6 +18,7 @@ import qualified Data.Matrix    as M
 import qualified Model.Types    as T
 import qualified Data.Vector    as V
 import Data.Matrix                      ( (!)            )
+import Data.List                        ( foldl'         )
 import Lens.Micro                       ( (^.)           )
 import Model.Types                      ( Tile      (..)
                                         , Game      (..)
@@ -65,6 +67,14 @@ powerTimeLeft g
     where dt = case g ^. T.status of
                     PwrRunning t0 -> g ^. T.pwrtime - ( g ^. T.time - t0 )
                     otherwise     -> 0
+
+playerScore :: Game -> Int
+-- ^Compute the current score based on the game state.
+playerScore gm = pel + ppel + gst + frt
+    where pel  = 10 * gm ^. T.items . T.pellets
+          ppel = 50 * gm ^. T.items . T.ppellets
+          gst  = gm ^. T.items . T.gstscore
+          frt  = foldl' ( \ s (_,fs) -> s + fs ) 0 $ gm ^. T.items . T.fruits
 
 ---------------------------------------------------------------------
 -- Determining tile subtypes
