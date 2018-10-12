@@ -223,5 +223,5 @@ getFruitName r0
 
 getFruitDelay :: StdGen -> (Time, StdGen)
 getFruitDelay = randomR (tmin, tmax)
-    where tmin = toMicroSeconds 0
-          tmax = toMicroSeconds 5
+    where tmin = toMicroSeconds 5
+          tmax = toMicroSeconds 20

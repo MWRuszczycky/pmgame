@@ -109,6 +109,7 @@ startNextLevel g (Just fn) = do
     etG <- initGame ( g ^. T.rgen ) ( g ^. T.dtime ) <$> readFile fn
     case etG of
          Left _   -> return etG
-         Right g' -> return . Right $ g' & T.items  .~ ( g ^. T.items )
+         Right g' -> return . Right $ g' & T.items  .~ ( g ^. T.items        )
                                          & T.level  .~ ( succ $ g ^. T.level )
-                                         & T.oneups .~ ( g ^. T.oneups)
+                                         & T.oneups .~ ( g ^. T.oneups       )
+                                         & T.time   .~ ( g ^. T.time         )

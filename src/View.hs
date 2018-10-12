@@ -217,7 +217,12 @@ renderOneups gm = hBox . take (2 * gm ^. T.oneups) . cycle $ [ oneup, space ]
           space = withAttr "background" . txt $ " "
 
 renderFruit :: Game -> Widget ()
-renderFruit _ = padLeft Max . withAttr "score" . txt $ "fruit!"
+renderFruit gm = padLeft Max
+                 . hBox
+                 . map ( renderTile gm . FruitTile )
+                 . fst
+                 . unzip
+                 $ gm ^. T.items . T.fruits
 
 -- =============================================================== --
 -- Attributes

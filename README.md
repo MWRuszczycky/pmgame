@@ -25,7 +25,6 @@ Use the arrow keys to change direction. Use `Esc` to quit the game at any time.
 ## Things to do
 
 * Improve parameters for the fruit and add the full list (right now they are just for testing purposes).
-* Add display for acquired fruit rather than just displaying "fruit!".
 * Add display for control information.
 * Improve the entry point and add a start screen.
 * Add game pausing.
