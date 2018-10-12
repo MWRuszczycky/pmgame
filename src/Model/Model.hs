@@ -19,6 +19,7 @@ import Model.Utilities              ( tickPeriod
                                     , ghostWaitTime
                                     , messageTime
                                     , edibleGhostWaitTime
+                                    , scoreFruit
                                     , revDirection
                                     , moveFrom
                                     , pathBetween                   )
@@ -32,6 +33,8 @@ import Model.Types                  ( Tile          (..)
                                     , PacMan        (..)
                                     , Ghost         (..)
                                     , Fruit         (..)
+                                    , FruitName     (..)
+                                    , Items         (..)
                                     , GhostState    (..)            )
 
 ---------------------------------------------------------------------
@@ -161,12 +164,18 @@ updateFruit gm = go (gm ^. T.fruit)
                     stepVisible = frt & T.fduration %~ adjustTime
                     capture     = frt ^. T.fpos == gm ^. T.pacman . T.ppos
                     adjustTime  = subtract (gm ^. T.dtime)
-                    fruitEaten  = let dscore = frt ^. T.fpoints
-                                      msg  = "Fruit +" ++ show dscore ++ "!"
-                                      item = (frt ^. T.fname, frt ^. T.fpoints)
+                    fruitEaten  = let fnm = frt ^. T.fname
+                                      scr = scoreFruit fnm
+                                      msg = "Fruit +" ++ show scr ++ "!"
                                   in  gm & T.fruit .~ Nothing
                                          & T.msg   .~ Just (msg, messageTime)
-                                         & T.items . T.fruits %~ (item :)
+                                         & T.items %~ addFruitToItems fnm
+
+addFruitToItems :: FruitName -> Items -> Items
+addFruitToItems n items = items & T.fruits %~ go
+    where go []         = [(n, 1)]
+          go ((f,c):fs) | f == n    = (f, c + 1) : fs
+                        | otherwise = (f, c) : go fs
 
 ---------------------------------------------------------------------
 -- Dealing with the "powered" state after eating a power pellet

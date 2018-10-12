@@ -6,7 +6,10 @@ module Model.Utilities
     , messageTime
     , powerDuration
     , powerTimeLeft
+    , toMicroSeconds
     , playerScore
+    , scoreFruit
+    , fruitDuration
     , isWall
     , noWalls
     , moveFrom
@@ -25,6 +28,7 @@ import Model.Types                      ( Tile      (..)
                                         , Game      (..)
                                         , Maze      (..)
                                         , Point     (..)
+                                        , FruitName (..)
                                         , Mode      (..)
                                         , Direction (..) )
 
@@ -33,7 +37,7 @@ import Model.Types                      ( Tile      (..)
 
 tickPeriod :: Time
 -- ^Time between clock ticks.
-tickPeriod = 225000 -- microseconds
+tickPeriod = toMicroSeconds 0.225
 
 playerWaitTime :: Time
 -- ^Wait time for player between moves.
@@ -49,11 +53,18 @@ edibleGhostWaitTime = 2 * ghostWaitTime
 
 messageTime :: Time
 -- ^Length of time messages are displayed.
-messageTime = 3000000 -- microseconds
+messageTime = toMicroSeconds 3
 
 powerDuration :: Time
 -- ^Length of time ghosts remain edible after eating a power pellet.
-powerDuration = 7500000 -- microseconds
+powerDuration = toMicroSeconds 7.5
+
+---------------------------------------------------------------------
+-- Useful helper functions
+
+toMicroSeconds :: Double -> Time
+-- ^Convert seconds as a Double to microseconds as Time (Int).
+toMicroSeconds = round . (* 1000000)
 
 ---------------------------------------------------------------------
 -- Game state query utilities
@@ -75,7 +86,27 @@ playerScore gm = pel + ppel + gst + frt
     where pel  = 10 * gm ^. T.items . T.pellets
           ppel = 50 * gm ^. T.items . T.ppellets
           gst  = gm ^. T.items . T.gstscore
-          frt  = foldl' ( \ s (_,fs) -> s + fs ) 0 $ gm ^. T.items . T.fruits
+          frt  = totalFruitScore $ gm ^. T.items . T.fruits
+
+totalFruitScore :: [(FruitName, Int)] -> Int
+totalFruitScore = foldl' ( \ s (fn, n) -> s + n * scoreFruit fn ) 0
+
+---------------------------------------------------------------------
+-- Fruit parameters
+
+scoreFruit :: FruitName -> Int
+scoreFruit Cherry     = 100
+scoreFruit Strawberry = 300
+scoreFruit Orange     = 500
+scoreFruit Apple      = 700
+scoreFruit Melon      = 1000
+
+fruitDuration :: FruitName -> Time
+fruitDuration Cherry     = toMicroSeconds 60
+fruitDuration Strawberry = toMicroSeconds 50
+fruitDuration Orange     = toMicroSeconds 40
+fruitDuration Apple      = toMicroSeconds 30
+fruitDuration Melon      = toMicroSeconds 20
 
 ---------------------------------------------------------------------
 -- Determining tile subtypes

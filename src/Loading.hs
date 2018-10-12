@@ -10,6 +10,8 @@ import qualified Model.Types as T
 import Lens.Micro                   ( (&), (^.), (.~), (%~) )
 import System.Random                ( StdGen, randomR       )
 import Model.Utilities              ( messageTime
+                                    , toMicroSeconds
+                                    , fruitDuration
                                     , powerDuration         )
 import Model.Types                  ( Game          (..)
                                     , GameSt        (..)
@@ -117,9 +119,9 @@ loadGhost xs c = do
                  }
 
 loadFruit :: StdGen -> MazeChars -> Either String (Maybe Fruit, StdGen)
-loadFruit r0 xs = case getFruitPosition r0 xs of
-                       (Nothing, r1) -> Right (Nothing, r1)
-                       (Just p, r1 ) -> Right . getFruit r1 $ p
+loadFruit r0 xs = case getFruit r0 xs of
+                       Nothing      -> Right (Nothing, r0)
+                       Just (f, r1) -> Right (Just f, r1)
 
 readGhost :: Char -> Either String (GhostName, Direction)
 readGhost 'p' = Right ( Pinky,  East  )
@@ -194,64 +196,32 @@ horWallLink x   (Just y  ) = isWallChar x && isWallChar y && x /= y
 ---------------------------------------------------------------------
 -- Fruit
 
-getFruitPosition :: StdGen -> MazeChars -> (Maybe Point, StdGen)
+getFruit :: StdGen -> MazeChars -> Maybe (Fruit, StdGen)
+getFruit r0 xs = do
+    (p,  r1) <- getFruitPosition r0 xs
+    (fn, r2) <- getFruitName r1
+    let (t0, r3) = getFruitDelay r2
+        dt       = fruitDuration fn
+    return ( Fruit fn dt t0 p, r3 )
+
+getFruitPosition :: StdGen -> MazeChars -> Maybe (Point, StdGen)
 getFruitPosition r0 xs
-    | null ps   = ( Nothing, r0 )
-    | otherwise = ( Just $ ps !! k, r1 )
+    | null ps   = Nothing
+    | otherwise = Just ( ps !! k, r1 )
     where ps     = [ p | (p, x) <- xs, x == '?' ]
           (k,r1) = randomR (0, length ps - 1) r0
 
-getFruit :: StdGen -> Point -> (Maybe Fruit, StdGen)
-getFruit r0 p = ( pickFruit, r1 )
-    where (k, r1)   = randomR (0, 99 :: Int) r0
-          pickFruit | k < 20  = Just . cherry $ p
-                    | k < 40  = Just . strawberry $ p
-                    | k < 60  = Just . orange $ p
-                    | k < 80  = Just . apple $ p
-                    | k < 100 = Just . melon $ p
-                    | otherwise = Nothing
+getFruitName :: StdGen -> Maybe (FruitName, StdGen)
+getFruitName r0
+    | k < 20    = Just ( Cherry,     r1 )
+    | k < 40    = Just ( Strawberry, r1 )
+    | k < 60    = Just ( Orange,     r1 )
+    | k < 80    = Just ( Apple,      r1 )
+    | k < 100   = Just ( Melon,      r1 )
+    | otherwise = Nothing
+    where (k, r1) = randomR (0, 99 :: Int) r0
 
-cherry :: Point -> Fruit
-cherry p = Fruit
-   { _fname     = Cherry
-   , _fduration = 6000000
-   , _fdelay    = 600000
-   , _fpos      = p
-   , _fpoints   = 100
-   }
-
-strawberry :: Point -> Fruit
-strawberry p = Fruit
-    { _fname     = Strawberry
-    , _fduration = 5500000
-    , _fdelay    = 550000
-    , _fpos      = p
-    , _fpoints   = 300
-    }
-
-orange :: Point -> Fruit
-orange p = Fruit
-    { _fname     = Orange
-    , _fduration = 5000000
-    , _fdelay    = 500000
-    , _fpos      = p
-    , _fpoints   = 500
-    }
-
-apple :: Point -> Fruit
-apple p = Fruit
-    { _fname     = Orange
-    , _fduration = 5500000
-    , _fdelay    = 450000
-    , _fpos      = p
-    , _fpoints   = 700
-    }
-
-melon :: Point -> Fruit
-melon p = Fruit
-    { _fname     = Melon
-    , _fduration = 6000000
-    , _fdelay    = 400000
-    , _fpos      = p
-    , _fpoints   = 1000
-    }
+getFruitDelay :: StdGen -> (Time, StdGen)
+getFruitDelay = randomR (tmin, tmax)
+    where tmin = toMicroSeconds 0
+          tmax = toMicroSeconds 5

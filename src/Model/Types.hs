@@ -55,7 +55,6 @@ module Model.Types
     , fduration
     , fdelay
     , fpos
-    , fpoints
     ) where
 
 import qualified Data.Matrix as M
@@ -131,7 +130,6 @@ data Fruit = Fruit { _fname     :: FruitName    -- Name for the fruit
                    , _fduration :: Time         -- How long fruit lasts
                    , _fdelay    :: Time         -- Time before it appears
                    , _fpos      :: Point        -- Where the fruit appears
-                   , _fpoints   :: Int          -- Point value of the fruit
                    } deriving ( Show )
 
 instance Eq Fruit where
