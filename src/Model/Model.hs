@@ -166,7 +166,7 @@ updateFruit gm = go (gm ^. T.fruit)
                     adjustTime  = subtract (gm ^. T.dtime)
                     fruitEaten  = let fnm = frt ^. T.fname
                                       scr = scoreFruit fnm
-                                      msg = "Fruit +" ++ show scr ++ "!"
+                                      msg = show fnm ++ " +" ++ show scr ++ "!"
                                   in  gm & T.fruit .~ Nothing
                                          & T.msg   .~ Just (msg, messageTime)
                                          & T.items %~ addFruitToItems fnm

@@ -25,6 +25,7 @@ Use the arrow keys to change direction. Use `Esc` to quit the game at any time.
 ## Things to do
 
 * Add display for control information.
+* Add awsd controls.
 * Refactor level advancement.
 * Improve the entry point and add a start screen.
 * Add game pausing.
