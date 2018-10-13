@@ -198,6 +198,7 @@ data Mode = Running           -- Normal play mode
           | GameOver          -- All oneups have have been used
           | LevelOver         -- Current level has been completed
           | ReplayLvl         -- Player was captured and about to try again
+          | Paused Mode       -- Game is paused
           deriving ( Show, Eq )
 
 data Game = Game { _maze     :: Maze        -- Level maze

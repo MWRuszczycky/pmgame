@@ -28,7 +28,6 @@ Right now things are not setup for a proper installation and only for testing, b
 * Add display for control information.
 * Refactor level advancement.
 * Improve the entry point and add a start screen.
-* Add game pausing.
 * Add recording and loading of high scores (right now it just redisplays the current score).
 * Refactor the `Loading` module.
 * Make more levels and improve installation.

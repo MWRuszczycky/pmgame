@@ -2,6 +2,7 @@ module Model.Model
     ( restartLevel
     , updateGame
     , updateTime
+    , updateTimePaused
     , movePlayer
     , moveGhosts
     ) where
@@ -93,11 +94,19 @@ runUpdate g0 g1 = updatePower . updateFruit . updateCaptures g0 $ g1
 -- Exported
 
 updateTime :: Time -> Game -> Game
-updateTime t gm = let dt  = t - gm ^. T.time
+updateTime t gm = let dt = t - gm ^. T.time
                   in  updateMessageTime dt
                       . updatePowerTime dt
                       . updateFruitTimes dt
                       $ gm & T.time .~ t & T.dtime .~ dt
+
+updateTimePaused :: Time -> Game -> Game
+updateTimePaused t gm =
+    let dt = t - gm ^. T.time
+    in  gm & T.time .~ t
+           & T.dtime .~ dt
+           & T.pacman . T.ptlast %~ (+dt)
+           & T.ghosts %~ map ( \ g -> g & T.gtlast %~ (+dt) )
 
 -- Unexported
 
@@ -238,6 +247,7 @@ movePlayer gm
                                m   = gm ^. T.maze
                                p1  = moveFrom m p0 d0
                                gm' = gm & T.pacman . T.ppos .~ p1
+                                        & T.pacman . T.ptlast .~ (gm ^. T.time)
                            in  case m ! p1 of
                                     PwrPellet -> eatPwrPellet gm p1
                                     Pellet    -> eatPellet gm p1

@@ -23,6 +23,7 @@ import Model.Model                  ( movePlayer
                                     , moveGhosts
                                     , restartLevel
                                     , updateTime
+                                    , updateTimePaused
                                     , updateGame            )
 
 type EventHandler = BrickEvent () TimeEvent -> EventM () ( Next GameSt )
@@ -31,56 +32,72 @@ type EventHandler = BrickEvent () TimeEvent -> EventM () ( Next GameSt )
 
 routeEvent :: GameSt -> EventHandler
 routeEvent (Left err) _ = halt (Left err)
-routeEvent (Right g)  e = case g ^. T.mode of
-                                GameOver     -> routeGameOver g e
-                                LevelOver    -> routeLevelOver g e
-                                ReplayLvl    -> routeReplay g e
-                                otherwise    -> routeRunning g e
+routeEvent (Right gm) e = case gm ^. T.mode of
+                               GameOver  -> routeGameOver gm e
+                               LevelOver -> routeLevelOver gm e
+                               ReplayLvl -> routeReplay gm e
+                               Paused m  -> routePaused gm m e
+                               otherwise -> routeRunning gm e
 
 routeRunning :: Game -> EventHandler
-routeRunning g (VtyEvent (V.EvKey V.KEsc [] )) =
-    halt . Right $ g
-routeRunning g (VtyEvent (V.EvKey k ms ))      =
-    continue . Right . keyEvent k ms $ g
-routeRunning g (AppEvent (Tick t))             =
-    continue . Right . tickEvent t $ g
-routeRunning g _                               =
-    continue . Right $ g
+routeRunning gm (VtyEvent (V.EvKey V.KEsc [])) =
+    halt . Right $ gm
+routeRunning gm (VtyEvent (V.EvKey (V.KChar ' ') [])) =
+    continue . Right . pauseGame $ gm
+routeRunning gm (VtyEvent (V.EvKey k ms)) =
+    continue . Right . keyEvent k ms $ gm
+routeRunning gm (AppEvent (Tick t)) =
+    continue . Right . tickEvent t $ gm
+routeRunning gm _ =
+    continue . Right $ gm
 
 routeReplay :: Game -> EventHandler
-routeReplay g (VtyEvent (V.EvKey V.KEsc [] ))   =
-    halt . Right $ g
-routeReplay g (VtyEvent (V.EvKey V.KEnter [] )) =
-    continue . Right . restartLevel $ g
-routeReplay g _                                 =
-    continue . Right $ g
+routeReplay gm (VtyEvent (V.EvKey V.KEsc [])) =
+    halt . Right $ gm
+routeReplay gm (VtyEvent (V.EvKey V.KEnter [])) =
+    continue . Right . restartLevel $ gm
+routeReplay gm _ =
+    continue . Right $ gm
 
 routeLevelOver :: Game -> EventHandler
-routeLevelOver g (VtyEvent (V.EvKey V.KEsc [] ))   =
-    halt . Right $ g
-routeLevelOver g (VtyEvent (V.EvKey V.KEnter [] )) =
-    suspendAndResume . startNextLevel g $ lookup ( succ $ g ^. T.level ) levels
-routeLevelOver g _                                 =
-    continue . Right $ g
+routeLevelOver gm (VtyEvent (V.EvKey V.KEsc [])) =
+    halt . Right $ gm
+routeLevelOver gm (VtyEvent (V.EvKey V.KEnter [])) =
+    suspendAndResume . startNextLevel gm
+    $ lookup (succ $ gm ^. T.level) levels
+routeLevelOver gm _ =
+    continue . Right $ gm
 
 routeGameOver :: Game -> EventHandler
-routeGameOver g (VtyEvent (V.EvKey V.KEsc [] ))   =
-    halt . Right $ g
-routeGameOver g (VtyEvent (V.EvKey V.KEnter [] )) =
-    suspendAndResume ( restartGame g )
-routeGameOver g (VtyEvent (V.EvResize _ _ ))      =
-    continue . Right $ g
-routeGameOver g _                                 =
-    continue . Right $ g
+routeGameOver gm (VtyEvent (V.EvKey V.KEsc [])) =
+    halt . Right $ gm
+routeGameOver gm (VtyEvent (V.EvKey V.KEnter [])) =
+    suspendAndResume ( restartGame gm )
+routeGameOver gm _ =
+    continue . Right $ gm
+
+routePaused :: Game -> Mode -> EventHandler
+routePaused gm m (VtyEvent (V.EvKey V.KEsc [])) =
+    halt . Right $ gm & T.mode .~ m
+routePaused gm m (VtyEvent (V.EvKey (V.KChar ' ') [])) =
+    continue . Right $ unpauseGame m gm
+routePaused gm m (AppEvent (Tick t)) =
+    continue . Right . pausedTickEvent t $ gm
+routePaused gm _ _ =
+    continue . Right $ gm
 
 ---------------------------------------------------------------------
 -- Event handlers for running game
 
 tickEvent :: Int -> Game -> Game
-tickEvent t g = updateGame g
-                . updateTime t
-                . moveGhosts
-                . movePlayer $ g
+tickEvent t gm = updateGame gm
+                 . updateTime t
+                 . moveGhosts
+                 . movePlayer $ gm
+
+pauseGame :: Game -> Game
+pauseGame gm = let pausedMode = Paused $ gm ^. T.mode
+               in  gm & T.mode .~ pausedMode
 
 keyEvent :: V.Key -> [V.Modifier] -> Game -> Game
 keyEvent  V.KLeft      _ gm = gm & T.pacman . T.pdir .~ West
@@ -95,6 +112,15 @@ keyEvent  V.KDown      _ gm = gm & T.pacman . T.pdir .~ South
 keyEvent (V.KChar 's') _ gm = gm & T.pacman . T.pdir .~ South
 keyEvent (V.KChar 'o') _ gm = gm & T.pacman . T.pdir .~ South
 keyEvent _             _ gm = gm
+
+---------------------------------------------------------------------
+-- Event handlers for paused game
+
+pausedTickEvent :: Int -> Game -> Game
+pausedTickEvent t gm = updateTimePaused t gm
+
+unpauseGame :: Mode -> Game -> Game
+unpauseGame m gm = gm & T.mode .~ m
 
 ---------------------------------------------------------------------
 -- Event handlers for restarts
