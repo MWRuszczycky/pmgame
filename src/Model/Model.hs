@@ -145,24 +145,15 @@ eatGhosts :: Game -> [Ghost] -> Game
 eatGhosts gm gs = let eaten   = map (eatGhost gm) gs
                       uneaten = ( gm ^. T.ghosts ) \\ eaten
                       nEaten  = length eaten
-                      score   = scoreCaptures (gm ^. T.pwrmult) nEaten
+                      scores  = scoreCaptures (gm ^. T.pwrmult) nEaten
+                      score   = sum scores
                   in  gm & T.ghosts .~ sort ( eaten ++ uneaten )
-                         & T.items . T.gstscore %~ (+ score)
+                         & T.items . T.gstscores %~ addGhostScores scores
                          & T.pwrmult %~ (* (2 ^ nEaten) )
                          & T.msg .~ if nEaten == 1
                                        then scoreMessage "Ghost" score
                                        else let msg = show nEaten ++ " Ghosts"
                                             in  scoreMessage msg score
-
-scoreCaptures :: Int -> Int -> Score
-scoreCaptures m n = foldl' ( \ s k -> s + 100 * m * 2 ^ k ) 0 [0 .. n-1]
-
-eatGhost :: Game -> Ghost -> Ghost
-eatGhost gm g = let m  = gm ^. T.maze
-                    p0 = g ^. T.gpos
-                    p1 = fst $ g ^. T.gstrt
-                in g & T.gstate    .~ EyesOnly
-                     & T.gpathback .~ pathBetween m p0 p1
 
 ghostCaptures :: Game -> Game -> [Ghost]
 -- ^Return a list of all ghosts capturing or captured by player. This
@@ -176,6 +167,22 @@ ghostCaptures gm0 gm1 = let p0 = gm0 ^. T.pacman . T.ppos
 
 isCapture :: (Point, Point) -> (Point, Point) -> Bool
 isCapture (p0, p1) (g0, g1) = p1 == g1 || p1 == g0 && p0 == g1
+
+eatGhost :: Game -> Ghost -> Ghost
+eatGhost gm g = let m  = gm ^. T.maze
+                    p0 = g ^. T.gpos
+                    p1 = fst $ g ^. T.gstrt
+                in g & T.gstate    .~ EyesOnly
+                     & T.gpathback .~ pathBetween m p0 p1
+
+scoreCaptures :: Int -> Int -> [Score]
+scoreCaptures m n = map ( \ k -> 100 * m * 2 ^ k ) [0..n-1]
+
+addGhostScores :: [Score] -> [(Score, Int)] -> [(Score, Int)]
+addGhostScores toAdd scores = foldl' go scores toAdd
+    where go []         x             = [(x, 1)]
+          go ((y,n):ys) x | x == y    = (y, n+1) : ys
+                          | otherwise = (y, n  ) : go ys x
 
 ---------------------------------------------------------------------
 -- Updating the appearance and disappearance of fruit

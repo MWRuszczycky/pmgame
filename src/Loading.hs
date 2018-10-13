@@ -62,7 +62,7 @@ startNewGame r0 lvl s = do
     gsts <- mapM ( loadGhost xs ) "pbic"
     (mbFruit, r1) <- loadFruit r0 lvl xs
     return Game { _maze     = m
-                , _items    = Items 0 0 0 []
+                , _items    = Items 0 0 [] []
                 , _rgen     = r1
                 , _pacman   = pman
                 , _ghosts   = sort gsts

@@ -50,7 +50,7 @@ module Model.Types
     -- Lenses for Items
     , pellets
     , ppellets
-    , gstscore
+    , gstscores
     , fruits
     -- Lenses for Fruit
     , fname
@@ -138,10 +138,14 @@ data FruitName = Cherry
                | Key
                deriving (Show, Eq)
 
-data Items = Items { _pellets  :: Int           -- Total normal pellets eaten
-                   , _ppellets :: Int           -- Total power pellets eaten
-                   , _gstscore :: Score         -- Score from all ghosts eaten
-                   , _fruits   :: [(FruitName, Int)] -- Fruits eaten and counts
+-- |The number of pellets and power pellets eaten is self-
+-- explanatory. Ghosts scores are tracked as the number of ghosts
+-- eaten at each point level. Fruit scores are tracked as names of
+-- the fruits eaten and their counts.
+data Items = Items { _pellets   :: Int                -- Normal pellets eaten
+                   , _ppellets  :: Int                -- Power pellets eaten
+                   , _gstscores :: [(Score, Int)]     -- Score from ghosts
+                   , _fruits    :: [(FruitName, Int)] -- Score from fruits
                    } deriving ( Show )
 
 data Fruit = Fruit { _fname     :: FruitName    -- Name for the fruit

@@ -101,8 +101,11 @@ playerScore :: Game -> Score
 playerScore gm = pel + ppel + gst + frt
     where pel  = 10 * gm ^. T.items . T.pellets
           ppel = 50 * gm ^. T.items . T.ppellets
-          gst  = gm ^. T.items . T.gstscore
+          gst  = totalGhostScore $ gm ^. T.items . T.gstscores
           frt  = totalFruitScore $ gm ^. T.items . T.fruits
+
+totalGhostScore :: [(Score, Int)] -> Score
+totalGhostScore = foldl' ( \ s (x, n) -> s + x * n ) 0
 
 totalFruitScore :: [(FruitName, Int)] -> Score
 totalFruitScore = foldl' ( \ s (fn, n) -> s + n * scoreFruit fn ) 0
