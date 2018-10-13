@@ -7,6 +7,7 @@ module Loading
 import qualified Data.Matrix as M
 import qualified Data.Vector as V
 import qualified Model.Types as T
+import Data.List                    ( sort                  )
 import Lens.Micro                   ( (&), (^.), (.~), (%~) )
 import System.Random                ( StdGen, randomR       )
 import Model.Utilities              ( toMicroSeconds
@@ -52,7 +53,7 @@ initGame r0 dt s = do
                 , _items    = Items 0 0 0 []
                 , _rgen     = r1
                 , _pacman   = pman
-                , _ghosts   = gsts
+                , _ghosts   = sort gsts
                 , _fruit    = mbFruit
                 , _mode     = Running
                 , _level    = 1

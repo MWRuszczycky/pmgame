@@ -96,7 +96,7 @@ makeLenses ''PacMan
 -- Pac-Man, EyesOnly ghosts have been eaten and need to regenerate.
 data GhostState = Normal | Edible | EyesOnly deriving (Show, Eq)
 
-data GhostName = Blinky | Pinky | Inky | Clyde deriving (Show, Eq)
+data GhostName = Blinky | Pinky | Inky | Clyde deriving (Show, Eq, Ord)
 
 data Ghost = Ghost { _gname     :: GhostName          -- Name for the ghost
                    , _gdir      :: Direction          -- Current direction
@@ -109,6 +109,9 @@ data Ghost = Ghost { _gname     :: GhostName          -- Name for the ghost
 
 instance Eq Ghost where
     (==) g1 g2 = _gname g1 == _gname g2
+
+instance Ord Ghost where
+    compare g1 g2 = compare ( _gname g1 ) ( _gname g2 )
 
 makeLenses ''Ghost
 

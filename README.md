@@ -30,8 +30,6 @@ Right now things are not setup for a proper installation and only for testing, b
 * Improve the entry point and add a start screen.
 * Add game pausing.
 * Add recording and loading of high scores (right now it just redisplays the current score).
-* Allow capture of multiple ghosts simultaneously.
 * Refactor the `Loading` module.
-* Refactor the fruit updating function (it's really ugly right now).
 * Make more levels and improve installation.
 * Write a better README and add images or an animated gif.

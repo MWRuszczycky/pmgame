@@ -8,6 +8,7 @@ module Model.Model
 
 import qualified Data.Matrix as M
 import qualified Model.Types as T
+import Data.List                    ( (\\), foldl', sort            )
 import Lens.Micro                   ( (&), (^.), (.~), (%~)         )
 import Data.Matrix                  ( (!)                           )
 import System.Random                ( StdGen
@@ -36,6 +37,7 @@ import Model.Types                  ( Tile          (..)
                                     , Fruit         (..)
                                     , FruitName     (..)
                                     , Items         (..)
+                                    , Score         (..)
                                     , GhostState    (..)            )
 
 ---------------------------------------------------------------------
@@ -122,20 +124,30 @@ updateMessageTime dt gm = gm & T.msg %~ go
 -- Unexported
 
 updateCaptures :: Game -> Game -> Game
-updateCaptures g0 g1
-    | null gsts = g1
-    | ateGhost  = g1 & T.ghosts .~ eaten : uneaten
-                     & T.items . T.gstscore %~ (+ ds)
-                     & T.pwrmult %~ (*2)
-                     & T.msg .~ scoreMessage "Ghost" ds
-    | moreLives = g1 & T.mode .~ ReplayLvl
-    | otherwise = g1 & T.mode .~ GameOver
-    where gsts      = ghostCapture g0 g1
-          ateGhost  = all ( (== Edible) . (^. T.gstate) ) gsts
-          eaten     = eatGhost g0 . head $ gsts
-          uneaten   = filter (/= eaten) $ g0 ^. T.ghosts
-          ds        = 100 * ( g1 ^. T.pwrmult )
-          moreLives = g1 ^. T.oneups > 0
+updateCaptures gm0 gm1
+    | null captures = gm1
+    | ateGhost      = eatGhosts gm1 captures
+    | moreLives     = gm1 & T.mode .~ ReplayLvl
+    | otherwise     = gm1 & T.mode .~ GameOver
+    where captures  = ghostCaptures gm0 gm1
+          ateGhost  = all ( (== Edible) . (^. T.gstate) ) captures
+          moreLives = gm1 ^. T.oneups > 0
+
+eatGhosts :: Game -> [Ghost] -> Game
+eatGhosts gm gs = let eaten   = map (eatGhost gm) gs
+                      uneaten = ( gm ^. T.ghosts ) \\ eaten
+                      nEaten  = length eaten
+                      score   = scoreCaptures (gm ^. T.pwrmult) nEaten
+                  in  gm & T.ghosts .~ sort ( eaten ++ uneaten )
+                         & T.items . T.gstscore %~ (+ score)
+                         & T.pwrmult %~ (* (2 ^ nEaten) )
+                         & T.msg .~ if nEaten == 1
+                                       then scoreMessage "Ghost" score
+                                       else let msg = show nEaten ++ " Ghosts"
+                                            in  scoreMessage msg score
+
+scoreCaptures :: Int -> Int -> Score
+scoreCaptures m n = foldl' ( \ s k -> s + 100 * m * 2 ^ k ) 0 [0 .. n-1]
 
 eatGhost :: Game -> Ghost -> Ghost
 eatGhost gm g = let m  = gm ^. T.maze
@@ -144,27 +156,18 @@ eatGhost gm g = let m  = gm ^. T.maze
                 in g & T.gstate    .~ EyesOnly
                      & T.gpathback .~ pathBetween m p0 p1
 
-ghostCapture :: Game -> Game -> [Ghost]
--- ^Return a list of all ghosts capturing or captured by player.
-ghostCapture gm0 gm1 = let p0 = gm0 ^. T.pacman . T.ppos
-                           p1 = gm1 ^. T.pacman . T.ppos
-                           gs = zip ( gm0 ^. T.ghosts ) ( gm1 ^. T.ghosts )
-                     in  [ g1 | (g0, g1) <- gs
-                             , g0 ^. T.gstate /= EyesOnly
-                             , isCapture (p0, p1) (g0 ^. T.gpos, g1 ^. T.gpos) ]
+ghostCaptures :: Game -> Game -> [Ghost]
+-- ^Return a list of all ghosts capturing or captured by player. This
+-- requires that the list of ghosts always remains in sorted order.
+ghostCaptures gm0 gm1 = let p0 = gm0 ^. T.pacman . T.ppos
+                            p1 = gm1 ^. T.pacman . T.ppos
+                            gs = zip ( gm0 ^. T.ghosts ) ( gm1 ^. T.ghosts )
+                        in  [ g1 | (g0, g1) <- gs
+                            , g0 ^. T.gstate /= EyesOnly
+                            , isCapture (p0, p1) (g0 ^. T.gpos, g1 ^. T.gpos) ]
 
 isCapture :: (Point, Point) -> (Point, Point) -> Bool
 isCapture (p0, p1) (g0, g1) = p1 == g1 || p1 == g0 && p0 == g1
-
-makeEdible :: Ghost -> Ghost
-makeEdible g = case g ^. T.gstate of
-                    EyesOnly  -> g
-                    otherwise -> g & T.gstate .~ Edible
-
-makeInedible :: Ghost -> Ghost
-makeInedible g = case g ^. T.gstate of
-                      Edible    -> g & T.gstate .~ Normal
-                      otherwise -> g
 
 ---------------------------------------------------------------------
 -- Updating the appearance and disappearance of fruit
@@ -216,6 +219,11 @@ managePower t gm
                              & T.mode    .~ Running
                              & T.pwrmult .~ 2
 
+makeInedible :: Ghost -> Ghost
+makeInedible g = case g ^. T.gstate of
+                      Edible    -> g & T.gstate .~ Normal
+                      otherwise -> g
+
 -- =============================================================== --
 -- Moving ghosts and player
 
@@ -239,6 +247,10 @@ movePlayer gm
 
 -- Unexported
 
+isPlayerWaiting :: Game -> Bool
+isPlayerWaiting gm = dt < playerWaitTime
+    where dt = gm ^. T.time - gm  ^. T.pacman . T.ptlast
+
 eatPellet :: Game -> Point -> Game
 eatPellet gm p = gm & T.pacman . T.ppos .~ p
                     & T.pacman . T.ptlast .~ ( gm ^. T.time )
@@ -256,9 +268,10 @@ eatPwrPellet gm p = gm & T.pacman . T.ppos .~ p
                        & T.ghosts %~ map makeEdible
                        & T.mode .~ PwrRunning (gm ^. T.pwrtime)
 
-isPlayerWaiting :: Game -> Bool
-isPlayerWaiting gm = dt < playerWaitTime
-    where dt = gm ^. T.time - gm  ^. T.pacman . T.ptlast
+makeEdible :: Ghost -> Ghost
+makeEdible g = case g ^. T.gstate of
+                    EyesOnly  -> g
+                    otherwise -> g & T.gstate .~ Edible
 
 ---------------------------------------------------------------------
 -- Moving the ghosts
