@@ -115,6 +115,9 @@ makeLenses ''Ghost
 ---------------------------------------------------------------------
 -- Messages
 
+-- |The first parameter is the message to display and the second is
+-- the time remaining for its continued display, assuming no other
+-- message is generated.
 data Message = Message String Time | NoMessage deriving (Show, Eq)
 
 ---------------------------------------------------------------------
