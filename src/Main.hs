@@ -41,8 +41,8 @@ main = do
     gen  <- getStdGen
     args <- getArgs
     etGame <- case args of
-                   []  -> startNewGame gen <$> readFile mfile
-                   x:_ -> startNewGame gen <$> readFile x
+                   []  -> startNewGame gen 19 <$> readFile mfile
+                   x:_ -> startNewGame gen 19 <$> readFile x
     case etGame of
          Left err -> putStrLn err
          Right g  -> runGame etGame

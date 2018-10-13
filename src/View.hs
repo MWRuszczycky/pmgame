@@ -56,7 +56,7 @@ drawRunningUI gm = [ withAttr "background" ui ]
     where ui = center . hLimit ( M.ncols $ gm ^. T.maze ) . vBox $ ws
           ws = [ renderHeader gm
                , renderMaze gm
-               , renderOneups gm <+> renderFruit gm
+               , renderOneups gm <+> renderFruitItems gm
                ]
 
 drawPausedUI :: Game -> [ Widget () ]
@@ -64,7 +64,7 @@ drawPausedUI gm = [ withAttr "background" ui ]
     where ui = center . hLimit ( M.ncols $ gm ^. T.maze ) . vBox $ ws
           ws = [ renderPausedHeader gm
                , renderMaze gm
-               , renderOneups gm <+> renderFruit gm
+               , renderOneups gm <+> renderFruitItems gm
                ]
 
 drawGameOverUI :: Game -> [ Widget () ]
@@ -108,6 +108,11 @@ drawReplayUI gm = [ withAttr "background" msg]
 
 -- =============================================================== --
 -- Tiling functions for constructing the maze prior to rendering
+-- Only fixed maze elements such as walls, warps, pellets and oneways
+-- are always part of the maze while variable elements such as the
+-- player, ghosts and fruit are managed separately. These tiling
+-- functions build a fully tiled maze by incorporating the variable
+-- elements just prior to rendering.
 
 ---------------------------------------------------------------------
 -- Overall maze construction
@@ -209,17 +214,17 @@ renderPwrPellet gm
 -- Rendering score information and messages in header
 
 renderHeader :: Game -> Widget ()
-renderHeader gm = vLimit 3 . vBox $ [ fstRow, sndRow, thdRow ]
-    where fstRow  = padLeft Max . withAttr "score" . txt $ "High"
-          sndRow  = hBox [ renderMessage gm, hsLabel ]
-          thdRow  = hBox [ renderScore gm, padLeft Max . renderHighScore $ gm ]
+renderHeader gm = vLimit 3 . vBox $ [ row1, row2, row3 ]
+    where row1    = padLeft Max . withAttr "score" . txt $ "High"
+          row2    = hBox [ renderMessage gm, hsLabel ]
+          row3    = hBox [ renderScore gm, padLeft Max . renderHighScore $ gm ]
           hsLabel = padLeft Max . withAttr "score" . txt $ "Score"
 
 renderPausedHeader :: Game -> Widget ()
-renderPausedHeader gm = vLimit 3 . vBox $ [ fstRow, sndRow, thdRow ]
-    where fstRow  = padLeft Max . withAttr "score" . txt $ "High"
-          sndRow  = hBox [ withAttr "info" . txt $ "PAUSED", hsLabel ]
-          thdRow  = hBox [ renderScore gm, padLeft Max . renderHighScore $ gm ]
+renderPausedHeader gm = vLimit 3 . vBox $ [ row1, row2, row3 ]
+    where row1    = padLeft Max . withAttr "score" . txt $ "High"
+          row2    = hBox [ withAttr "info" . txt $ "PAUSED", hsLabel ]
+          row3    = hBox [ renderScore gm, padLeft Max . renderHighScore $ gm ]
           hsLabel = padLeft Max . withAttr "score" . txt $ "Score"
 
 renderHighScore :: Game -> Widget ()
@@ -239,16 +244,16 @@ renderMessage gm = let levelMsg = "Level " ++ show ( gm ^. T.level )
 
 renderOneups :: Game -> Widget ()
 renderOneups gm = hBox . take (2 * gm ^. T.oneups) . cycle $ [ oneup, space ]
-    where oneup = withAttr "player" . txt $ ">"
+    where oneup = withAttr "player"     . txt $ ">"
           space = withAttr "background" . txt $ " "
 
-renderFruit :: Game -> Widget ()
-renderFruit gm = padLeft Max
-                 . hBox
-                 . map ( renderTile gm . FruitTile )
-                 . fst
-                 . unzip
-                 $ gm ^. T.items . T.fruits
+renderFruitItems :: Game -> Widget ()
+renderFruitItems gm = padLeft Max
+                      . hBox
+                      . map ( renderTile gm . FruitTile )
+                      . fst
+                      . unzip
+                      $ gm ^. T.items . T.fruits
 
 -- =============================================================== --
 -- Attributes

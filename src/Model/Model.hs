@@ -16,7 +16,6 @@ import System.Random                ( StdGen
                                     , randomR                       )
 import Model.Utilities              ( tickPeriod
                                     , noWalls
-                                    , powerDuration
                                     , playerWaitTime
                                     , ghostWaitTime
                                     , edibleGhostWaitTime

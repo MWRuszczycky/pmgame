@@ -18,7 +18,8 @@ import Model.Types                  ( Game       (..)
                                     , Direction  (..)
                                     , GameSt     (..)       )
 import Loading                      ( levels
-                                    , startNewGame          )
+                                    , startNewGame
+                                    , advanceLevel          )
 import Model.Model                  ( movePlayer
                                     , moveGhosts
                                     , restartLevel
@@ -129,19 +130,12 @@ restartGame :: Game -> IO GameSt
 restartGame g = do
     let gen = g ^. T.rgen
     case lookup 1 levels of
-         Just fn -> startNewGame gen <$> readFile fn
+         Just fn -> startNewGame gen 1 <$> readFile fn
          Nothing -> return . Left $ "Cannot find first level"
 
 ---------------------------------------------------------------------
 -- Level transitioning
 
 startNextLevel :: Game -> Maybe FilePath -> IO GameSt
-startNextLevel g Nothing   = startNextLevel g . lookup 1 $ levels
-startNextLevel g (Just fn) = do
-    etG <- startNewGame ( g ^. T.rgen ) <$> readFile fn
-    case etG of
-         Left _   -> return etG
-         Right g' -> return . Right $ g' & T.items  .~ ( g ^. T.items        )
-                                         & T.level  .~ ( succ $ g ^. T.level )
-                                         & T.oneups .~ ( g ^. T.oneups       )
-                                         & T.time   .~ ( g ^. T.time         )
+startNextLevel gm Nothing   = startNextLevel gm . lookup 1 $ levels
+startNextLevel gm (Just fn) = advanceLevel gm <$> readFile fn

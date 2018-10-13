@@ -27,9 +27,8 @@ Right now things are not setup for a proper installation and only for testing, b
 ## Things to do
 
 * Add display for control information.
-* Refactor level advancement.
 * Improve the entry point and add a start screen.
 * Add recording and loading of high scores (right now it just redisplays the current score).
-* Refactor the `Loading` module.
-* Make more levels and improve installation.
+* Make more levels.
+* Improve installation.
 * Write a better README and add images or an animated gif.

@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Loading
     ( startNewGame
+    , advanceLevel
     , levels
     ) where
 
@@ -12,6 +13,7 @@ import Lens.Micro                   ( (&), (^.), (.~), (%~) )
 import System.Random                ( StdGen, randomR       )
 import Model.Utilities              ( toMicroSeconds
                                     , newMessage
+                                    , tickPeriod
                                     , fruitDuration
                                     , powerDuration         )
 import Model.Types                  ( Game          (..)
@@ -52,13 +54,13 @@ levels = [ ( -1, "levels/classicMaze1-testing1.txt" )
 -- =============================================================== --
 -- Game initialization and level transitioning
 
-startNewGame :: StdGen -> MazeString -> GameSt
-startNewGame r0 s = do
+startNewGame :: StdGen -> Int -> MazeString -> GameSt
+startNewGame r0 lvl s = do
     xs   <- indexMazeString s
     m    <- loadMaze xs
     pman <- loadPacMan xs
     gsts <- mapM ( loadGhost xs ) "pbic"
-    (mbFruit, r1) <- loadFruit r0 xs
+    (mbFruit, r1) <- loadFruit r0 lvl xs
     return Game { _maze     = m
                 , _items    = Items 0 0 0 []
                 , _rgen     = r1
@@ -66,15 +68,23 @@ startNewGame r0 s = do
                 , _ghosts   = sort gsts
                 , _fruit    = mbFruit
                 , _mode     = Running
-                , _level    = 1
+                , _level    = lvl
                 , _npellets = countPellets xs
                 , _oneups   = 3
                 , _time     = 0
                 , _pwrmult  = 2
                 , _dtime    = 0
-                , _pwrtime  = powerDuration
+                , _pwrtime  = powerDuration lvl
                 , _msg      = newMessage "Ready!"
                 }
+
+advanceLevel :: Game -> MazeString -> GameSt
+advanceLevel gm s = do
+    let nxtLvl = succ $ gm ^. T.level
+    nxtGame <- startNewGame ( gm ^. T.rgen ) nxtLvl s
+    return $ nxtGame & T.items   .~ ( gm ^. T.items  )
+                     & T.oneups  .~ ( gm ^. T.oneups )
+                     & T.time    .~ ( gm ^. T.time   )
 
 -- =============================================================== --
 -- Parsing level files
@@ -154,24 +164,25 @@ readGhost x   = Left $ "Character '" ++ [x] ++ "' not recognized as ghost"
 ---------------------------------------------------------------------
 -- Loading the fruit from the IndexedMaze.
 -- Fruit loading has the following random components:
--- 1. The name of the fruit, or no fruit at all.
+-- 1. The name of the fruit, or no fruit at all, which also depends
+--    on the level.
 -- 2. The position of the fruit, which can be any position marked
 --    with an '?' in the MazeString.
 -- 3. The delay time before the fruit appears.
 -- The duration of time that a fruit can be captured is not random.
 
-loadFruit :: StdGen -> IndexedMaze -> Either String (Maybe Fruit, StdGen)
+loadFruit :: StdGen -> Int -> IndexedMaze -> Either String (Maybe Fruit, StdGen)
 -- ^This is the entry function. It returns a Nothing value for the
 -- fruit if no fruit is to appear in the current level.
-loadFruit r0 xs = case getFruit r0 xs of
-                       Nothing      -> Right (Nothing, r0)
-                       Just (f, r1) -> Right (Just f, r1)
+loadFruit r0 lvl xs = case getFruit r0 lvl xs of
+                           Nothing      -> Right (Nothing, r0)
+                           Just (f, r1) -> Right (Just f, r1)
 
-getFruit :: StdGen -> IndexedMaze -> Maybe (Fruit, StdGen)
+getFruit :: StdGen -> Int -> IndexedMaze -> Maybe (Fruit, StdGen)
 -- ^This is the helper function that actually loads the fruit.
-getFruit r0 xs = do
+getFruit r0 lvl xs = do
     (p,  r1) <- getFruitPosition r0 xs
-    (fn, r2) <- getFruitName r1
+    (fn, r2) <- getFruitName r1 lvl
     let (t0, r3) = getFruitDelay r2
         dt       = fruitDuration fn
     return ( Fruit fn dt t0 p, r3 )
@@ -185,19 +196,19 @@ getFruitPosition r0 xs
     where ps     = [ p | (p, x) <- xs, x == '?' ]
           (k,r1) = randomR (0, length ps - 1) r0
 
-getFruitName :: StdGen -> Maybe (FruitName, StdGen)
+getFruitName :: StdGen -> Int -> Maybe (FruitName, StdGen)
 -- ^Draw which fruit will appear in the level or whether no fruit
 -- will appear at all (10% chance). The probabilities are inversely
 -- proportional to points each fruit is worth.
-getFruitName r0
-    | k < 480   = Just ( Cherry,     r1 )
-    | k < 640   = Just ( Strawberry, r1 )
-    | k < 736   = Just ( Orange,     r1 )
-    | k < 805   = Just ( Apple,      r1 )
-    | k < 843   = Just ( Melon,      r1 )
-    | k < 877   = Just ( Galaxian,   r1 )
-    | k < 893   = Just ( Bell,       r1 )
-    | k < 900   = Just ( Key,        r1 )
+getFruitName r0 lvl
+    | k < 480 && lvl > 0 = Just ( Cherry,     r1 )
+    | k < 640 && lvl > 1 = Just ( Strawberry, r1 )
+    | k < 736 && lvl > 2 = Just ( Orange,     r1 )
+    | k < 805 && lvl > 3 = Just ( Apple,      r1 )
+    | k < 843 && lvl > 4 = Just ( Melon,      r1 )
+    | k < 877 && lvl > 5 = Just ( Galaxian,   r1 )
+    | k < 893 && lvl > 6 = Just ( Bell,       r1 )
+    | k < 900 && lvl > 7 = Just ( Key,        r1 )
     | otherwise = Nothing
     where (k, r1) = randomR (0, 999 :: Int) r0
 

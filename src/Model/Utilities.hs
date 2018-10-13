@@ -59,9 +59,12 @@ messageDuration :: Time
 -- ^Length of time messages are displayed.
 messageDuration = toMicroSeconds 3
 
-powerDuration :: Time
+powerDuration :: Int -> Time
 -- ^Length of time ghosts remain edible after eating a power pellet.
-powerDuration = toMicroSeconds 7.5
+-- This depends on the livel.
+powerDuration lvl
+    | lvl > 19  = 0
+    | otherwise = toMicroSeconds $ 10 - fromIntegral lvl / 2
 
 ---------------------------------------------------------------------
 -- Useful helper functions
@@ -125,7 +128,7 @@ fruitDuration Apple      = toMicroSeconds 30
 fruitDuration Melon      = toMicroSeconds 20
 fruitDuration Galaxian   = toMicroSeconds 15
 fruitDuration Bell       = toMicroSeconds 10
-fruitDuration Key        = toMicroSeconds 5
+fruitDuration Key        = toMicroSeconds 10
 
 ---------------------------------------------------------------------
 -- Determining tile subtypes
