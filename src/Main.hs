@@ -12,18 +12,18 @@ import Control.Monad                    ( void, forever             )
 import Control.Concurrent               ( threadDelay
                                         , forkIO                    )
 import Brick.BChan                      ( BChan
-                                        , writeBChan
-                                        , newBChan                  )
+                                        , newBChan
+                                        , writeBChan                )
 import Brick.Main                       ( App (..)
-                                        , neverShowCursor
-                                        , customMain                )
+                                        , customMain
+                                        , neverShowCursor           )
 import Controller                       ( routeEvent                )
 import Model.Types                      ( GameSt    (..)
                                         , Mode      (..)
                                         , Time      (..)
                                         , TimeEvent (..)            )
-import View                             ( drawUI
-                                        , attributes                )
+import View                             ( attributes
+                                        , drawUI                    )
 import Loading                          ( startNewGame              )
 import Model.Utilities                  ( tickPeriod                )
 

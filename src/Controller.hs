@@ -7,25 +7,25 @@ import qualified Data.Matrix  as M
 import qualified Model.Types  as T
 import Lens.Micro                   ( (&), (^.), (.~), over )
 import Brick.Types                  ( BrickEvent (..)
-                                    , Next
-                                    , EventM                )
+                                    , EventM
+                                    , Next                  )
 import Brick.Main                   ( continue
-                                    , suspendAndResume
-                                    , halt                  )
-import Model.Types                  ( Game       (..)
+                                    , halt
+                                    , suspendAndResume      )
+import Model.Types                  ( Direction  (..)
+                                    , Game       (..)
+                                    , GameSt     (..)
                                     , Mode       (..)
-                                    , TimeEvent  (..)
-                                    , Direction  (..)
-                                    , GameSt     (..)       )
-import Loading                      ( levels
-                                    , startNewGame
-                                    , advanceLevel          )
-import Model.Model                  ( movePlayer
-                                    , moveGhosts
+                                    , TimeEvent  (..)       )
+import Loading                      ( advanceLevel
+                                    , levels
+                                    , startNewGame          )
+import Model.Model                  ( moveGhosts
+                                    , movePlayer
                                     , restartLevel
+                                    , updateGame
                                     , updateTime
-                                    , updateTimePaused
-                                    , updateGame            )
+                                    , updateTimePaused      )
 
 type EventHandler = BrickEvent () TimeEvent -> EventM () ( Next GameSt )
 ---------------------------------------------------------------------
@@ -34,11 +34,12 @@ type EventHandler = BrickEvent () TimeEvent -> EventM () ( Next GameSt )
 routeEvent :: GameSt -> EventHandler
 routeEvent (Left err) _ = halt (Left err)
 routeEvent (Right gm) e = case gm ^. T.mode of
-                               GameOver  -> routeGameOver gm e
-                               LevelOver -> routeLevelOver gm e
-                               ReplayLvl -> routeReplay gm e
-                               Paused m  -> routePaused gm m e
-                               otherwise -> routeRunning gm e
+                               GameOver     -> routeGameOver gm e
+                               NewHighScore -> routeNewHighScore gm e
+                               LevelOver    -> routeLevelOver gm e
+                               ReplayLvl    -> routeReplay gm e
+                               Paused m     -> routePaused gm m e
+                               otherwise    -> routeRunning gm e
 
 routeRunning :: Game -> EventHandler
 routeRunning gm (VtyEvent (V.EvKey V.KEsc [])) =
@@ -67,6 +68,14 @@ routeLevelOver gm (VtyEvent (V.EvKey V.KEnter [])) =
     suspendAndResume . startNextLevel gm
     $ lookup (succ $ gm ^. T.level) levels
 routeLevelOver gm _ =
+    continue . Right $ gm
+
+routeNewHighScore :: Game -> EventHandler
+routeNewHighScore gm (VtyEvent (V.EvKey V.KEsc [])) =
+    halt . Right $ gm
+routeNewHighScore gm (VtyEvent (V.EvKey V.KEnter [])) =
+    suspendAndResume ( restartGame gm )
+routeNewHighScore gm _ =
     continue . Right $ gm
 
 routeGameOver :: Game -> EventHandler

@@ -1,44 +1,51 @@
 module Model.Model
-    ( restartLevel
+    ( -- Game and level restarting
+      restartLevel
+    -- Running ame state updating
     , updateGame
+    -- Time management
     , updateTime
     , updateTimePaused
+    -- Moving and updating the player
     , movePlayer
+    -- Moving the ghosts
     , moveGhosts
     ) where
 
 import qualified Data.Matrix as M
 import qualified Model.Types as T
-import Data.List                    ( (\\), foldl', sort            )
-import Lens.Micro                   ( (&), (^.), (.~), (%~)         )
-import Data.Matrix                  ( (!)                           )
-import System.Random                ( StdGen
-                                    , randomR                       )
-import Model.Utilities              ( tickPeriod
-                                    , noWalls
-                                    , playerWaitTime
+import Data.List                    ( (\\), foldl', sort    )
+import Lens.Micro                   ( (&), (^.), (.~), (%~) )
+import Data.Matrix                  ( (!)                   )
+import System.Random                ( randomR
+                                    , StdGen                )
+import Model.Utilities              ( edibleGhostWaitTime
                                     , ghostWaitTime
-                                    , edibleGhostWaitTime
-                                    , scoreMessage
-                                    , scoreFruit
-                                    , revDirection
+                                    , highScore
                                     , moveFrom
-                                    , pathBetween                   )
-import Model.Types                  ( Tile          (..)
-                                    , Time          (..)
-                                    , Game          (..)
-                                    , Mode          (..)
-                                    , Point         (..)
-                                    , Maze          (..)
-                                    , Direction     (..)
-                                    , PacMan        (..)
-                                    , Ghost         (..)
-                                    , Message       (..)
+                                    , noWalls
+                                    , pathBetween
+                                    , playerScore
+                                    , playerWaitTime
+                                    , revDirection
+                                    , scoreFruit
+                                    , scoreMessage
+                                    , tickPeriod            )
+import Model.Types                  ( Direction     (..)
                                     , Fruit         (..)
                                     , FruitName     (..)
+                                    , Game          (..)
+                                    , Ghost         (..)
                                     , Items         (..)
+                                    , GhostState    (..)
+                                    , Maze          (..)
+                                    , Message       (..)
+                                    , Mode          (..)
+                                    , PacMan        (..)
+                                    , Point         (..)
                                     , Score         (..)
-                                    , GhostState    (..)            )
+                                    , Tile          (..)
+                                    , Time          (..)    )
 
 ---------------------------------------------------------------------
 ---------------------------------------------------------------------
@@ -72,20 +79,20 @@ resetGhost g = let (pos0, dir0) = g ^. T.gstrt
                      & T.gpathback .~ []
 
 -- =============================================================== --
--- Game state updating
+-- Running game state updating
 
 -- Exported
 
 updateGame :: Game -> Game -> Game
-updateGame g0 g1
-    | levelFinished = g1 & T.mode .~ LevelOver
-    | otherwise     = runUpdate g0 g1
-    where levelFinished = g1 ^. T.npellets == 0
+updateGame gm0 gm1
+    | levelFinished = gm1 & T.mode .~ LevelOver
+    | otherwise     = runUpdate gm0 gm1
+    where levelFinished = gm1 ^. T.npellets == 0
 
 -- Unexported
 
 runUpdate :: Game -> Game -> Game
-runUpdate g0 g1 = updatePower . updateFruit . updateCaptures g0 $ g1
+runUpdate gm0 gm1 = updatePower . updateFruit . updateCaptures gm0 $ gm1
 
 ---------------------------------------------------------------------
 -- Time management
@@ -136,10 +143,12 @@ updateCaptures gm0 gm1
     | null captures = gm1
     | ateGhost      = eatGhosts gm1 captures
     | moreLives     = gm1 & T.mode .~ ReplayLvl
+    | newHighScore  = gm1 & T.mode .~ NewHighScore
     | otherwise     = gm1 & T.mode .~ GameOver
-    where captures  = ghostCaptures gm0 gm1
-          ateGhost  = all ( (== Edible) . (^. T.gstate) ) captures
-          moreLives = gm1 ^. T.oneups > 0
+    where captures     = ghostCaptures gm0 gm1
+          ateGhost     = all ( (== Edible) . (^. T.gstate) ) captures
+          moreLives    = gm1 ^. T.oneups > 0
+          newHighScore = playerScore gm1 > highScore gm1
 
 eatGhosts :: Game -> [Ghost] -> Game
 eatGhosts gm gs = let eaten   = map (eatGhost gm) gs

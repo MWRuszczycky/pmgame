@@ -1,63 +1,66 @@
 module Model.Utilities
-    ( tickPeriod
-    , playerWaitTime
+    ( -- Default constants
+      edibleGhostWaitTime
     , ghostWaitTime
-    , edibleGhostWaitTime
+    , playerWaitTime
     , powerDuration
-    , isFlashing
-    , powerTimeLeft
-    , toMicroSeconds
+    , tickPeriod
+    -- Useful helper functions
     , newMessage
     , scoreMessage
+    , toMicroSeconds
+    -- Game state queries
+    , highScore
+    , isFlashing
     , playerScore
-    , scoreFruit
+    , powerTimeLeft
+    -- Fruit parameters
     , fruitDuration
+    , scoreFruit
+    -- Working with mazes
     , isWall
     , noWalls
+    -- Utilities for moving player and ghosts
     , moveFrom
     , revDirection
+    -- Pathfinding
     , pathBetween
     ) where
 
 import qualified Data.Matrix    as M
 import qualified Model.Types    as T
 import qualified Data.Vector    as V
-import Data.Matrix                      ( (!)            )
-import Data.List                        ( foldl'         )
-import Lens.Micro                       ( (^.)           )
-import Model.Types                      ( Tile      (..)
-                                        , Score     (..)
-                                        , Time      (..)
+import Data.Matrix                      ( (!)               )
+import Data.Ord                         ( comparing         )
+import Data.List                        ( foldl', maximumBy )
+import Lens.Micro                       ( (^.)              )
+import Model.Types                      ( Direction (..)
+                                        , FruitName (..)
                                         , Game      (..)
                                         , Maze      (..)
-                                        , Point     (..)
-                                        , FruitName (..)
                                         , Message   (..)
                                         , Mode      (..)
-                                        , Direction (..) )
+                                        , Point     (..)
+                                        , Score     (..)
+                                        , Tile      (..)
+                                        , Time      (..)    )
 
 ---------------------------------------------------------------------
 -- Default constants
 
-tickPeriod :: Time
--- ^Time between clock ticks.
-tickPeriod = toMicroSeconds 0.225
-
-playerWaitTime :: Time
--- ^Wait time for player between moves.
-playerWaitTime = tickPeriod
-
-ghostWaitTime :: Time
--- ^Wait time for normal ghosts between moves.
-ghostWaitTime = tickPeriod
+-- Exported
 
 edibleGhostWaitTime :: Time
 -- ^Wait time for edible ghosts between moves.
 edibleGhostWaitTime = 2 * ghostWaitTime
 
-messageDuration :: Time
--- ^Length of time messages are displayed.
-messageDuration = toMicroSeconds 3
+ghostWaitTime :: Time
+-- ^Wait time for normal ghosts between moves.
+ghostWaitTime = tickPeriod
+
+playerWaitTime :: Time
+-- ^Wait time for player between moves.
+playerWaitTime = tickPeriod
 
 powerDuration :: Int -> Time
 -- ^Length of time ghosts remain edible after eating a power pellet.
@@ -66,15 +69,20 @@ powerDuration lvl
     | lvl > 19  = 0
     | otherwise = toMicroSeconds $ 10 - fromIntegral lvl / 2
 
+tickPeriod :: Time
+-- ^Time between clock ticks.
+tickPeriod = toMicroSeconds 0.225
+
+-- Unexported
+
+messageDuration :: Time
+-- ^Length of time messages are displayed.
+messageDuration = toMicroSeconds 3
+
 ---------------------------------------------------------------------
 -- Useful helper functions
 
-toMicroSeconds :: Double -> Time
--- ^Convert seconds as a Double to microseconds as Time (Int).
-toMicroSeconds = round . (* 1000000)
-
----------------------------------------------------------------------
--- Message helper functions
+-- Exported
 
 newMessage :: String -> Message
 newMessage s = Message s messageDuration
@@ -83,18 +91,24 @@ scoreMessage :: String -> Score -> Message
 scoreMessage s score = Message msg messageDuration
     where msg = s ++ " +" ++ show score ++ "!"
 
+toMicroSeconds :: Double -> Time
+-- ^Convert seconds as a Double to microseconds as Time (Int).
+toMicroSeconds = round . (* 1000000)
+
 ---------------------------------------------------------------------
 -- Game state query utilities
+
+-- Exported
+
+highScore :: Game -> Score
+highScore gm
+    | null $ gm ^. T.highscores = 0
+    | otherwise                 = hs
+    where hs = snd . maximumBy (comparing snd) $ gm ^. T.highscores
 
 isFlashing :: Game -> Bool
 -- ^General function for querying whether things should be flashing.
 isFlashing gm = odd . quot ( gm ^. T.time ) $ tickPeriod
-
-powerTimeLeft :: Game -> Time
--- ^How much power time is left after eating a power pellet.
-powerTimeLeft gm = case gm ^. T.mode of
-                        PwrRunning t -> t
-                        otherwise    -> 0
 
 playerScore :: Game -> Score
 -- ^Compute the current score based on the game state.
@@ -104,26 +118,28 @@ playerScore gm = pel + ppel + gst + frt
           gst  = totalGhostScore $ gm ^. T.items . T.gstscores
           frt  = totalFruitScore $ gm ^. T.items . T.fruits
 
-totalGhostScore :: [(Score, Int)] -> Score
-totalGhostScore = foldl' ( \ s (x, n) -> s + x * n ) 0
+powerTimeLeft :: Game -> Time
+-- ^How much power time is left after eating a power pellet.
+powerTimeLeft gm = case gm ^. T.mode of
+                        PwrRunning t          -> t
+                        Paused (PwrRunning t) -> t
+                        otherwise             -> 0
+
+-- Unexported
 
 totalFruitScore :: [(FruitName, Int)] -> Score
 totalFruitScore = foldl' ( \ s (fn, n) -> s + n * scoreFruit fn ) 0
 
+totalGhostScore :: [(Score, Int)] -> Score
+totalGhostScore = foldl' ( \ s (x, n) -> s + x * n ) 0
+
 ---------------------------------------------------------------------
 -- Fruit parameters
 
-scoreFruit :: FruitName -> Score
-scoreFruit Cherry     = 100
-scoreFruit Strawberry = 300
-scoreFruit Orange     = 500
-scoreFruit Apple      = 700
-scoreFruit Melon      = 1000
-scoreFruit Galaxian   = 2000
-scoreFruit Bell       = 3000
-scoreFruit Key        = 5000
+-- Exported
 
 fruitDuration :: FruitName -> Time
+-- ^How long the fruit remains visible after appearing.
 fruitDuration Cherry     = toMicroSeconds 60
 fruitDuration Strawberry = toMicroSeconds 50
 fruitDuration Orange     = toMicroSeconds 40
@@ -133,8 +149,21 @@ fruitDuration Galaxian   = toMicroSeconds 15
 fruitDuration Bell       = toMicroSeconds 10
 fruitDuration Key        = toMicroSeconds 10
 
+scoreFruit :: FruitName -> Score
+-- ^Fruit scores.
+scoreFruit Cherry     = 100
+scoreFruit Strawberry = 300
+scoreFruit Orange     = 500
+scoreFruit Apple      = 700
+scoreFruit Melon      = 1000
+scoreFruit Galaxian   = 2000
+scoreFruit Bell       = 3000
+scoreFruit Key        = 5000
+
 ---------------------------------------------------------------------
--- Determining tile subtypes
+-- Working with mazes
+
+-- Exported
 
 isWall :: Tile -> Bool
 -- ^Evaluate whether a tile is a wall tile.
@@ -153,6 +182,8 @@ noWalls x y ts
 ---------------------------------------------------------------------
 -- Utilities for moving player and ghosts
 
+-- Exported
+
 moveFrom :: Maze -> Point -> Direction -> Point
 -- ^Get next maze position based on current position and direction.
 moveFrom m p d = let go (x0,y0) (x1,y1) = (x0 + x1, y0 + y1)
@@ -168,7 +199,7 @@ revDirection South = North
 revDirection West  = East
 revDirection East  = West
 
--- unexported
+-- Unexported
 
 dirToShift :: Direction -> Point
 -- ^Maps directions to single-tick displacements.
@@ -179,6 +210,8 @@ dirToShift South = (1, 0)
 
 ---------------------------------------------------------------------
 -- Path-finding
+
+--Exported
 
 pathBetween :: Maze -> Point -> Point -> [Point]
 -- ^Return a list of points that connect p0 and p1 in the maze m.
@@ -196,7 +229,7 @@ pathBetween m p0 p1
     where go []     = []
           go (x:xs) = go ( dropWhile (not . connected x ) xs ) ++ [x]
 
--- unexported
+-- Unexported
 
 getPaths :: Maze -> Point -> [Point] -> [Point] -> [Point]
 getPaths m p ys (x:xs)

@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module View
-    ( drawUI
-    , attributes
+    ( attributes
+    , drawUI
     ) where
 
 import qualified Graphics.Vty as V
@@ -10,34 +10,37 @@ import qualified Data.Matrix  as M
 import qualified Model.Types  as T
 import Data.List                        ( foldl'                    )
 import Lens.Micro                       ( (.~), (^.), (&)           )
-import Brick.Types                      ( Widget (..), Padding (..) )
-import Brick.Widgets.Core               ( txt, withAttr, vBox, hBox
-                                        , str, hLimit, vLimit, fill
-                                        , withBorderStyle, padLeft
-                                        , (<+>) , emptyWidget       )
+import Brick.Types                      ( Padding (..), Widget (..) )
+import Brick.Widgets.Core               ( (<+>), fill, hBox, hLimit
+                                        , padLeft, str, txt, vBox
+                                        , vLimit, withAttr
+                                        , withBorderStyle           )
 import Brick.Widgets.Border.Style       ( unicodeRounded            )
-import Brick.Widgets.Border             ( borderWithLabel
-                                        , borderAttr                )
-import Brick.AttrMap                    ( attrMap, AttrMap          )
-import Brick.Util                       ( on, bg, fg                )
+import Brick.Widgets.Border             ( borderAttr
+                                        , borderWithLabel           )
+import Brick.AttrMap                    ( AttrMap, attrMap          )
+import Brick.Util                       ( bg, fg, on                )
 import Brick.Widgets.Center             ( center, hCenter, vCenter  )
-import Model.Utilities                  ( powerTimeLeft, tickPeriod
-                                        , playerScore, isFlashing   )
-import Model.Types                      ( Game          (..)
-                                        , GameSt        (..)
-                                        , PacMan        (..)
-                                        , Ghost         (..)
-                                        , GhostState    (..)
-                                        , GhostName     (..)
-                                        , Tile          (..)
-                                        , Time          (..)
-                                        , Message       (..)
+import Model.Utilities                  ( highScore
+                                        , isFlashing
+                                        , playerScore
+                                        , powerTimeLeft
+                                        , tickPeriod                )
+import Model.Types                      ( Direction     (..)
                                         , Fruit         (..)
                                         , FruitName     (..)
-                                        , Point         (..)
-                                        , Direction     (..)
+                                        , Game          (..)
+                                        , GameSt        (..)
+                                        , Ghost         (..)
+                                        , GhostName     (..)
+                                        , GhostState    (..)
+                                        , Maze          (..)
+                                        , Message       (..)
                                         , Mode          (..)
-                                        , Maze          (..)        )
+                                        , PacMan        (..)
+                                        , Point         (..)
+                                        , Tile          (..)
+                                        , Time          (..)        )
 
 -- =============================================================== --
 -- Drawing the UI for different game states
@@ -45,13 +48,15 @@ import Model.Types                      ( Game          (..)
 drawUI :: GameSt -> [ Widget () ]
 drawUI (Left msg) = [ str msg ]
 drawUI (Right gm) = case gm ^. T.mode of
-                         GameOver  -> drawGameOverUI gm
-                         LevelOver -> drawLevelOverUI gm
-                         ReplayLvl -> drawReplayUI gm
-                         Paused _  -> drawPausedUI gm
-                         otherwise -> drawRunningUI gm
+                         GameOver     -> drawGameOverUI gm
+                         LevelOver    -> drawLevelOverUI gm
+                         NewHighScore -> drawNewHighScoreUI gm
+                         ReplayLvl    -> drawReplayUI gm
+                         Paused _     -> drawPausedUI gm
+                         otherwise    -> drawRunningUI gm
 
 drawRunningUI :: Game -> [ Widget () ]
+-- ^Actual active gameplay UI.
 drawRunningUI gm = [ withAttr "background" ui ]
     where ui = center . hLimit ( M.ncols $ gm ^. T.maze ) . vBox $ ws
           ws = [ renderHeader gm
@@ -60,6 +65,7 @@ drawRunningUI gm = [ withAttr "background" ui ]
                ]
 
 drawPausedUI :: Game -> [ Widget () ]
+-- ^Paused gameplay UI.
 drawPausedUI gm = [ withAttr "background" ui ]
     where ui = center . hLimit ( M.ncols $ gm ^. T.maze ) . vBox $ ws
           ws = [ renderPausedHeader gm
@@ -67,44 +73,66 @@ drawPausedUI gm = [ withAttr "background" ui ]
                , renderOneups gm <+> renderFruitItems gm
                ]
 
-drawGameOverUI :: Game -> [ Widget () ]
-drawGameOverUI gm = [ withAttr "background" msg ]
-    where hdr = withAttr "info" . txt $ "GAME OVER!"
-          ent = withAttr "info" . txt $ "Enter to play again"
-          esc = withAttr "info" . txt $ "Esc to quit"
-          msg = center
-                . withBorderStyle unicodeRounded
-                . borderWithLabel hdr
-                . hLimit 25
-                . vLimit 3
-                . center
-                . vBox $ [ renderScore gm, ent, esc ]
-
 drawLevelOverUI :: Game -> [ Widget () ]
-drawLevelOverUI gm = [ withAttr "background" msg]
-    where hdr = withAttr "info" . txt $ "LEVEL COMPLETED!"
-          ent = withAttr "info" . txt $ "Enter to play next level"
-          esc = withAttr "info" . txt $ "Esc to quit"
-          msg = center
+-- ^Player has completed a level.
+drawLevelOverUI gm = [ withAttr "background" ui ]
+    where hdrTxt = "LEVEL " ++ show (gm ^. T.level) ++ " COMPLETED!"
+          hdr = withAttr "info" . str $ hdrTxt
+          ui  = center
                 . withBorderStyle unicodeRounded
                 . borderWithLabel hdr
-                . hLimit 25
-                . vLimit 3
+                . hLimit 30
+                . vLimit 5
                 . center
-                . vBox $ [ renderScore gm, ent, esc ]
+                . vBox $ [ renderLabeledScore gm
+                         , withAttr "info" . txt $ "Enter to continue"
+                         , withAttr "info" . txt $ "Esc to quit"
+                         ]
 
 drawReplayUI :: Game -> [ Widget () ]
-drawReplayUI gm = [ withAttr "background" msg]
+-- ^Player has lost a life but still has remaining lives.
+drawReplayUI gm = [ withAttr "background" ui ]
     where hdr = withAttr "info" . txt $ "YOU GOT CAPTURED!"
-          ent = withAttr "info" . txt $ "Enter to keep trying"
-          esc = withAttr "info" . txt $ "Esc to quit"
-          msg = center
+          ui  = center
                 . withBorderStyle unicodeRounded
                 . borderWithLabel hdr
-                . hLimit 25
-                . vLimit 3
+                . hLimit 30
+                . vLimit 5
                 . center
-                . vBox $ [ renderScore gm, ent, esc ]
+                . vBox $ [ renderLabeledScore gm
+                         , withAttr "info" . txt $ "Enter to keep trying"
+                         , withAttr "info" . txt $ "Esc to quit"
+                         ]
+
+drawNewHighScoreUI :: Game -> [ Widget () ]
+-- ^Player has lost all lives and gotten a new high score.
+drawNewHighScoreUI gm = [ withAttr "background" ui ]
+    where hdr = withAttr "info" . txt $ "NEW HIGH SCORE!"
+          ui  = center
+                . withBorderStyle unicodeRounded
+                . borderWithLabel hdr
+                . hLimit 30
+                . vLimit 5
+                . center
+                . vBox $ [ renderLabeledScore gm
+                         , withAttr "info" . txt $ "Enter to play again"
+                         , withAttr "info" . txt $ "Esc to quit"
+                         ]
+
+drawGameOverUI :: Game -> [ Widget () ]
+-- ^Player has lost all lives and has not gotten a new high score.
+drawGameOverUI gm = [ withAttr "background" ui ]
+    where hdr = withAttr "info" . txt $ "GAME OVER!"
+          ui  = center
+                . withBorderStyle unicodeRounded
+                . borderWithLabel hdr
+                . hLimit 30
+                . vLimit 5
+                . center
+                . vBox $ [ renderLabeledScore gm
+                         , withAttr "info" . txt $ "Enter to play again"
+                         , withAttr "info" . txt $ "Esc to quit"
+                         ]
 
 -- =============================================================== --
 -- Tiling functions for constructing the maze prior to rendering
@@ -211,6 +239,34 @@ renderPwrPellet gm
     | otherwise     = withAttr "pellet"      . txt $ "*"
 
 ---------------------------------------------------------------------
+-- Rendering scores and messages
+
+renderHighScore :: Game -> Widget ()
+renderHighScore gm
+    | ps > hs   = withAttr "score" . str . show $ ps
+    | otherwise = withAttr "score" . str . show $ hs
+    where ps = playerScore gm
+          hs = highScore gm
+
+renderScore :: Game -> Widget ()
+renderScore = withAttr "score" . str . show . playerScore
+
+renderLabeledScore :: Game -> Widget ()
+renderLabeledScore gm
+    | ps > hs   = hBox [ hsLabel, renderScore gm ]
+    | otherwise = hBox [ label,   renderScore gm ]
+    where ps      = playerScore gm
+          hs      = highScore gm
+          hsLabel = withAttr "score" . txt $ "New High Score: "
+          label   = withAttr "score" . txt $ "Score: "
+
+renderMessage :: Game -> Widget ()
+renderMessage gm = let levelMsg = "Level " ++ show ( gm ^. T.level )
+                   in  case gm ^. T.msg of
+                            Message s _ -> withAttr "info" . str $ s
+                            otherwise   -> withAttr "info" . str $ levelMsg
+
+---------------------------------------------------------------------
 -- Rendering score information and messages in header
 
 renderHeader :: Game -> Widget ()
@@ -226,18 +282,6 @@ renderPausedHeader gm = vLimit 3 . vBox $ [ row1, row2, row3 ]
           row2    = hBox [ withAttr "info" . txt $ "PAUSED", hsLabel ]
           row3    = hBox [ renderScore gm, padLeft Max . renderHighScore $ gm ]
           hsLabel = padLeft Max . withAttr "score" . txt $ "Score"
-
-renderHighScore :: Game -> Widget ()
-renderHighScore = renderScore
-
-renderScore :: Game -> Widget ()
-renderScore = withAttr "score" . str . show . playerScore
-
-renderMessage :: Game -> Widget ()
-renderMessage gm = let levelMsg = "Level " ++ show ( gm ^. T.level )
-                   in  case gm ^. T.msg of
-                            Message s _ -> withAttr "info" . str $ s
-                            otherwise   -> withAttr "info" . str $ levelMsg
 
 ---------------------------------------------------------------------
 -- Rendering fruit and oneups

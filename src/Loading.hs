@@ -1,36 +1,36 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Loading
-    ( startNewGame
-    , advanceLevel
+    ( advanceLevel
+    , startNewGame
     , levels
     ) where
 
 import qualified Data.Matrix as M
 import qualified Data.Vector as V
 import qualified Model.Types as T
-import Data.List                    ( sort, find            )
+import Data.List                    ( find, sort, sortOn    )
 import Lens.Micro                   ( (&), (^.), (.~), (%~) )
-import System.Random                ( StdGen, randomR       )
-import Model.Utilities              ( toMicroSeconds
+import System.Random                ( randomR, StdGen       )
+import Model.Utilities              ( fruitDuration
                                     , newMessage
+                                    , powerDuration
                                     , tickPeriod
-                                    , fruitDuration
-                                    , powerDuration         )
-import Model.Types                  ( Game          (..)
-                                    , GameSt        (..)
-                                    , Maze          (..)
-                                    , Point         (..)
-                                    , Ghost         (..)
-                                    , GhostName     (..)
+                                    , toMicroSeconds        )
+import Model.Types                  ( Direction     (..)
                                     , Fruit         (..)
                                     , FruitName     (..)
+                                    , Game          (..)
+                                    , GameSt        (..)
+                                    , Ghost         (..)
+                                    , GhostName     (..)
                                     , GhostState    (..)
-                                    , PacMan        (..)
-                                    , Tile          (..)
-                                    , Time          (..)
                                     , Items         (..)
+                                    , Maze          (..)
                                     , Mode          (..)
-                                    , Direction     (..)    )
+                                    , PacMan        (..)
+                                    , Point         (..)
+                                    , Tile          (..)
+                                    , Time          (..)    )
 
 ---------------------------------------------------------------------
 ---------------------------------------------------------------------
@@ -61,21 +61,22 @@ startNewGame r0 lvl s = do
     pman <- loadPacMan xs
     gsts <- mapM ( loadGhost xs ) "pbic"
     (mbFruit, r1) <- loadFruit r0 lvl xs
-    return Game { _maze     = m
-                , _items    = Items 0 0 [] []
-                , _rgen     = r1
-                , _pacman   = pman
-                , _ghosts   = sort gsts
-                , _fruit    = mbFruit
-                , _mode     = Running
-                , _level    = lvl
-                , _npellets = countPellets xs
-                , _oneups   = 3
-                , _time     = 0
-                , _pwrmult  = 2
-                , _dtime    = 0
-                , _pwrtime  = powerDuration lvl
-                , _msg      = newMessage "Ready!"
+    return Game { _maze       = m
+                , _items      = Items 0 0 [] []
+                , _rgen       = r1
+                , _pacman     = pman
+                , _ghosts     = sort gsts
+                , _fruit      = mbFruit
+                , _mode       = Running
+                , _level      = lvl
+                , _npellets   = countPellets xs
+                , _oneups     = 3
+                , _time       = 0
+                , _pwrmult    = 2
+                , _dtime      = 0
+                , _pwrtime    = powerDuration lvl
+                , _msg        = newMessage "Ready!"
+                , _highscores = reverse . sortOn snd $ [("My Dog", 1000)]
                 }
 
 advanceLevel :: Game -> MazeString -> GameSt

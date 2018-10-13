@@ -1,61 +1,62 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Model.Types
-    ( Tile          (..)
-    , Time          (..)
-    , Maze          (..)
-    , Point         (..)
+    ( Direction     (..)
+    , Fruit         (..)
+    , FruitName     (..)
     , Game          (..)
     , GameSt        (..)
     , Ghost         (..)
     , GhostName     (..)
-    , Fruit         (..)
-    , FruitName     (..)
-    , Message       (..)
-    , PacMan        (..)
-    , Direction     (..)
-    , TimeEvent     (..)
-    , Items         (..)
-    , Mode          (..)
     , GhostState    (..)
+    , Items         (..)
+    , Message       (..)
+    , Maze          (..)
+    , Mode          (..)
+    , PacMan        (..)
+    , Point         (..)
     , Score         (..)
+    , Tile          (..)
+    , Time          (..)
+    , TimeEvent     (..)
     -- Lenses for Game
-    , maze
-    , items
-    , pacman
-    , ghosts
-    , rgen
-    , npellets
-    , oneups
-    , mode
-    , level
-    , pwrtime
-    , time
     , dtime
     , fruit
-    , pwrmult
+    , ghosts
+    , items
+    , highscores
+    , level
+    , maze
+    , mode
     , msg
+    , npellets
+    , oneups
+    , pacman
+    , pwrmult
+    , pwrtime
+    , rgen
+    , time
     -- Lenses for PacMan
     , pdir
     , ppos
     , pstrt
     , ptlast
     -- Lenses for Ghost
-    , gname
     , gdir
-    , gpos
-    , gstrt
-    , gstate
-    , gtlast
+    , gname
     , gpathback
+    , gpos
+    , gstate
+    , gstrt
+    , gtlast
     -- Lenses for Items
+    , fruits
+    , gstscores
     , pellets
     , ppellets
-    , gstscores
-    , fruits
     -- Lenses for Fruit
-    , fname
-    , fduration
     , fdelay
+    , fduration
+    , fname
     , fpos
     ) where
 
@@ -200,26 +201,28 @@ type GameSt = Either String Game
 data Mode = Running           -- Normal play mode
           | PwrRunning Time   -- Play mode after eating a power pellet
           | GameOver          -- All oneups have have been used
+          | NewHighScore      -- Game over with new high score
           | LevelOver         -- Current level has been completed
           | ReplayLvl         -- Player was captured and about to try again
           | Paused Mode       -- Game is paused
           deriving ( Show, Eq )
 
-data Game = Game { _maze     :: Maze        -- Level maze
-                 , _items    :: Items       -- Summary of items and score
-                 , _pacman   :: PacMan      -- Player
-                 , _ghosts   :: [ Ghost ]   -- List of ghosts
-                 , _fruit    :: Maybe Fruit -- Fruit for the level
-                 , _rgen     :: StdGen      -- Standard generator
-                 , _npellets :: Int         -- Pellets remaining in level
-                 , _oneups   :: Int         -- Oneups remaining
-                 , _mode     :: Mode        -- Current game mode
-                 , _level    :: Int         -- Current level number
-                 , _pwrtime  :: Time        -- Duration of power pellets
-                 , _time     :: Time        -- Current in-game time
-                 , _dtime    :: Time        -- Time since last update
-                 , _pwrmult  :: Int         -- Score multiplier for ghost
-                 , _msg      :: Message     -- In-game message
+data Game = Game { _maze       :: Maze        -- Level maze
+                 , _items      :: Items       -- Summary of items and score
+                 , _pacman     :: PacMan      -- Player
+                 , _ghosts     :: [ Ghost ]   -- List of ghosts
+                 , _fruit      :: Maybe Fruit -- Fruit for the level
+                 , _rgen       :: StdGen      -- Standard generator
+                 , _npellets   :: Int         -- Pellets remaining in level
+                 , _oneups     :: Int         -- Oneups remaining
+                 , _mode       :: Mode        -- Current game mode
+                 , _level      :: Int         -- Current level number
+                 , _pwrtime    :: Time        -- Duration of power pellets
+                 , _time       :: Time        -- Current in-game time
+                 , _dtime      :: Time        -- Time since last update
+                 , _pwrmult    :: Int         -- Score multiplier for ghost
+                 , _msg        :: Message     -- In-game message
+                 , _highscores :: [(String, Score)] -- Current high scores
                  } deriving ( Show )
 
 makeLenses ''Game
