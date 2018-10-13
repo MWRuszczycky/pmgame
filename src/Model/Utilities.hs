@@ -70,15 +70,10 @@ toMicroSeconds = round . (* 1000000)
 -- Game state query utilities
 
 powerTimeLeft :: Game -> Time
--- ^Query how much time is left for the curret powered state (i.e.,
--- after the player has eaten a power pellet). If the game state is
--- not powered, evaluate to 0.
-powerTimeLeft g
-    | dt > 0    = dt
-    | otherwise = 0
-    where dt = case g ^. T.mode of
-                    PwrRunning t0 -> g ^. T.pwrtime - ( g ^. T.time - t0 )
-                    otherwise     -> 0
+-- ^How much power time is left after eating a power pellet.
+powerTimeLeft gm = case gm ^. T.mode of
+                        PwrRunning t -> t
+                        otherwise    -> 0
 
 playerScore :: Game -> Int
 -- ^Compute the current score based on the game state.

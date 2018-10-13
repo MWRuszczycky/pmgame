@@ -14,7 +14,7 @@ import System.Random                ( StdGen
                                     , randomR                       )
 import Model.Utilities              ( tickPeriod
                                     , noWalls
-                                    , powerTimeLeft
+                                    , powerDuration
                                     , playerWaitTime
                                     , ghostWaitTime
                                     , messageTime
@@ -77,10 +77,24 @@ updateGame g0 g1
     | otherwise     = runUpdate g0 g1
     where levelFinished = g1 ^. T.npellets == 0
 
+---------------------------------------------------------------------
+-- Time management
+
 updateTime :: Time -> Game -> Game
-updateTime t gm = let dt = t - gm ^. T.time
-                  in  gm & T.time  .~ t
-                         & T.dtime .~ dt
+updateTime t gm = updatePowerTime dt . updateFruitTimes dt $ gm'
+    where dt  = t - gm ^. T.time
+          gm' = gm & T.time .~ t & T.dtime .~ dt
+
+updatePowerTime :: Time -> Game -> Game
+updatePowerTime dt gm = gm & T.mode %~ go
+    where go (PwrRunning t0) = PwrRunning (t0 - dt)
+          go x               = x
+
+updateFruitTimes :: Time -> Game -> Game
+updateFruitTimes dt gm = gm & T.fruit %~ fmap go
+    where go frt | frt ^. T.fdelay > 0    = frt & T.fdelay    %~ subtract dt
+                 | frt ^. T.fduration > 0 = frt & T.fduration %~ subtract dt
+                 | otherwise              = frt
 
 ---------------------------------------------------------------------
 -- Eating ghosts and getting captured by ghosts
@@ -151,25 +165,26 @@ makeInedible g = case g ^. T.gstate of
 -- Unexported
 
 updateFruit :: Game -> Game
-updateFruit gm = go (gm ^. T.fruit)
-    where go Nothing                 = gm
-          go (Just frt)
-              | isWaiting = gm & T.fruit .~ Just stepWaiting
-              | capture   = fruitEaten
-              | isVisible = gm & T.fruit .~ Just stepVisible
-              | otherwise = gm & T.fruit .~ Nothing
-              where isWaiting   = frt ^. T.fdelay > 0
-                    stepWaiting = frt & T.fdelay %~ adjustTime
-                    isVisible   = frt ^. T.fduration > 0
-                    stepVisible = frt & T.fduration %~ adjustTime
-                    capture     = frt ^. T.fpos == gm ^. T.pacman . T.ppos
-                    adjustTime  = subtract (gm ^. T.dtime)
-                    fruitEaten  = let fnm = frt ^. T.fname
-                                      scr = scoreFruit fnm
-                                      msg = show fnm ++ " +" ++ show scr ++ "!"
-                                  in  gm & T.fruit .~ Nothing
-                                         & T.msg   .~ Just (msg, messageTime)
-                                         & T.items %~ addFruitToItems fnm
+updateFruit gm = case gm ^. T.fruit of
+                      Nothing  -> gm
+                      Just frt -> checkFruitCapture gm frt
+
+checkFruitCapture :: Game -> Fruit -> Game
+checkFruitCapture gm frt
+    | isWaiting = gm
+    | capture   = eatFruit gm frt
+    | isVisible = gm
+    | otherwise = gm & T.fruit .~ Nothing
+    where isWaiting = frt ^. T.fdelay > 0
+          isVisible = frt ^. T.fduration > 0
+          capture   = frt ^. T.fpos == gm ^. T.pacman . T.ppos
+
+eatFruit :: Game -> Fruit -> Game
+eatFruit gm frt = let name = frt ^. T.fname
+                      msg  = show name ++ " +" ++ show (scoreFruit name) ++ "!"
+                  in  gm & T.fruit .~ Nothing
+                         & T.msg   .~ Just (msg, messageTime)
+                         & T.items %~ addFruitToItems name
 
 addFruitToItems :: FruitName -> Items -> Items
 addFruitToItems n items = items & T.fruits %~ go
@@ -184,15 +199,15 @@ addFruitToItems n items = items & T.fruits %~ go
 
 updatePower :: Game -> Game
 updatePower gm = case gm ^. T.mode of
-                      PwrRunning _ -> managePower gm
+                      PwrRunning t -> managePower t gm
                       otherwise    -> gm
 
-managePower :: Game -> Game
-managePower gm
-    | powerTimeLeft gm > 0 = gm
-    | otherwise            = depoweredGame
+managePower :: Time -> Game -> Game
+managePower t gm
+    | t > 0     = gm
+    | otherwise = depoweredGame
     where depoweredGame = gm & T.ghosts  %~ map makeInedible
-                             & T.mode  .~ Running
+                             & T.mode    .~ Running
                              & T.pwrmult .~ 2
 
 -- =============================================================== --
@@ -228,12 +243,12 @@ eatPellet gm p = gm & T.pacman . T.ppos .~ p
 eatPwrPellet :: Game -> Point -> Game
 eatPwrPellet gm p = gm & T.pacman . T.ppos .~ p
                        & T.pacman . T.ptlast .~ ( gm ^. T.time )
-                       & T.maze %~ M.setElem Empty p
+                       & T.maze     %~ M.setElem Empty p
                        & T.npellets %~ pred
                        & T.items . T.ppellets %~ succ
-                       & T.msg .~ Just ("Power Pellet +50!", messageTime)
-                       & T.ghosts %~ map makeEdible
-                       & T.mode .~ PwrRunning ( gm ^. T.time )
+                       & T.msg      .~ Just ("Power Pellet +50!", messageTime)
+                       & T.ghosts   %~ map makeEdible
+                       & T.mode     .~ PwrRunning (gm ^. T.pwrtime)
 
 isPlayerWaiting :: Game -> Bool
 isPlayerWaiting gm = dt < playerWaitTime

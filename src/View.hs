@@ -30,6 +30,7 @@ import Model.Types                      ( Game          (..)
                                         , GhostState    (..)
                                         , GhostName     (..)
                                         , Tile          (..)
+                                        , Time          (..)
                                         , Fruit         (..)
                                         , FruitName     (..)
                                         , Point         (..)
@@ -126,18 +127,19 @@ tileGhosts gm m0 = foldl' ( \ m (p,t) -> M.setElem t p m) m0 gs
     where gs = [ (g ^. T.gpos, tileGhost gm g) | g <- gm ^. T.ghosts ]
 
 tileGhost :: Game -> Ghost -> Tile
-tileGhost gm g = case g ^. T.gstate of
-                      Edible    -> tileEdibleGhost gm g
-                      EyesOnly  -> GhostEyes
-                      otherwise -> NormalGhost $ g ^. T.gname
+tileGhost gm g = let trem     = powerTimeLeft gm
+                     duration = gm ^. T.pwrtime
+                 in  case g ^. T.gstate of
+                          Edible    -> tileEdibleGhost trem duration
+                          EyesOnly  -> GhostEyes
+                          otherwise -> NormalGhost $ g ^. T.gname
 
-tileEdibleGhost :: Game -> Ghost -> Tile
-tileEdibleGhost gm g
+tileEdibleGhost :: Time -> Time -> Tile
+tileEdibleGhost trem duration
     | trem >= half = BlueGhost
     | isWhite      = WhiteGhost
     | otherwise    = BlueGhost
-    where trem    = powerTimeLeft gm
-          half    = quot ( gm ^. T.pwrtime ) 2
+    where half    = quot duration 2
           isWhite = odd . quot trem $ tickPeriod
 
 ---------------------------------------------------------------------

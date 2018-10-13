@@ -176,8 +176,8 @@ data Tile = Player
 type GameSt = Either String Game
 
 -- |After eating a power pellet during regular (Running) play mode,
--- the mode switches to PwrRunnig t0, where t0 is the in-game time at
--- which the power pellet was eaten.
+-- the mode switches to PwrRunnig t, where t is the time remaining
+-- in the powered mode.
 data Mode = Running           -- Normal play mode
           | PwrRunning Time   -- Play mode after eating a power pellet
           | GameOver          -- All oneups have have been used
