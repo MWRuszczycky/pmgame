@@ -12,6 +12,7 @@ module Model.Types
     , Message       (..)
     , Maze          (..)
     , Mode          (..)
+    , Name          (..)
     , PacMan        (..)
     , Point         (..)
     , Score         (..)
@@ -24,6 +25,7 @@ module Model.Types
     , ghosts
     , items
     , highscores
+    , hsedit
     , level
     , maze
     , mode
@@ -62,7 +64,8 @@ module Model.Types
 
 import qualified Data.Matrix as M
 import qualified Data.Text   as Txt
-import System.Random                ( StdGen )
+import Brick.Widgets.Edit           ( Editor     )
+import System.Random                ( StdGen     )
 import Lens.Micro.TH                ( makeLenses )
 
 ---------------------------------------------------------------------
@@ -195,6 +198,9 @@ data Tile = Player
 
 type GameSt = Either String Game
 
+-- |Names for named widgets as required for text editors.
+data Name = HighScoreEdit deriving (Show, Eq, Ord)
+
 -- |After eating a power pellet during regular (Running) play mode,
 -- the mode switches to PwrRunnig t, where t is the time remaining
 -- in the powered mode.
@@ -223,6 +229,7 @@ data Game = Game { _maze       :: Maze        -- Level maze
                  , _pwrmult    :: Int         -- Score multiplier for ghost
                  , _msg        :: Message     -- In-game message
                  , _highscores :: [(String, Score)] -- Current high scores
+                 , _hsedit     :: Editor String Name -- For naming high scores
                  } deriving ( Show )
 
 makeLenses ''Game

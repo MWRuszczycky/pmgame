@@ -15,6 +15,7 @@ import Brick.Widgets.Core               ( (<+>), fill, hBox, hLimit
                                         , padLeft, str, txt, vBox
                                         , vLimit, withAttr
                                         , withBorderStyle           )
+import Brick.Widgets.Edit               ( renderEditor              )
 import Brick.Widgets.Border.Style       ( unicodeRounded            )
 import Brick.Widgets.Border             ( borderAttr
                                         , borderWithLabel           )
@@ -37,6 +38,7 @@ import Model.Types                      ( Direction     (..)
                                         , Maze          (..)
                                         , Message       (..)
                                         , Mode          (..)
+                                        , Name          (..)
                                         , PacMan        (..)
                                         , Point         (..)
                                         , Tile          (..)
@@ -45,7 +47,7 @@ import Model.Types                      ( Direction     (..)
 -- =============================================================== --
 -- Drawing the UI for different game states
 
-drawUI :: GameSt -> [ Widget () ]
+drawUI :: GameSt -> [ Widget Name ]
 drawUI (Left msg) = [ str msg ]
 drawUI (Right gm) = case gm ^. T.mode of
                          GameOver     -> drawGameOverUI gm
@@ -55,7 +57,7 @@ drawUI (Right gm) = case gm ^. T.mode of
                          Paused _     -> drawPausedUI gm
                          otherwise    -> drawRunningUI gm
 
-drawRunningUI :: Game -> [ Widget () ]
+drawRunningUI :: Game -> [ Widget Name ]
 -- ^Actual active gameplay UI.
 drawRunningUI gm = [ withAttr "background" ui ]
     where ui = center . hLimit ( M.ncols $ gm ^. T.maze ) . vBox $ ws
@@ -64,7 +66,7 @@ drawRunningUI gm = [ withAttr "background" ui ]
                , renderOneups gm <+> renderFruitItems gm
                ]
 
-drawPausedUI :: Game -> [ Widget () ]
+drawPausedUI :: Game -> [ Widget Name ]
 -- ^Paused gameplay UI.
 drawPausedUI gm = [ withAttr "background" ui ]
     where ui = center . hLimit ( M.ncols $ gm ^. T.maze ) . vBox $ ws
@@ -73,7 +75,7 @@ drawPausedUI gm = [ withAttr "background" ui ]
                , renderOneups gm <+> renderFruitItems gm
                ]
 
-drawLevelOverUI :: Game -> [ Widget () ]
+drawLevelOverUI :: Game -> [ Widget Name ]
 -- ^Player has completed a level.
 drawLevelOverUI gm = [ withAttr "background" ui ]
     where hdrTxt = "LEVEL " ++ show (gm ^. T.level) ++ " COMPLETED!"
@@ -89,7 +91,7 @@ drawLevelOverUI gm = [ withAttr "background" ui ]
                          , withAttr "info" . txt $ "Esc to quit"
                          ]
 
-drawReplayUI :: Game -> [ Widget () ]
+drawReplayUI :: Game -> [ Widget Name ]
 -- ^Player has lost a life but still has remaining lives.
 drawReplayUI gm = [ withAttr "background" ui ]
     where hdr = withAttr "info" . txt $ "YOU GOT CAPTURED!"
@@ -104,7 +106,7 @@ drawReplayUI gm = [ withAttr "background" ui ]
                          , withAttr "info" . txt $ "Esc to quit"
                          ]
 
-drawNewHighScoreUI :: Game -> [ Widget () ]
+drawNewHighScoreUI :: Game -> [ Widget Name ]
 -- ^Player has lost all lives and gotten a new high score.
 drawNewHighScoreUI gm = [ withAttr "background" ui ]
     where hdr = withAttr "info" . txt $ "NEW HIGH SCORE!"
@@ -117,9 +119,10 @@ drawNewHighScoreUI gm = [ withAttr "background" ui ]
                 . vBox $ [ renderLabeledScore gm
                          , withAttr "info" . txt $ "Enter to play again"
                          , withAttr "info" . txt $ "Esc to quit"
+                         , renderEditor (str . unlines) True $ gm ^. T.hsedit
                          ]
 
-drawGameOverUI :: Game -> [ Widget () ]
+drawGameOverUI :: Game -> [ Widget Name ]
 -- ^Player has lost all lives and has not gotten a new high score.
 drawGameOverUI gm = [ withAttr "background" ui ]
     where hdr = withAttr "info" . txt $ "GAME OVER!"
@@ -196,11 +199,11 @@ tilePlayer pm = M.setElem Player (pm ^. T.ppos)
 ---------------------------------------------------------------------
 -- Rendering the maze
 
-renderMaze :: Game -> Widget ()
+renderMaze :: Game -> Widget Name
 renderMaze gm = vBox . renderTiles . M.toLists . tileMaze $ gm
     where renderTiles = map ( hBox . map (renderTile gm) )
 
-renderTile :: Game -> Tile -> Widget ()
+renderTile :: Game -> Tile -> Widget Name
 renderTile _ (Wall s)               = withAttr "maze"       . txt $ s
 renderTile _ (OneWay North)         = withAttr "oneway"     . txt $ "-"
 renderTile _ (OneWay South)         = withAttr "oneway"     . txt $ "-"
@@ -226,14 +229,14 @@ renderTile _ (FruitTile Key       ) = withAttr "key"        . txt $ "k"
 renderTile gm Player                = renderPlayer gm
 renderTile _  _                     = withAttr "maze"       . txt $ " "
 
-renderPlayer :: Game -> Widget ()
+renderPlayer :: Game -> Widget Name
 renderPlayer g = withAttr "player" . txt . glyph $ g ^. T.pacman . T.pdir
     where glyph North = "∨"
           glyph South = "∧"
           glyph West  = ">"
           glyph East  = "<"
 
-renderPwrPellet :: Game -> Widget ()
+renderPwrPellet :: Game -> Widget Name
 renderPwrPellet gm
     | isFlashing gm = withAttr "flashPellet" . txt $ "*"
     | otherwise     = withAttr "pellet"      . txt $ "*"
@@ -241,17 +244,17 @@ renderPwrPellet gm
 ---------------------------------------------------------------------
 -- Rendering scores and messages
 
-renderHighScore :: Game -> Widget ()
+renderHighScore :: Game -> Widget Name
 renderHighScore gm
     | ps > hs   = withAttr "score" . str . show $ ps
     | otherwise = withAttr "score" . str . show $ hs
     where ps = playerScore gm
           hs = highScore gm
 
-renderScore :: Game -> Widget ()
+renderScore :: Game -> Widget Name
 renderScore = withAttr "score" . str . show . playerScore
 
-renderLabeledScore :: Game -> Widget ()
+renderLabeledScore :: Game -> Widget Name
 renderLabeledScore gm
     | ps > hs   = hBox [ hsLabel, renderScore gm ]
     | otherwise = hBox [ label,   renderScore gm ]
@@ -260,7 +263,7 @@ renderLabeledScore gm
           hsLabel = withAttr "score" . txt $ "New High Score: "
           label   = withAttr "score" . txt $ "Score: "
 
-renderMessage :: Game -> Widget ()
+renderMessage :: Game -> Widget Name
 renderMessage gm = let levelMsg = "Level " ++ show ( gm ^. T.level )
                    in  case gm ^. T.msg of
                             Message s _ -> withAttr "info" . str $ s
@@ -269,14 +272,14 @@ renderMessage gm = let levelMsg = "Level " ++ show ( gm ^. T.level )
 ---------------------------------------------------------------------
 -- Rendering score information and messages in header
 
-renderHeader :: Game -> Widget ()
+renderHeader :: Game -> Widget Name
 renderHeader gm = vLimit 3 . vBox $ [ row1, row2, row3 ]
     where row1    = padLeft Max . withAttr "score" . txt $ "High"
           row2    = hBox [ renderMessage gm, hsLabel ]
           row3    = hBox [ renderScore gm, padLeft Max . renderHighScore $ gm ]
           hsLabel = padLeft Max . withAttr "score" . txt $ "Score"
 
-renderPausedHeader :: Game -> Widget ()
+renderPausedHeader :: Game -> Widget Name
 renderPausedHeader gm = vLimit 3 . vBox $ [ row1, row2, row3 ]
     where row1    = padLeft Max . withAttr "score" . txt $ "High"
           row2    = hBox [ withAttr "info" . txt $ "PAUSED", hsLabel ]
@@ -286,12 +289,12 @@ renderPausedHeader gm = vLimit 3 . vBox $ [ row1, row2, row3 ]
 ---------------------------------------------------------------------
 -- Rendering fruit and oneups
 
-renderOneups :: Game -> Widget ()
+renderOneups :: Game -> Widget Name
 renderOneups gm = hBox . take (2 * gm ^. T.oneups) . cycle $ [ oneup, space ]
     where oneup = withAttr "player"     . txt $ ">"
           space = withAttr "background" . txt $ " "
 
-renderFruitItems :: Game -> Widget ()
+renderFruitItems :: Game -> Widget Name
 renderFruitItems gm = padLeft Max
                       . hBox
                       . map ( renderTile gm . FruitTile )

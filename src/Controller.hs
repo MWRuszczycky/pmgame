@@ -9,6 +9,8 @@ import Lens.Micro                   ( (&), (^.), (.~), over )
 import Brick.Types                  ( BrickEvent (..)
                                     , EventM
                                     , Next                  )
+import Brick.Widgets.Edit           ( getEditContents
+                                    , handleEditorEvent     )
 import Brick.Main                   ( continue
                                     , halt
                                     , suspendAndResume      )
@@ -16,6 +18,7 @@ import Model.Types                  ( Direction  (..)
                                     , Game       (..)
                                     , GameSt     (..)
                                     , Mode       (..)
+                                    , Name       (..)
                                     , TimeEvent  (..)       )
 import Loading                      ( advanceLevel
                                     , levels
@@ -27,7 +30,8 @@ import Model.Model                  ( moveGhosts
                                     , updateTime
                                     , updateTimePaused      )
 
-type EventHandler = BrickEvent () TimeEvent -> EventM () ( Next GameSt )
+type EventHandler = BrickEvent Name TimeEvent
+                    -> EventM Name ( Next GameSt )
 ---------------------------------------------------------------------
 -- Event routers
 
@@ -75,6 +79,11 @@ routeNewHighScore gm (VtyEvent (V.EvKey V.KEsc [])) =
     halt . Right $ gm
 routeNewHighScore gm (VtyEvent (V.EvKey V.KEnter [])) =
     suspendAndResume ( restartGame gm )
+routeNewHighScore gm (VtyEvent vtyEv) = do
+    newHsEdit <- handleEditorEvent vtyEv ( gm ^. T.hsedit )
+    if (>26) . length . unlines . getEditContents $ newHsEdit
+       then continue . Right $ gm
+       else continue . Right $ gm & T.hsedit .~ newHsEdit
 routeNewHighScore gm _ =
     continue . Right $ gm
 

@@ -8,6 +8,7 @@ module Loading
 import qualified Data.Matrix as M
 import qualified Data.Vector as V
 import qualified Model.Types as T
+import Brick.Widgets.Edit           ( editor                )
 import Data.List                    ( find, sort, sortOn    )
 import Lens.Micro                   ( (&), (^.), (.~), (%~) )
 import System.Random                ( randomR, StdGen       )
@@ -27,6 +28,7 @@ import Model.Types                  ( Direction     (..)
                                     , Items         (..)
                                     , Maze          (..)
                                     , Mode          (..)
+                                    , Name          (..)
                                     , PacMan        (..)
                                     , Point         (..)
                                     , Tile          (..)
@@ -70,13 +72,14 @@ startNewGame r0 lvl s = do
                 , _mode       = Running
                 , _level      = lvl
                 , _npellets   = countPellets xs
-                , _oneups     = 3
+                , _oneups     = 0 -- 3
                 , _time       = 0
                 , _pwrmult    = 2
                 , _dtime      = 0
                 , _pwrtime    = powerDuration lvl
                 , _msg        = newMessage "Ready!"
-                , _highscores = reverse . sortOn snd $ [("My Dog", 1000)]
+                , _highscores = reverse . sortOn snd $ [("My Dog", 10)]
+                , _hsedit     = editor HighScoreEdit ( Just 1 ) "Your Name"
                 }
 
 advanceLevel :: Game -> MazeString -> GameSt

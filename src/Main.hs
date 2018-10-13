@@ -16,10 +16,11 @@ import Brick.BChan                      ( BChan
                                         , writeBChan                )
 import Brick.Main                       ( App (..)
                                         , customMain
-                                        , neverShowCursor           )
+                                        , showCursorNamed           )
 import Controller                       ( routeEvent                )
 import Model.Types                      ( GameSt    (..)
                                         , Mode      (..)
+                                        , Name      (..)
                                         , Time      (..)
                                         , TimeEvent (..)            )
 import View                             ( attributes
@@ -27,12 +28,12 @@ import View                             ( attributes
 import Loading                          ( startNewGame              )
 import Model.Utilities                  ( tickPeriod                )
 
-app :: App GameSt TimeEvent ()
+app :: App GameSt TimeEvent Name
 app = App { appDraw         = drawUI
           , appHandleEvent  = routeEvent
           , appAttrMap      = const attributes
           , appStartEvent   = return
-          , appChooseCursor = neverShowCursor }
+          , appChooseCursor = const (showCursorNamed HighScoreEdit) }
 
 main :: IO ()
 main = do
