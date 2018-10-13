@@ -24,7 +24,7 @@ import Model.Types                      ( GameSt    (..)
                                         , TimeEvent (..)            )
 import View                             ( drawUI
                                         , attributes                )
-import Loading                          ( initGame                  )
+import Loading                          ( startNewGame              )
 import Model.Utilities                  ( tickPeriod                )
 
 app :: App GameSt TimeEvent ()
@@ -36,29 +36,28 @@ app = App { appDraw         = drawUI
 
 main :: IO ()
 main = do
-    let dt    = tickPeriod
-        mfile = "levels/classicMaze1.txt"
+    let mfile = "levels/classicMaze1.txt"
     putEnv "TERM=xterm-256color"
     gen  <- getStdGen
     args <- getArgs
     etGame <- case args of
-                   []  -> initGame gen dt <$> readFile mfile
-                   x:_ -> initGame gen dt <$> readFile x
+                   []  -> startNewGame gen <$> readFile mfile
+                   x:_ -> startNewGame gen <$> readFile x
     case etGame of
          Left err -> putStrLn err
-         Right g  -> runGame dt etGame
+         Right g  -> runGame etGame
 
-runTimer :: BChan TimeEvent -> Time -> Time -> IO ()
-runTimer chan t dt = do
+runTimer :: BChan TimeEvent -> Time -> IO ()
+runTimer chan t = do
     writeBChan chan (Tick t)
-    threadDelay dt
-    runTimer chan (t+dt) dt
+    threadDelay tickPeriod
+    runTimer chan (t + tickPeriod)
 
-runGame :: Time -> GameSt -> IO ()
-runGame dt etG = do
+runGame :: GameSt -> IO ()
+runGame etG = do
     chan <- newBChan 10 :: IO ( BChan TimeEvent )
     defaultConfig <- V.standardIOConfig
-    forkIO $ runTimer chan 0 dt
+    forkIO $ runTimer chan 0
     etG' <- customMain (V.mkVty defaultConfig) (Just chan) app etG
     case etG' of
          Left msg -> putStrLn msg
