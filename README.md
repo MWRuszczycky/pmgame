@@ -22,6 +22,7 @@ Right now things are not setup for a proper installation and only for testing, b
 
 * Use the arrow keys, "awsd" (Querty) or "a,oe" (Dvorak) to change direction.
 * Use `Esc` to quit the game at any time.
+* Use `Space` to pause the game.
 
 ## Things to do
 

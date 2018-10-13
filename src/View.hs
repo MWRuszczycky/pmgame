@@ -48,12 +48,21 @@ drawUI (Right gm) = case gm ^. T.mode of
                          GameOver  -> drawGameOverUI gm
                          LevelOver -> drawLevelOverUI gm
                          ReplayLvl -> drawReplayUI gm
+                         Paused _  -> drawPausedUI gm
                          otherwise -> drawRunningUI gm
 
 drawRunningUI :: Game -> [ Widget () ]
 drawRunningUI gm = [ withAttr "background" ui ]
     where ui = center . hLimit ( M.ncols $ gm ^. T.maze ) . vBox $ ws
           ws = [ renderHeader gm
+               , renderMaze gm
+               , renderOneups gm <+> renderFruit gm
+               ]
+
+drawPausedUI :: Game -> [ Widget () ]
+drawPausedUI gm = [ withAttr "background" ui ]
+    where ui = center . hLimit ( M.ncols $ gm ^. T.maze ) . vBox $ ws
+          ws = [ renderPausedHeader gm
                , renderMaze gm
                , renderOneups gm <+> renderFruit gm
                ]
@@ -206,6 +215,13 @@ renderHeader gm = vLimit 3 . vBox $ [ fstRow, sndRow, thdRow ]
           thdRow  = hBox [ renderScore gm, padLeft Max . renderHighScore $ gm ]
           hsLabel = padLeft Max . withAttr "score" . txt $ "Score"
 
+renderPausedHeader :: Game -> Widget ()
+renderPausedHeader gm = vLimit 3 . vBox $ [ fstRow, sndRow, thdRow ]
+    where fstRow  = padLeft Max . withAttr "score" . txt $ "High"
+          sndRow  = hBox [ withAttr "info" . txt $ "PAUSED", hsLabel ]
+          thdRow  = hBox [ renderScore gm, padLeft Max . renderHighScore $ gm ]
+          hsLabel = padLeft Max . withAttr "score" . txt $ "Score"
+
 renderHighScore :: Game -> Widget ()
 renderHighScore = renderScore
 
@@ -213,10 +229,10 @@ renderScore :: Game -> Widget ()
 renderScore = withAttr "score" . str . show . playerScore
 
 renderMessage :: Game -> Widget ()
-renderMessage gm = go $ gm ^. T.msg
-    where time             = quot (gm ^. T.time) 1000000
-          go NoMessage     = withAttr "info" . str . show $ time
-          go (Message s _) = withAttr "info" . str $ s
+renderMessage gm = let levelMsg = "Level " ++ show ( gm ^. T.level )
+                   in  case gm ^. T.msg of
+                            Message s _ -> withAttr "info" . str $ s
+                            otherwise   -> withAttr "info" . str $ levelMsg
 
 ---------------------------------------------------------------------
 -- Rendering fruit and oneups
