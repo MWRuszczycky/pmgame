@@ -10,6 +10,7 @@ module Model.Types
     , GhostName     (..)
     , Fruit         (..)
     , FruitName     (..)
+    , Message       (..)
     , PacMan        (..)
     , Direction     (..)
     , TimeEvent     (..)
@@ -111,6 +112,11 @@ instance Eq Ghost where
 makeLenses ''Ghost
 
 ---------------------------------------------------------------------
+-- Messages
+
+data Message = Message String Time | NoMessage deriving (Show, Eq)
+
+---------------------------------------------------------------------
 -- Fruit and item management
 
 data FruitName = Cherry
@@ -199,7 +205,7 @@ data Game = Game { _maze     :: Maze        -- Level maze
                  , _time     :: Time        -- Current in-game time
                  , _dtime    :: Time        -- Time since last update
                  , _pwrmult  :: Int         -- Score multiplier for ghost
-                 , _msg      :: Maybe (String, Time) -- In-game message
+                 , _msg      :: Message     -- In-game message
                  } deriving ( Show )
 
 makeLenses ''Game

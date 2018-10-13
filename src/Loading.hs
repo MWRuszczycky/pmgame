@@ -9,8 +9,8 @@ import qualified Data.Vector as V
 import qualified Model.Types as T
 import Lens.Micro                   ( (&), (^.), (.~), (%~) )
 import System.Random                ( StdGen, randomR       )
-import Model.Utilities              ( messageTime
-                                    , toMicroSeconds
+import Model.Utilities              ( toMicroSeconds
+                                    , newMessage
                                     , fruitDuration
                                     , powerDuration         )
 import Model.Types                  ( Game          (..)
@@ -62,7 +62,7 @@ initGame r0 dt s = do
                 , _pwrmult  = 2
                 , _dtime    = dt
                 , _pwrtime  = powerDuration
-                , _msg      = Just ("Ready!", messageTime)
+                , _msg      = newMessage "Ready!"
                 }
 
 ---------------------------------------------------------------------

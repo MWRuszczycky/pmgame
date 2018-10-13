@@ -17,8 +17,8 @@ import Model.Utilities              ( tickPeriod
                                     , powerDuration
                                     , playerWaitTime
                                     , ghostWaitTime
-                                    , messageTime
                                     , edibleGhostWaitTime
+                                    , scoreMessage
                                     , scoreFruit
                                     , revDirection
                                     , moveFrom
@@ -32,6 +32,7 @@ import Model.Types                  ( Tile          (..)
                                     , Direction     (..)
                                     , PacMan        (..)
                                     , Ghost         (..)
+                                    , Message       (..)
                                     , Fruit         (..)
                                     , FruitName     (..)
                                     , Items         (..)
@@ -71,19 +72,32 @@ resetGhost g = let (pos0, dir0) = g ^. T.gstrt
 -- =============================================================== --
 -- Game state updating
 
+-- Exported
+
 updateGame :: Game -> Game -> Game
 updateGame g0 g1
     | levelFinished = g1 & T.mode .~ LevelOver
     | otherwise     = runUpdate g0 g1
     where levelFinished = g1 ^. T.npellets == 0
 
+-- Unexported
+
+runUpdate :: Game -> Game -> Game
+runUpdate g0 g1 = updatePower . updateFruit . updateCaptures g0 $ g1
+
 ---------------------------------------------------------------------
 -- Time management
 
+-- Exported
+
 updateTime :: Time -> Game -> Game
-updateTime t gm = updatePowerTime dt . updateFruitTimes dt $ gm'
-    where dt  = t - gm ^. T.time
-          gm' = gm & T.time .~ t & T.dtime .~ dt
+updateTime t gm = let dt  = t - gm ^. T.time
+                  in  updateMessageTime dt
+                      . updatePowerTime dt
+                      . updateFruitTimes dt
+                      $ gm & T.time .~ t & T.dtime .~ dt
+
+-- Unexported
 
 updatePowerTime :: Time -> Game -> Game
 updatePowerTime dt gm = gm & T.mode %~ go
@@ -96,23 +110,16 @@ updateFruitTimes dt gm = gm & T.fruit %~ fmap go
                  | frt ^. T.fduration > 0 = frt & T.fduration %~ subtract dt
                  | otherwise              = frt
 
+updateMessageTime :: Time -> Game -> Game
+updateMessageTime dt gm = gm & T.msg %~ go
+    where go NoMessage     = NoMessage
+          go (Message s t) | t > 0     = Message s (t - dt)
+                           | otherwise = NoMessage
+
 ---------------------------------------------------------------------
 -- Eating ghosts and getting captured by ghosts
 
 -- Unexported
-
-runUpdate :: Game -> Game -> Game
-runUpdate g0 g1 = updatePower
-                  . updateFruit
-                  . updateCaptures g0
-                  . updateMessage $ g1
-
-updateMessage :: Game -> Game
-updateMessage gm = go $ gm ^. T.msg
-    where go Nothing      = gm
-          go (Just (s,t)) | t < 0     = gm & T.msg .~ Nothing
-                          | otherwise = let t' = t - gm ^. T.dtime
-                                        in  gm & T.msg .~ Just (s, t')
 
 updateCaptures :: Game -> Game -> Game
 updateCaptures g0 g1
@@ -120,7 +127,7 @@ updateCaptures g0 g1
     | ateGhost  = g1 & T.ghosts .~ eaten : uneaten
                      & T.items . T.gstscore %~ (+ ds)
                      & T.pwrmult %~ (*2)
-                     & T.msg .~ Just ("Ghost +" ++ show ds ++ "!", messageTime)
+                     & T.msg .~ scoreMessage "Ghost" ds
     | moreLives = g1 & T.mode .~ ReplayLvl
     | otherwise = g1 & T.mode .~ GameOver
     where gsts      = ghostCapture g0 g1
@@ -181,9 +188,8 @@ checkFruitCapture gm frt
 
 eatFruit :: Game -> Fruit -> Game
 eatFruit gm frt = let name = frt ^. T.fname
-                      msg  = show name ++ " +" ++ show (scoreFruit name) ++ "!"
                   in  gm & T.fruit .~ Nothing
-                         & T.msg   .~ Just (msg, messageTime)
+                         & T.msg   .~ scoreMessage (show name) (scoreFruit name)
                          & T.items %~ addFruitToItems name
 
 addFruitToItems :: FruitName -> Items -> Items
@@ -222,7 +228,7 @@ movePlayer gm
     | otherwise          = let p0  = gm ^. T.pacman . T.ppos
                                d0  = gm ^. T.pacman . T.pdir
                                m   = gm ^. T.maze
-                               p1  = moveFrom m p0 $ gm ^. T.pacman . T.pdir
+                               p1  = moveFrom m p0 d0
                                gm' = gm & T.pacman . T.ppos .~ p1
                            in  case m ! p1 of
                                     PwrPellet -> eatPwrPellet gm p1
@@ -243,12 +249,12 @@ eatPellet gm p = gm & T.pacman . T.ppos .~ p
 eatPwrPellet :: Game -> Point -> Game
 eatPwrPellet gm p = gm & T.pacman . T.ppos .~ p
                        & T.pacman . T.ptlast .~ ( gm ^. T.time )
-                       & T.maze     %~ M.setElem Empty p
+                       & T.maze %~ M.setElem Empty p
                        & T.npellets %~ pred
                        & T.items . T.ppellets %~ succ
-                       & T.msg      .~ Just ("Power Pellet +50!", messageTime)
-                       & T.ghosts   %~ map makeEdible
-                       & T.mode     .~ PwrRunning (gm ^. T.pwrtime)
+                       & T.msg .~ scoreMessage "Power Pellet" 50
+                       & T.ghosts %~ map makeEdible
+                       & T.mode .~ PwrRunning (gm ^. T.pwrtime)
 
 isPlayerWaiting :: Game -> Bool
 isPlayerWaiting gm = dt < playerWaitTime

@@ -31,6 +31,7 @@ import Model.Types                      ( Game          (..)
                                         , GhostName     (..)
                                         , Tile          (..)
                                         , Time          (..)
+                                        , Message       (..)
                                         , Fruit         (..)
                                         , FruitName     (..)
                                         , Point         (..)
@@ -209,9 +210,9 @@ renderScore = withAttr "score" . str . show . playerScore
 
 renderMessage :: Game -> Widget ()
 renderMessage gm = go $ gm ^. T.msg
-    where time            = quot (gm ^. T.time) 1000000
-          go Nothing      = withAttr "info" . str . show $ time
-          go (Just (s,_)) = withAttr "info" . str $ s
+    where time             = quot (gm ^. T.time) 1000000
+          go NoMessage     = withAttr "info" . str . show $ time
+          go (Message s _) = withAttr "info" . str $ s
 
 ---------------------------------------------------------------------
 -- Rendering fruit and oneups

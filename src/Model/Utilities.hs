@@ -3,10 +3,11 @@ module Model.Utilities
     , playerWaitTime
     , ghostWaitTime
     , edibleGhostWaitTime
-    , messageTime
     , powerDuration
     , powerTimeLeft
     , toMicroSeconds
+    , newMessage
+    , scoreMessage
     , playerScore
     , scoreFruit
     , fruitDuration
@@ -29,6 +30,7 @@ import Model.Types                      ( Tile      (..)
                                         , Maze      (..)
                                         , Point     (..)
                                         , FruitName (..)
+                                        , Message   (..)
                                         , Mode      (..)
                                         , Direction (..) )
 
@@ -51,9 +53,9 @@ edibleGhostWaitTime :: Time
 -- ^Wait time for edible ghosts between moves.
 edibleGhostWaitTime = 2 * ghostWaitTime
 
-messageTime :: Time
+messageDuration :: Time
 -- ^Length of time messages are displayed.
-messageTime = toMicroSeconds 3
+messageDuration = toMicroSeconds 3
 
 powerDuration :: Time
 -- ^Length of time ghosts remain edible after eating a power pellet.
@@ -65,6 +67,16 @@ powerDuration = toMicroSeconds 7.5
 toMicroSeconds :: Double -> Time
 -- ^Convert seconds as a Double to microseconds as Time (Int).
 toMicroSeconds = round . (* 1000000)
+
+---------------------------------------------------------------------
+-- Message helper functions
+
+newMessage :: String -> Message
+newMessage s = Message s messageDuration
+
+scoreMessage :: String -> Int -> Message
+scoreMessage s score = Message msg messageDuration
+    where msg = s ++ " +" ++ show score ++ "!"
 
 ---------------------------------------------------------------------
 -- Game state query utilities
