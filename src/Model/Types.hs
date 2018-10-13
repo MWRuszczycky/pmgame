@@ -17,6 +17,7 @@ module Model.Types
     , Items         (..)
     , Mode          (..)
     , GhostState    (..)
+    , Score         (..)
     -- Lenses for Game
     , maze
     , items
@@ -117,7 +118,9 @@ makeLenses ''Ghost
 data Message = Message String Time | NoMessage deriving (Show, Eq)
 
 ---------------------------------------------------------------------
--- Fruit and item management
+-- Fruit, item and score management
+
+type Score = Int
 
 data FruitName = Cherry
                | Strawberry
@@ -131,7 +134,7 @@ data FruitName = Cherry
 
 data Items = Items { _pellets  :: Int           -- Total normal pellets eaten
                    , _ppellets :: Int           -- Total power pellets eaten
-                   , _gstscore :: Int           -- Score from all ghosts eaten
+                   , _gstscore :: Score         -- Score from all ghosts eaten
                    , _fruits   :: [(FruitName, Int)] -- Fruits eaten and counts
                    } deriving ( Show )
 

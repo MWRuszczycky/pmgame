@@ -25,6 +25,7 @@ import Data.Matrix                      ( (!)            )
 import Data.List                        ( foldl'         )
 import Lens.Micro                       ( (^.)           )
 import Model.Types                      ( Tile      (..)
+                                        , Score     (..)
                                         , Time      (..)
                                         , Game      (..)
                                         , Maze      (..)
@@ -74,7 +75,7 @@ toMicroSeconds = round . (* 1000000)
 newMessage :: String -> Message
 newMessage s = Message s messageDuration
 
-scoreMessage :: String -> Int -> Message
+scoreMessage :: String -> Score -> Message
 scoreMessage s score = Message msg messageDuration
     where msg = s ++ " +" ++ show score ++ "!"
 
@@ -87,7 +88,7 @@ powerTimeLeft gm = case gm ^. T.mode of
                         PwrRunning t -> t
                         otherwise    -> 0
 
-playerScore :: Game -> Int
+playerScore :: Game -> Score
 -- ^Compute the current score based on the game state.
 playerScore gm = pel + ppel + gst + frt
     where pel  = 10 * gm ^. T.items . T.pellets
@@ -95,13 +96,13 @@ playerScore gm = pel + ppel + gst + frt
           gst  = gm ^. T.items . T.gstscore
           frt  = totalFruitScore $ gm ^. T.items . T.fruits
 
-totalFruitScore :: [(FruitName, Int)] -> Int
+totalFruitScore :: [(FruitName, Int)] -> Score
 totalFruitScore = foldl' ( \ s (fn, n) -> s + n * scoreFruit fn ) 0
 
 ---------------------------------------------------------------------
 -- Fruit parameters
 
-scoreFruit :: FruitName -> Int
+scoreFruit :: FruitName -> Score
 scoreFruit Cherry     = 100
 scoreFruit Strawberry = 300
 scoreFruit Orange     = 500
