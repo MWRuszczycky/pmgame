@@ -4,6 +4,7 @@ module Model.Utilities
     , ghostWaitTime
     , edibleGhostWaitTime
     , powerDuration
+    , isFlashing
     , powerTimeLeft
     , toMicroSeconds
     , newMessage
@@ -81,6 +82,10 @@ scoreMessage s score = Message msg messageDuration
 
 ---------------------------------------------------------------------
 -- Game state query utilities
+
+isFlashing :: Game -> Bool
+-- ^General function for querying whether things should be flashing.
+isFlashing gm = odd . quot ( gm ^. T.time ) $ tickPeriod
 
 powerTimeLeft :: Game -> Time
 -- ^How much power time is left after eating a power pellet.

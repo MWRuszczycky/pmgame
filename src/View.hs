@@ -22,7 +22,7 @@ import Brick.AttrMap                    ( attrMap, AttrMap          )
 import Brick.Util                       ( on, bg, fg                )
 import Brick.Widgets.Center             ( center, hCenter, vCenter  )
 import Model.Utilities                  ( powerTimeLeft, tickPeriod
-                                        , playerScore               )
+                                        , playerScore, isFlashing   )
 import Model.Types                      ( Game          (..)
                                         , GameSt        (..)
                                         , PacMan        (..)
@@ -128,20 +128,19 @@ tileGhosts gm m0 = foldl' ( \ m (p,t) -> M.setElem t p m) m0 gs
     where gs = [ (g ^. T.gpos, tileGhost gm g) | g <- gm ^. T.ghosts ]
 
 tileGhost :: Game -> Ghost -> Tile
-tileGhost gm g = let trem     = powerTimeLeft gm
-                     duration = gm ^. T.pwrtime
-                 in  case g ^. T.gstate of
-                          Edible    -> tileEdibleGhost trem duration
-                          EyesOnly  -> GhostEyes
-                          otherwise -> NormalGhost $ g ^. T.gname
+tileGhost gm g = case g ^. T.gstate of
+                      Edible    -> tileEdibleGhost gm
+                      EyesOnly  -> GhostEyes
+                      otherwise -> NormalGhost $ g ^. T.gname
 
-tileEdibleGhost :: Time -> Time -> Tile
-tileEdibleGhost trem duration
+tileEdibleGhost :: Game -> Tile
+tileEdibleGhost gm
     | trem >= half = BlueGhost
     | isWhite      = WhiteGhost
     | otherwise    = BlueGhost
-    where half    = quot duration 2
-          isWhite = odd . quot trem $ tickPeriod
+    where trem    = powerTimeLeft gm
+          half    = quot ( gm ^. T.pwrtime ) 2
+          isWhite = isFlashing gm
 
 ---------------------------------------------------------------------
 -- Tiling the player
@@ -166,7 +165,7 @@ renderTile _ (OneWay South)         = withAttr "oneway"     . txt $ "-"
 renderTile _ (OneWay West )         = withAttr "oneway"     . txt $ "|"
 renderTile _ (OneWay East )         = withAttr "oneway"     . txt $ "|"
 renderTile _  Pellet                = withAttr "pellet"     . txt $ "."
-renderTile _  PwrPellet             = withAttr "pellet"     . txt $ "*"
+renderTile gm PwrPellet             = renderPwrPellet gm
 renderTile _ (NormalGhost Blinky)   = withAttr "blinky"     . txt $ "\""
 renderTile _ (NormalGhost Inky  )   = withAttr "inky"       . txt $ "\""
 renderTile _ (NormalGhost Pinky )   = withAttr "pinky"      . txt $ "\""
@@ -191,6 +190,11 @@ renderPlayer g = withAttr "player" . txt . glyph $ g ^. T.pacman . T.pdir
           glyph South = "∧"
           glyph West  = ">"
           glyph East  = "<"
+
+renderPwrPellet :: Game -> Widget ()
+renderPwrPellet gm
+    | isFlashing gm = withAttr "flashPellet" . txt $ "*"
+    | otherwise     = withAttr "pellet"      . txt $ "*"
 
 ---------------------------------------------------------------------
 -- Rendering score information and messages in header
@@ -235,27 +239,28 @@ renderFruit gm = padLeft Max
 
 attributes :: AttrMap
 attributes = attrMap V.defAttr
-    [ ( "player",     on V.black V.brightYellow  )
-    , ( "maze",       on V.blue V.black          )
-    , ( "oneway",     on V.red V.black           )
-    , ( "pellet",     on V.white V.black         )
-    , ( "score",      on V.white V.black         )
-    , ( "info",       on V.white V.black         )
-    , ( "blinky",     on V.black V.red           )
-    , ( "pinky",      on V.black V.brightMagenta )
-    , ( "inky",       on V.black V.brightCyan    )
-    , ( "clyde",      on V.black V.yellow        )
-    , ( "blueGhost",  on V.white V.blue          )
-    , ( "whiteGhost", on V.black V.white         )
-    , ( "ghostEyes",  on V.cyan V.black          )
-    , ( "cherry",     on V.red V.black           )
-    , ( "strawberry", on V.magenta V.black       )
-    , ( "orange",     on V.yellow V.black        )
-    , ( "apple",      on V.brightRed V.black     )
-    , ( "melon",      on V.green V.black         )
-    , ( "galaxian",   on V.cyan V.black          )
-    , ( "bell",       on V.blue V.black          )
-    , ( "key",        on V.brightYellow V.black  )
-    , ( "background", bg V.black                 )
-    , ( borderAttr,   on V.blue V.black          )
+    [ ( "player",      on V.black V.brightYellow  )
+    , ( "maze",        on V.blue V.black          )
+    , ( "oneway",      on V.red V.black           )
+    , ( "pellet",      on V.white V.black         )
+    , ( "flashPellet", on V.brightBlack V.black   )
+    , ( "score",       on V.white V.black         )
+    , ( "info",        on V.white V.black         )
+    , ( "blinky",      on V.black V.red           )
+    , ( "pinky",       on V.black V.brightMagenta )
+    , ( "inky",        on V.black V.brightCyan    )
+    , ( "clyde",       on V.black V.yellow        )
+    , ( "blueGhost",   on V.white V.blue          )
+    , ( "whiteGhost",  on V.black V.white         )
+    , ( "ghostEyes",   on V.cyan V.black          )
+    , ( "cherry",      on V.red V.black           )
+    , ( "strawberry",  on V.magenta V.black       )
+    , ( "orange",      on V.yellow V.black        )
+    , ( "apple",       on V.brightRed V.black     )
+    , ( "melon",       on V.green V.black         )
+    , ( "galaxian",    on V.cyan V.black          )
+    , ( "bell",        on V.yellow V.black        )
+    , ( "key",         on V.brightYellow V.black  )
+    , ( "background",  bg V.black                 )
+    , ( borderAttr,    on V.blue V.black          )
     ]
