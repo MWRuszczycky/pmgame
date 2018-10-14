@@ -73,13 +73,13 @@ startNewGame r0 lvl s = do
                 , _mode       = Running
                 , _level      = lvl
                 , _npellets   = countPellets xs
-                , _oneups     = 0 -- 3
+                , _oneups     = 3
                 , _time       = 0
                 , _pwrmult    = 2
                 , _dtime      = 0
                 , _pwrtime    = powerDuration lvl
                 , _msg        = newMessage "Ready!"
-                , _highscores = reverse . sortOn snd $ [("My Dog", 10)]
+                , _highscores = reverse . sortOn snd $ []
                 , _hsedit     = editor HighScoreEdit ( Just 1 ) ""
                 }
 

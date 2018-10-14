@@ -15,17 +15,20 @@ import Brick.Widgets.Core               ( (<+>), fill, hBox, hLimit
                                         , padLeft, str, txt, vBox
                                         , vLimit, withAttr
                                         , withBorderStyle           )
-import Brick.Widgets.Edit               ( renderEditor              )
+import Brick.Widgets.Edit               ( editFocusedAttr
+                                        , renderEditor              )
 import Brick.Widgets.Border.Style       ( unicodeRounded            )
 import Brick.Widgets.Border             ( borderAttr
                                         , borderWithLabel           )
 import Brick.AttrMap                    ( AttrMap, attrMap          )
 import Brick.Util                       ( bg, fg, on                )
 import Brick.Widgets.Center             ( center, hCenter, vCenter  )
-import Model.Utilities                  ( highScore
+import Model.Utilities                  ( addHighScore
+                                        , highScore
                                         , isFlashing
                                         , playerScore
                                         , powerTimeLeft
+                                        , scoreFruit
                                         , tickPeriod                )
 import Model.Types                      ( Direction     (..)
                                         , Fruit         (..)
@@ -35,12 +38,14 @@ import Model.Types                      ( Direction     (..)
                                         , Ghost         (..)
                                         , GhostName     (..)
                                         , GhostState    (..)
+                                        , Items         (..)
                                         , Maze          (..)
                                         , Message       (..)
                                         , Mode          (..)
                                         , Name          (..)
                                         , PacMan        (..)
                                         , Point         (..)
+                                        , Score         (..)
                                         , Tile          (..)
                                         , Time          (..)        )
 
@@ -48,6 +53,7 @@ import Model.Types                      ( Direction     (..)
 -- Drawing the UI for different game states
 
 drawUI :: GameSt -> [ Widget Name ]
+-- ^Entry point for rendering the game state.
 drawUI (Left msg) = [ str msg ]
 drawUI (Right gm) = case gm ^. T.mode of
                          GameOver     -> drawGameOverUI gm
@@ -59,83 +65,76 @@ drawUI (Right gm) = case gm ^. T.mode of
 
 drawRunningUI :: Game -> [ Widget Name ]
 -- ^Actual active gameplay UI.
-drawRunningUI gm = [ withAttr "background" ui ]
-    where ui = center . hLimit ( M.ncols $ gm ^. T.maze ) . vBox $ ws
-          ws = [ renderHeader gm
-               , renderMaze gm
-               , renderOneups gm <+> renderFruitItems gm
-               ]
+drawRunningUI gm =
+    let width = M.ncols $ gm ^. T.maze
+        parts = [
+                  renderHeader gm
+                , renderMaze gm
+                , renderFooter gm
+                ]
+    in  [ withAttr "background" . center . hLimit width . vBox $ parts ]
 
 drawPausedUI :: Game -> [ Widget Name ]
 -- ^Paused gameplay UI.
-drawPausedUI gm = [ withAttr "background" ui ]
-    where ui = center . hLimit ( M.ncols $ gm ^. T.maze ) . vBox $ ws
-          ws = [ renderPausedHeader gm
-               , renderMaze gm
-               , renderOneups gm <+> renderFruitItems gm
-               ]
+drawPausedUI gm =
+    let width = M.ncols $ gm ^. T.maze
+        parts = [
+                  renderPausedHeader gm
+                , renderMaze gm
+                , renderFooter gm
+                ]
+    in  [ withAttr "background" . center . hLimit width . vBox $ parts ]
 
 drawLevelOverUI :: Game -> [ Widget Name ]
 -- ^Player has completed a level.
-drawLevelOverUI gm = [ withAttr "background" ui ]
-    where hdrTxt = "LEVEL " ++ show (gm ^. T.level) ++ " COMPLETED!"
-          hdr = withAttr "info" . str $ hdrTxt
-          ui  = center
-                . withBorderStyle unicodeRounded
-                . borderWithLabel hdr
-                . hLimit 30
-                . vLimit 5
-                . center
-                . vBox $ [ renderLabeledScore gm
-                         , withAttr "info" . txt $ "Enter to continue"
-                         , withAttr "info" . txt $ "Esc to quit"
-                         ]
+drawLevelOverUI gm =
+    let title = Txt.pack $ "LEVEL " ++ show (gm ^. T.level) ++ " COMPLETED!"
+        parts = [
+                  hCenter . renderLabeledScore $ gm
+                , renderVerticalSpace 2
+                , withAttr "focusControls" . txt $ " Enter to continue"
+                , withAttr "focusControls" . txt $ " Esc to quit"
+                ]
+    in  putInDialogBox title . vBox $ parts
 
 drawReplayUI :: Game -> [ Widget Name ]
 -- ^Player has lost a life but still has remaining lives.
-drawReplayUI gm = [ withAttr "background" ui ]
-    where hdr = withAttr "info" . txt $ "YOU GOT CAPTURED!"
-          ui  = center
-                . withBorderStyle unicodeRounded
-                . borderWithLabel hdr
-                . hLimit 30
-                . vLimit 5
-                . center
-                . vBox $ [ renderLabeledScore gm
-                         , withAttr "info" . txt $ "Enter to keep trying"
-                         , withAttr "info" . txt $ "Esc to quit"
-                         ]
+drawReplayUI gm =
+    let parts = [
+                  hCenter . renderLabeledScore $ gm
+                , renderVerticalSpace 2
+                , withAttr "focusControls" . txt $ " Enter to keep trying"
+                , withAttr "focusControls" . txt $ " Esc to quit"
+                ]
+    in  putInDialogBox "YOU GOT CAPTURED!" . vBox $ parts
 
 drawNewHighScoreUI :: Game -> [ Widget Name ]
 -- ^Player has lost all lives and gotten a new high score.
-drawNewHighScoreUI gm = [ withAttr "background" ui ]
-    where hdr = withAttr "info" . txt $ "NEW HIGH SCORE!"
-          ui  = center
-                . withBorderStyle unicodeRounded
-                . borderWithLabel hdr
-                . hLimit 30
-                . vLimit 5
-                . center
-                . vBox $ [ renderLabeledScore gm
-                         , withAttr "info" . txt $ "Enter to play again"
-                         , withAttr "info" . txt $ "Esc to quit"
-                         , renderEditor (str . unlines) True $ gm ^. T.hsedit
-                         ]
+drawNewHighScoreUI gm =
+    let parts = [
+                  renderHighScoreDisplay gm
+                , renderVerticalSpace 1
+                , hCenter . withAttr "highScore" . txt $ "Enter your name"
+                , hCenter . hLimit 26 . renderEditor (str . unlines) True
+                      $ gm ^. T.hsedit
+                , renderVerticalSpace 1
+                , renderScoreDetails gm
+                , renderVerticalSpace 2
+                , withAttr "controls" . txt $ " Enter to play again"
+                , withAttr "controls" . txt $ " Esc to quit"
+                ]
+    in  putInDialogBox "NEW HIGH SCORE!" . vBox $ parts
 
 drawGameOverUI :: Game -> [ Widget Name ]
 -- ^Player has lost all lives and has not gotten a new high score.
-drawGameOverUI gm = [ withAttr "background" ui ]
-    where hdr = withAttr "info" . txt $ "GAME OVER!"
-          ui  = center
-                . withBorderStyle unicodeRounded
-                . borderWithLabel hdr
-                . hLimit 30
-                . vLimit 5
-                . center
-                . vBox $ [ renderLabeledScore gm
-                         , withAttr "info" . txt $ "Enter to play again"
-                         , withAttr "info" . txt $ "Esc to quit"
-                         ]
+drawGameOverUI gm =
+    let parts = [
+                  hCenter . withAttr "focusControls" . txt
+                      $ " Enter to play again"
+                , hCenter . withAttr "focusControls" . txt
+                      $ " Esc to quit"
+                ]
+    in  putInDialogBox "GAME OVER!" . vBox $ parts
 
 -- =============================================================== --
 -- Tiling functions for constructing the maze prior to rendering
@@ -194,12 +193,13 @@ tilePlayer :: PacMan -> Maze -> Maze
 tilePlayer pm = M.setElem Player (pm ^. T.ppos)
 
 -- =============================================================== --
--- Widget rendering
+-- Widget rendering during regular and paused game play
 
 ---------------------------------------------------------------------
--- Rendering the maze
+-- Rendering the maze during normal gameplay
 
 renderMaze :: Game -> Widget Name
+-- ^Build and render the maze with fixed and changing tiles in place.
 renderMaze gm = vBox . renderTiles . M.toLists . tileMaze $ gm
     where renderTiles = map ( hBox . map (renderTile gm) )
 
@@ -242,19 +242,119 @@ renderPwrPellet gm
     | otherwise     = withAttr "pellet"      . txt $ "*"
 
 ---------------------------------------------------------------------
--- Rendering scores and messages
+-- Rendering scores and messages during regular gameplay
+-- These are displayed in a header above the maze during gameplay.
 
-renderHighScore :: Game -> Widget Name
-renderHighScore gm
+renderScore :: Game -> Widget Name
+-- ^Render the player's current score.
+renderScore = withAttr "score" . str . show . playerScore
+
+renderHighestScore :: Game -> Widget Name
+-- ^Render the highest score recorded, which may be the player's
+-- current score.
+renderHighestScore gm
     | ps > hs   = withAttr "score" . str . show $ ps
     | otherwise = withAttr "score" . str . show $ hs
     where ps = playerScore gm
           hs = highScore gm
 
-renderScore :: Game -> Widget Name
-renderScore = withAttr "score" . str . show . playerScore
+renderMessage :: Game -> Widget Name
+-- ^Render messages during regular, unpaused gameplay, such as
+-- whether a ghost was captured or a fruit was eaten. If there is
+-- no message, then just display the current level.
+renderMessage gm =
+    let levelMsg = "Level " ++ show ( gm ^. T.level )
+     in  case gm ^. T.msg of
+              Message s _ -> withAttr "info" . str $ s
+              otherwise   -> withAttr "info" . str $ levelMsg
+
+renderHeader :: Game -> Widget Name
+-- ^Collect together all the score and message information and
+-- display above the maze during regular gameplay.
+renderHeader gm = vLimit 3 . vBox $ [ row1, row2, row3 ]
+    where row1    = padLeft Max . withAttr "score" . txt $ "High"
+          row2    = hBox [ renderMessage gm, hsLabel ]
+          row3    = hBox [ renderScore gm, padLeft Max . renderHighestScore $ gm ]
+          hsLabel = padLeft Max . withAttr "score" . txt $ "Score"
+
+renderPausedHeader :: Game -> Widget Name
+-- ^Same as renderHeader but for paused gameplay.
+renderPausedHeader gm = vLimit 3 . vBox $ [ row1, row2, row3 ]
+    where row1    = padLeft Max . withAttr "score" . txt $ "High"
+          row2    = hBox [ withAttr "info" . txt $ "PAUSED", hsLabel ]
+          row3    = hBox [ renderScore gm, padLeft Max . renderHighestScore $ gm ]
+          hsLabel = padLeft Max . withAttr "score" . txt $ "Score"
+
+---------------------------------------------------------------------
+-- Rendering fruit and oneups
+-- These are displayed in a footer during gameplay.
+
+renderFooter :: Game -> Widget Name
+-- ^Graphical summary of remaining lives (oneups) and fruit eaten.
+renderFooter gm = renderOneups gm <+> ( padLeft Max . renderFruitItems ) gm
+
+renderOneups :: Game -> Widget Name
+-- ^Graphical summary of remaining lives.
+renderOneups gm
+    | n > 0     = hBox . take n . cycle $ [ oneup, blank ]
+    | otherwise = blank
+    where n     = 2 * gm ^. T.oneups
+          oneup = withAttr "player"     . txt $ ">"
+          blank = withAttr "background" . txt $ " "
+
+renderFruitItems :: Game -> Widget Name
+-- ^Graphical summary of the different types of fruit eaten so far.
+renderFruitItems gm = hBox . map ( renderTile gm . FruitTile ) $ names
+    where names = fst . unzip $ gm ^. T.items . T.fruits
+
+-- =============================================================== --
+-- Rendering the content of dialog boxes
+-- Dialog boxes are displayed when there is no gameplay, for example,
+-- when the player has just completed a level.
+
+---------------------------------------------------------------------
+-- Utilities
+
+putInDialogBox :: Txt.Text -> Widget Name -> [ Widget Name ]
+-- ^Render a widget in a bordered box with the specified title.
+-- Used for displaying information between game plays.
+putInDialogBox title widget =
+    let header    = withAttr "info" . txt $ title
+        formatted = [
+                      renderVerticalSpace 1
+                    , widget
+                    , renderVerticalSpace 1
+                    ]
+    in  [
+          withAttr "background"
+          . center
+          . withBorderStyle unicodeRounded
+          . borderWithLabel header
+          . hLimit 30 . vBox $ formatted
+        ]
+
+renderVerticalSpace :: Int -> Widget Name
+-- ^Spacer for separating vertically stacked widgets.
+renderVerticalSpace n = vLimit n . withAttr "background" . fill $ ' ' 
+
+---------------------------------------------------------------------
+-- Rendering score information
+-- The "Top Score" is the highest score every recorded or achieved in
+-- the current game. A "High Score" is any of the 5 highest scores
+-- ever recorded or achieved in the current game.
+
+renderHighScoreDisplay :: Game -> Widget Name
+-- ^Summary of all recorded high scores and players' names.
+renderHighScoreDisplay gm =
+    let fmt (name, score) = name ++ " " ++ show score
+        hs = addHighScore ("Your score", playerScore gm) $ gm ^. T.highscores
+    in  vBox [
+               hCenter . withAttr "highScore" . txt $ "High Scores"
+             , vBox . map ( hCenter . withAttr "info" . str . fmt ) $ hs
+             ]
 
 renderLabeledScore :: Game -> Widget Name
+-- ^Simple display of score information.
 renderLabeledScore gm
     | ps > hs   = hBox [ hsLabel, renderScore gm ]
     | otherwise = hBox [ label,   renderScore gm ]
@@ -263,75 +363,118 @@ renderLabeledScore gm
           hsLabel = withAttr "score" . txt $ "New High Score: "
           label   = withAttr "score" . txt $ "Score: "
 
-renderMessage :: Game -> Widget Name
-renderMessage gm = let levelMsg = "Level " ++ show ( gm ^. T.level )
-                   in  case gm ^. T.msg of
-                            Message s _ -> withAttr "info" . str $ s
-                            otherwise   -> withAttr "info" . str $ levelMsg
+renderScoreDetails :: Game -> Widget Name
+-- ^Display a breakdown of the player's score.
+renderScoreDetails gm =
+    vBox [
+           hCenter . renderPelletScoreHeader $ gm
+         , renderPelletScores $ gm ^. T.items
+         , renderVerticalSpace 1
+         , hCenter . renderGhostScoreHeader $ gm
+         , renderGhostScores  $ gm ^. T.items . T.gstscores
+         , renderVerticalSpace 1
+         , hCenter renderFruitScoreHeader
+         , renderFruitScores  $ gm ^. T.items . T.fruits
+         ]
 
----------------------------------------------------------------------
--- Rendering score information and messages in header
+renderPelletScoreHeader :: Game -> Widget Name
+-- ^Header for pellet score section when rendering score details.
+-- See also renderScoreDetails.
+renderPelletScoreHeader gm =
+    hBox [
+           renderPwrPellet gm
+         , withAttr "pelletText" . txt $ " Pellets "
+         , renderPwrPellet gm
+         ]
 
-renderHeader :: Game -> Widget Name
-renderHeader gm = vLimit 3 . vBox $ [ row1, row2, row3 ]
-    where row1    = padLeft Max . withAttr "score" . txt $ "High"
-          row2    = hBox [ renderMessage gm, hsLabel ]
-          row3    = hBox [ renderScore gm, padLeft Max . renderHighScore $ gm ]
-          hsLabel = padLeft Max . withAttr "score" . txt $ "Score"
+renderPelletScores :: Items -> Widget Name
+-- ^Summary of score coming from all pellets eaten during gameplay.
+-- See also renderScoreDetails.
+renderPelletScores x
+    | np + npp == 0 = withAttr "info" . txt $ "You didn't get any pellets!"
+    | otherwise     = vBox [ go "Regular" np 10, go "Power" npp 50 ]
+    where np       = x ^. T.pellets
+          npp      = x ^. T.ppellets
+          go p n s = hCenter . withAttr "score" . str
+                     $ show n ++ " x " ++ p ++ " = " ++ show (n*s)
 
-renderPausedHeader :: Game -> Widget Name
-renderPausedHeader gm = vLimit 3 . vBox $ [ row1, row2, row3 ]
-    where row1    = padLeft Max . withAttr "score" . txt $ "High"
-          row2    = hBox [ withAttr "info" . txt $ "PAUSED", hsLabel ]
-          row3    = hBox [ renderScore gm, padLeft Max . renderHighScore $ gm ]
-          hsLabel = padLeft Max . withAttr "score" . txt $ "Score"
+renderGhostScoreHeader :: Game -> Widget Name
+-- ^Header for ghost score section when rendering score details.
+-- See also renderScoreDetails.
+renderGhostScoreHeader gm =
+    hBox [
+           renderTile gm . tileEdibleGhost $ gm
+         , withAttr "ghostText" . txt $ "  Ghosts  "
+         , renderTile gm . tileEdibleGhost $ gm
+         ]
 
----------------------------------------------------------------------
--- Rendering fruit and oneups
+renderGhostScores :: [(Score, Int)] -> Widget Name
+-- ^Summary of score coming from all ghosts captured during gameplay.
+renderGhostScores [] = hCenter . withAttr "info" . txt $ "You didn't catch any!"
+renderGhostScores gs = vBox . map (hCenter . withAttr "score" . str . go) $ gs
+    where go (x, n) = concat [ show n ++ " x "
+                             , show x ++ " = "
+                             , show (n * x) ]
 
-renderOneups :: Game -> Widget Name
-renderOneups gm
-    | n > 0     = hBox . take n . cycle $ [ oneup, space ]
-    | otherwise = space
-    where n     = 2 * gm ^. T.oneups
-          oneup = withAttr "player"     . txt $ ">"
-          space = withAttr "background" . txt $ " "
+renderFruitScoreHeader :: Widget Name
+-- ^Header for fruit score section when rendering score details.
+-- See also renderScoreDetails.
+renderFruitScoreHeader = withAttr "melon" . txt $ "Fruits"
 
-renderFruitItems :: Game -> Widget Name
-renderFruitItems gm = padLeft Max
-                      . hBox
-                      . map ( renderTile gm . FruitTile )
-                      . fst
-                      . unzip
-                      $ gm ^. T.items . T.fruits
+renderFruitScores :: [(FruitName, Int)] -> Widget Name
+-- ^Summary of score coming from all fruits eaten during gameplay.
+-- See also renderScoreDetails.
+renderFruitScores [] = hCenter . withAttr "info" . txt $ "You didn't get any!"
+renderFruitScores xs = vBox . map renderFruitScore $ xs
+    where renderFruitScore (x, n) =
+            let go Cherry    = withAttr "cherry"     . str $ "Cherry"
+                go Strawberry= withAttr "strawberry" . str $ "Strawberry"
+                go Orange    = withAttr "orange"     . str $ "Orange"
+                go Apple     = withAttr "apple"      . str $ "Apple"
+                go Melon     = withAttr "melon"      . str $ "Melon"
+                go Galaxian  = withAttr "galaxian"   . str $ "Galaxian"
+                go Bell      = withAttr "bell"       . str $ "Bell"
+                go Key       = withAttr "key"        . str $ "Key"
+            in  hCenter . hBox
+                $ [
+                    withAttr "info" . str $ show n ++ " x "
+                  , go x
+                  , withAttr "info" . str $ " = " ++ show (n * scoreFruit x)
+                  ]
 
 -- =============================================================== --
 -- Attributes
 
 attributes :: AttrMap
 attributes = attrMap V.defAttr
-    [ ( "player",      on V.black V.brightYellow  )
-    , ( "maze",        on V.blue V.black          )
-    , ( "oneway",      on V.red V.black           )
-    , ( "pellet",      on V.white V.black         )
-    , ( "flashPellet", on V.brightBlack V.black   )
-    , ( "score",       on V.white V.black         )
-    , ( "info",        on V.white V.black         )
-    , ( "blinky",      on V.black V.red           )
-    , ( "pinky",       on V.black V.brightMagenta )
-    , ( "inky",        on V.black V.brightCyan    )
-    , ( "clyde",       on V.black V.yellow        )
-    , ( "blueGhost",   on V.white V.blue          )
-    , ( "whiteGhost",  on V.black V.white         )
-    , ( "ghostEyes",   on V.cyan V.black          )
-    , ( "cherry",      on V.red V.black           )
-    , ( "strawberry",  on V.brightMagenta V.black )
-    , ( "orange",      on V.yellow V.black        )
-    , ( "apple",       on V.brightRed V.black     )
-    , ( "melon",       on V.green V.black         )
-    , ( "galaxian",    on V.cyan V.black          )
-    , ( "bell",        on V.yellow V.black        )
-    , ( "key",         on V.brightYellow V.black  )
-    , ( "background",  bg V.black                 )
-    , ( borderAttr,    on V.blue V.black          )
+    [ ( "player",           on V.black  V.brightYellow )
+    , ( "maze",             on V.blue          V.black )
+    , ( "oneway",           on V.red           V.black )
+    , ( "pellet",           on V.white         V.black )
+    , ( "flashPellet",      on V.brightBlack   V.black )
+    , ( "score",            on V.white         V.black )
+    , ( "info",             on V.white         V.black )
+    , ( "blinky",           on V.black           V.red )
+    , ( "pinky",            on V.black V.brightMagenta )
+    , ( "inky",             on V.black    V.brightCyan )
+    , ( "clyde",            on V.black        V.yellow )
+    , ( "blueGhost",        on V.white          V.blue )
+    , ( "whiteGhost",       on V.black         V.white )
+    , ( "ghostEyes",        on V.cyan          V.black )
+    , ( "cherry",           on V.red           V.black )
+    , ( "strawberry",       on V.brightMagenta V.black )
+    , ( "orange",           on V.yellow        V.black )
+    , ( "apple",            on V.brightRed     V.black )
+    , ( "melon",            on V.green         V.black )
+    , ( "galaxian",         on V.cyan          V.black )
+    , ( "bell",             on V.yellow        V.black )
+    , ( "key",              on V.brightYellow  V.black )
+    , ( "background",       bg V.black                 )
+    , ( "highScore",        on V.yellow        V.black )
+    , ( "pelletText",       on V.cyan          V.black )
+    , ( "ghostText",        on V.brightBlue    V.black )
+    , ( "controls",         on V.brightBlack   V.black )
+    , ( "focusControls",    on V.cyan          V.black )
+    , ( borderAttr,         on V.blue          V.black )
+    , ( editFocusedAttr,    on V.white   V.brightBlack )
     ]

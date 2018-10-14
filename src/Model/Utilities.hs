@@ -6,6 +6,7 @@ module Model.Utilities
     , powerDuration
     , tickPeriod
     -- Useful helper functions
+    , addHighScore
     , newMessage
     , scoreMessage
     , toMicroSeconds
@@ -83,6 +84,12 @@ messageDuration = toMicroSeconds 3
 -- Useful helper functions
 
 -- Exported
+
+addHighScore :: (String, Score) -> [(String, Score)] -> [(String, Score)]
+addHighScore (name, score) = take 5 . go
+    where go [] = [(name, score)]
+          go ((n,s):xs) | score > s = (name, score) : (n,s) : xs
+                        | otherwise = (n,s) : go xs
 
 newMessage :: String -> Message
 newMessage s = Message s messageDuration
