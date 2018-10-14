@@ -8,9 +8,11 @@ module Model.Types
     , Ghost         (..)
     , GhostName     (..)
     , GhostState    (..)
+    , HighScore     (..)
     , Items         (..)
     , Message       (..)
     , Maze          (..)
+    , MazeString    (..)
     , Mode          (..)
     , Name          (..)
     , PacMan        (..)
@@ -132,6 +134,8 @@ data Message = Message String Time | NoMessage deriving (Show, Eq)
 
 type Score = Int
 
+type HighScore = (String, Score)
+
 data FruitName = Cherry
                | Strawberry
                | Orange
@@ -167,6 +171,11 @@ makeLenses ''Fruit
 ---------------------------------------------------------------------
 -- Maze management
 
+-- |Raw string of ascii characters that represents all elements in
+-- the maze.
+type MazeString = String
+
+-- |Interpretted maze of renderable tiles.
 type Maze = M.Matrix Tile
 
 -- |Most of these are self-explanatory. However, the Warp tile also
@@ -228,7 +237,7 @@ data Game = Game { _maze       :: Maze        -- Level maze
                  , _dtime      :: Time        -- Time since last update
                  , _pwrmult    :: Int         -- Score multiplier for ghost
                  , _msg        :: Message     -- In-game message
-                 , _highscores :: [(String, Score)] -- Current high scores
+                 , _highscores :: [HighScore] -- Current high scores
                  , _hsedit     :: Editor String Name -- For naming high scores
                  } deriving ( Show )
 

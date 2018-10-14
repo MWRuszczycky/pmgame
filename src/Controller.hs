@@ -1,11 +1,13 @@
 module Controller
-    ( routeEvent
+    ( readFileEither
+    , routeEvent
     ) where
 
 import qualified Graphics.Vty as V
 import qualified Data.Matrix  as M
 import qualified Model.Types  as T
-import Lens.Micro                   ( (&), (^.), (.~), over )
+import Control.Exception            ( IOException, catch  )
+import Lens.Micro                   ( (&), (^.), (.~), (%~) )
 import Brick.Types                  ( BrickEvent (..)
                                     , EventM
                                     , Next                  )
@@ -17,24 +19,42 @@ import Brick.Main                   ( continue
 import Model.Types                  ( Direction  (..)
                                     , Game       (..)
                                     , GameSt     (..)
+                                    , MazeString (..)
                                     , Mode       (..)
                                     , Name       (..)
                                     , TimeEvent  (..)       )
 import Loading                      ( advanceLevel
-                                    , levels
+                                    , getLevelFile
                                     , restartNewGame
                                     , startNewGame          )
+import Model.Utilities              ( addHighScore
+                                    , playerScore           )
 import Model.Model                  ( moveGhosts
                                     , movePlayer
                                     , restartLevel
                                     , updateGame
+                                    , updateHighScores
                                     , updateClock
                                     , updateTime
                                     , updateTimePaused      )
 
 type EventHandler = BrickEvent Name TimeEvent
                     -> EventM Name ( Next GameSt )
+
 ---------------------------------------------------------------------
+---------------------------------------------------------------------
+-- IO actions and event handlers for controlling the game
+
+-- =============================================================== --
+-- IO helper functions
+
+readFileEither :: FilePath-> IO (Either String String)
+readFileEither fp = do
+    catch ( Right <$> readFile fp ) ( hndlErr fp )
+    where hndlErr :: FilePath -> IOException -> IO (Either String String)
+          hndlErr x _ = return . Left $ "Error: cannot find file " ++ x ++ "!"
+
+-- =============================================================== --
 -- Event routers
 
 routeEvent :: GameSt -> EventHandler
@@ -91,8 +111,7 @@ routeLevelOver gm (AppEvent (Tick t)) =
 routeLevelOver gm (VtyEvent (V.EvKey V.KEsc [])) =
     halt . Right $ gm
 routeLevelOver gm (VtyEvent (V.EvKey V.KEnter [])) =
-    suspendAndResume . startNextLevel gm
-    $ lookup (succ $ gm ^. T.level) levels
+    suspendAndResume . startNextLevel $ gm
 routeLevelOver gm _ =
     continue . Right $ gm
 
@@ -102,9 +121,9 @@ routeNewHighScore :: Game -> EventHandler
 routeNewHighScore gm (AppEvent (Tick t)) =
     continue . Right . updateClock t $ gm
 routeNewHighScore gm (VtyEvent (V.EvKey V.KEsc [])) =
-    halt . Right $ gm
-routeNewHighScore gm (VtyEvent (V.EvKey V.KEnter [])) =
-    suspendAndResume ( restartGame gm )
+    halt . Right . updateHighScores $ gm
+routeNewHighScore gm (VtyEvent (V.EvKey V.KEnter [])) = do
+    suspendAndResume . restartGame . updateHighScores $ gm
 routeNewHighScore gm (VtyEvent vtyEv) = do
     newHsEdit <- handleEditorEvent vtyEv ( gm ^. T.hsedit )
     if (>26) . length . unlines . getEditContents $ newHsEdit
@@ -121,11 +140,11 @@ routeGameOver gm (AppEvent (Tick t)) =
 routeGameOver gm (VtyEvent (V.EvKey V.KEsc [])) =
     halt . Right $ gm
 routeGameOver gm (VtyEvent (V.EvKey V.KEnter [])) =
-    suspendAndResume ( restartGame gm )
+    suspendAndResume . restartGame $ gm
 routeGameOver gm _ =
     continue . Right $ gm
 
----------------------------------------------------------------------
+-- =============================================================== --
 -- Event handlers for running game
 
 tickEvent :: Int -> Game -> Game
@@ -153,16 +172,17 @@ keyEvent (V.KChar 'o') _ gm = gm & T.pacman . T.pdir .~ South
 keyEvent _             _ gm = gm
 
 ---------------------------------------------------------------------
--- Event handlers for restarts
+-- Starting & restarting the game.
 
 restartGame :: Game -> IO GameSt
-restartGame gm = case lookup 1 levels of
-                      Just fn -> restartNewGame gm <$> readFile fn
-                      Nothing -> return . Left $ "Cannot find first level"
+restartGame gm = do
+    ms <- readFileEither . getLevelFile $ 1
+    return $ restartNewGame gm =<< ms
 
 ---------------------------------------------------------------------
 -- Level transitioning
 
-startNextLevel :: Game -> Maybe FilePath -> IO GameSt
-startNextLevel gm Nothing   = startNextLevel gm . lookup 1 $ levels
-startNextLevel gm (Just fn) = advanceLevel gm <$> readFile fn
+startNextLevel :: Game -> IO GameSt
+startNextLevel gm = do
+    ms <- readFileEither . getLevelFile . succ $ gm ^. T.level
+    return $ advanceLevel gm =<< ms

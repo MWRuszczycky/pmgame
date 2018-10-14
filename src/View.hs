@@ -38,6 +38,7 @@ import Model.Types                      ( Direction     (..)
                                         , Ghost         (..)
                                         , GhostName     (..)
                                         , GhostState    (..)
+                                        , HighScore     (..)
                                         , Items         (..)
                                         , Maze          (..)
                                         , Message       (..)
@@ -339,18 +340,22 @@ renderVerticalSpace n = vLimit n . withAttr "background" . fill $ ' '
 
 ---------------------------------------------------------------------
 -- Rendering score information
--- The "Top Score" is the highest score every recorded or achieved in
--- the current game. A "High Score" is any of the 5 highest scores
--- ever recorded or achieved in the current game.
 
 renderHighScoreDisplay :: Game -> Widget Name
 -- ^Summary of all recorded high scores and players' names.
 renderHighScoreDisplay gm =
-    let fmt (name, score) = name ++ " " ++ show score
-        hs = addHighScore ("Your score", playerScore gm) $ gm ^. T.highscores
+    let scores = gm ^. T.highscores
+        score  = ( "Your name", playerScore gm )
+    in  case gm ^. T.mode of
+             NewHighScore -> renderHighScores . addHighScore score $ scores
+             otherwise    -> renderHighScores scores
+
+renderHighScores :: [HighScore] -> Widget Name
+renderHighScores scores =
+    let go (name, score) = name ++ " " ++ show score
     in  vBox [
                hCenter . withAttr "highScore" . txt $ "High Scores"
-             , vBox . map ( hCenter . withAttr "info" . str . fmt ) $ hs
+             , vBox . map ( hCenter . withAttr "info" . str . go ) $ scores
              ]
 
 renderLabeledScore :: Game -> Widget Name

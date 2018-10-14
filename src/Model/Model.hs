@@ -1,6 +1,7 @@
 module Model.Model
     ( -- Game and level restarting
       restartLevel
+    , updateHighScores
     -- Running ame state updating
     , updateGame
     -- Time management
@@ -15,14 +16,17 @@ module Model.Model
 
 import qualified Data.Matrix as M
 import qualified Model.Types as T
+import Brick.Widgets.Edit           ( getEditContents       )
 import Data.List                    ( (\\), foldl', sort    )
 import Lens.Micro                   ( (&), (^.), (.~), (%~) )
 import Data.Matrix                  ( (!)                   )
 import System.Random                ( randomR
                                     , StdGen                )
-import Model.Utilities              ( edibleGhostWaitTime
+import Model.Utilities              ( addHighScore
+                                    , edibleGhostWaitTime
                                     , ghostWaitTime
                                     , highScore
+                                    , isNewHighScore
                                     , moveFrom
                                     , noWalls
                                     , pathBetween
@@ -53,19 +57,33 @@ import Model.Types                  ( Direction     (..)
 -- Pure functions for managing game state
 
 -- =============================================================== --
--- Game and level restarting
+-- Game and level stopping and restarting
 
 -- Exported
 
 restartLevel :: Game -> Game
 -- ^Restarts the current level after player is captured by a ghost.
-restartLevel g = g & T.mode  .~ Running
-                   & T.pacman  %~ resetPacMan
-                   & T.ghosts  %~ map resetGhost
-                   & T.pwrmult .~ 2
-                   & T.oneups  %~ subtract 1
+restartLevel gm = gm & T.mode    .~ Running
+                     & T.pacman  %~ resetPacMan
+                     & T.ghosts  %~ map resetGhost
+                     & T.pwrmult .~ 2
+                     & T.oneups  %~ subtract 1
+
+updateHighScores :: Game -> Game
+-- ^Read the player's name from the high score edit and add the high
+-- score to the curernt list.
+updateHighScores gm = gm & T.highscores %~ addHighScore score
+    where name  = filter (/= '\n') . unlines . getEditContents $ gm ^. T.hsedit
+          score = ( name, playerScore gm )
 
 -- Unexported
+
+endPlay :: Game -> Game
+endPlay gm
+    | moreLives         = gm & T.mode .~ ReplayLvl
+    | isNewHighScore gm = gm & T.mode .~ NewHighScore
+    | otherwise         = gm & T.mode .~ GameOver
+    where moreLives = gm ^. T.oneups > 0
 
 resetPacMan :: PacMan -> PacMan
 resetPacMan p = let (pos0, dir0) = p ^. T.pstrt
@@ -153,13 +171,9 @@ updateCaptures :: Game -> Game -> Game
 updateCaptures gm0 gm1
     | null captures = gm1
     | ateGhost      = eatGhosts gm1 captures
-    | moreLives     = gm1 & T.mode .~ ReplayLvl
-    | newHighScore  = gm1 & T.mode .~ NewHighScore
-    | otherwise     = gm1 & T.mode .~ GameOver
-    where captures     = ghostCaptures gm0 gm1
-          ateGhost     = all ( (== Edible) . (^. T.gstate) ) captures
-          moreLives    = gm1 ^. T.oneups > 0
-          newHighScore = playerScore gm1 > highScore gm1
+    | otherwise     = endPlay gm1
+    where captures = ghostCaptures gm0 gm1
+          ateGhost = all ( (== Edible) . (^. T.gstate) ) captures
 
 eatGhosts :: Game -> [Ghost] -> Game
 eatGhosts gm gs = let eaten   = map (eatGhost gm) gs

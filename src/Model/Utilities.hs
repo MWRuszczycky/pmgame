@@ -13,6 +13,7 @@ module Model.Utilities
     -- Game state queries
     , highScore
     , isFlashing
+    , isNewHighScore
     , playerScore
     , powerTimeLeft
     -- Fruit parameters
@@ -38,6 +39,7 @@ import Lens.Micro                       ( (^.)              )
 import Model.Types                      ( Direction (..)
                                         , FruitName (..)
                                         , Game      (..)
+                                        , HighScore (..)
                                         , Maze      (..)
                                         , Message   (..)
                                         , Mode      (..)
@@ -85,7 +87,7 @@ messageDuration = toMicroSeconds 3
 
 -- Exported
 
-addHighScore :: (String, Score) -> [(String, Score)] -> [(String, Score)]
+addHighScore :: HighScore -> [HighScore] -> [HighScore]
 addHighScore (name, score) = take 5 . go
     where go [] = [(name, score)]
           go ((n,s):xs) | score > s = (name, score) : (n,s) : xs
@@ -98,7 +100,7 @@ scoreMessage :: String -> Score -> Message
 scoreMessage s score = Message msg messageDuration
     where msg = s ++ " +" ++ show score ++ "!"
 
-toMicroSeconds :: Double -> Time
+toMicroSeconds :: (RealFrac a) => a -> Time
 -- ^Convert seconds as a Double to microseconds as Time (Int).
 toMicroSeconds = round . (* 1000000)
 
@@ -116,6 +118,11 @@ highScore gm
 isFlashing :: Game -> Bool
 -- ^General function for querying whether things should be flashing.
 isFlashing gm = odd . quot ( gm ^. T.time ) $ tickPeriod
+
+isNewHighScore :: Game -> Bool
+isNewHighScore gm = length scores < 5 || score > minimum scores
+    where score  = playerScore gm
+          scores = snd . unzip $ gm ^. T.highscores
 
 playerScore :: Game -> Score
 -- ^Compute the current score based on the game state.

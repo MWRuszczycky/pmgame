@@ -1,16 +1,22 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Loading
     ( advanceLevel
+    , highScoresFile
+    , getLevelFile
+    , readLevel
+    , readHighScores
     , restartNewGame
+    , showHighScore
     , startNewGame
-    , levels
     ) where
 
 import qualified Data.Matrix as M
 import qualified Data.Vector as V
 import qualified Model.Types as T
+import Text.Read                    ( readMaybe             )
 import Brick.Widgets.Edit           ( editor                )
-import Data.List                    ( find, sort, sortOn    )
+import Data.List                    ( find, intercalate
+                                    , sort, sortOn          )
 import Lens.Micro                   ( (&), (^.), (.~), (%~) )
 import System.Random                ( randomR, StdGen       )
 import Model.Utilities              ( fruitDuration
@@ -26,22 +32,21 @@ import Model.Types                  ( Direction     (..)
                                     , Ghost         (..)
                                     , GhostName     (..)
                                     , GhostState    (..)
+                                    , HighScore     (..)
                                     , Items         (..)
                                     , Maze          (..)
+                                    , MazeString    (..)
                                     , Mode          (..)
                                     , Name          (..)
                                     , PacMan        (..)
                                     , Point         (..)
+                                    , Score         (..)
                                     , Tile          (..)
                                     , Time          (..)    )
 
 ---------------------------------------------------------------------
 ---------------------------------------------------------------------
 -- Pure functions for loading and transitioning between levels
-
--- |Raw string of ascii characters that represents all elements in
--- the maze.
-type MazeString = String
 
 -- |Raw MazeString where each ascii charcter has been indexed by the
 -- row and column it represents in the level maze.
@@ -50,20 +55,30 @@ type IndexedMaze = [(Point, Char)]
 -- =============================================================== --
 -- List of levels and associated maze files
 
-levels :: [ (Int, FilePath) ]
-levels = [ ( -1, "levels/classicMaze1-testing1.txt" )
-         , ( 1, "levels/classicMaze1.txt"   ) ]
+getLevelFile :: Int -> FilePath
+getLevelFile (-1) = "levels/classicMaze1-testing1.txt"
+getLevelFile 1    = "levels/classicMaze1.txt"
+getLevelFile _ = getLevelFile 1
+
+highScoresFile :: FilePath
+highScoresFile = "levels/high_scores.txt"
+
+readLevel :: [String] -> Int
+readLevel []    = 1
+readLevel (x:_) = case readMaybe x of
+                       Nothing -> 1
+                       Just n  -> n
 
 -- =============================================================== --
 -- Game initialization and level transitioning
 
-startNewGame :: StdGen -> Int -> MazeString -> GameSt
-startNewGame r0 lvl s = do
-    xs   <- indexMazeString s
+startNewGame :: StdGen -> [HighScore] -> Int -> MazeString -> GameSt
+startNewGame r0 scores level asciiMaze = do
+    xs   <- indexMazeString asciiMaze
     m    <- loadMaze xs
     pman <- loadPacMan xs
     gsts <- mapM ( loadGhost xs ) "pbic"
-    (mbFruit, r1) <- loadFruit r0 lvl xs
+    (mbFruit, r1) <- loadFruit r0 level xs
     return Game { _maze       = m
                 , _items      = Items 0 0 [] []
                 , _rgen       = r1
@@ -71,29 +86,33 @@ startNewGame r0 lvl s = do
                 , _ghosts     = sort gsts
                 , _fruit      = mbFruit
                 , _mode       = Running
-                , _level      = lvl
+                , _level      = level
                 , _npellets   = countPellets xs
-                , _oneups     = 3
+                , _oneups     = 0 -- 3
                 , _time       = 0
                 , _pwrmult    = 2
                 , _dtime      = 0
-                , _pwrtime    = powerDuration lvl
+                , _pwrtime    = powerDuration level
                 , _msg        = newMessage "Ready!"
-                , _highscores = reverse . sortOn snd $ []
+                , _highscores = reverse . sortOn snd $ scores
                 , _hsedit     = editor HighScoreEdit ( Just 1 ) ""
                 }
 
 advanceLevel :: Game -> MazeString -> GameSt
-advanceLevel gm s = do
+advanceLevel gm asciiMaze = do
     let nxtLvl = succ $ gm ^. T.level
-    nxtGame <- startNewGame ( gm ^. T.rgen ) nxtLvl s
-    return $ nxtGame & T.items   .~ ( gm ^. T.items  )
-                     & T.oneups  .~ ( gm ^. T.oneups )
-                     & T.time    .~ ( gm ^. T.time   )
+        scores = gm ^. T.highscores
+        gen    = gm ^. T.rgen
+    nxtGame <- startNewGame gen scores nxtLvl asciiMaze
+    return $ nxtGame & T.items  .~ ( gm ^. T.items  )
+                     & T.oneups .~ ( gm ^. T.oneups )
+                     & T.time   .~ ( gm ^. T.time   )
 
 restartNewGame :: Game -> MazeString -> GameSt
-restartNewGame gm s = do
-    newGame <- startNewGame ( gm ^. T.rgen ) 1 s
+restartNewGame gm asciiMaze = do
+    let scores = gm ^. T.highscores
+        gen    = gm ^. T.rgen
+    newGame <- startNewGame gen scores 1 asciiMaze
     return $ newGame & T.time .~ ( gm ^. T.time )
 
 -- =============================================================== --
@@ -310,3 +329,23 @@ horizontalLink :: Char -> Maybe Char -> Bool
 horizontalLink _   Nothing    = False
 horizontalLink '=' (Just '=') = True
 horizontalLink x   (Just y  ) = isWallChar x && isWallChar y && x /= y
+
+-- =============================================================== --
+-- Working with high scores files
+
+showHighScore :: HighScore -> String
+showHighScore ("", score  ) = showHighScore ("_", score)
+showHighScore (name, score) = name' ++ " " ++ show score ++ "\n"
+    where name' = intercalate "_" . words $ name
+
+readHighScores :: Either String String -> [HighScore]
+readHighScores (Left _  ) = []
+readHighScores (Right xs) =
+    let deUnder ys = [ if y == '_' then ' ' else y | y <- ys ]
+        go ws | length ws /= 2 = Nothing
+              | otherwise      = case readMaybe (ws !! 1) :: Maybe Score of
+                                      Nothing -> Nothing
+                                      Just x  -> Just (deUnder . head $ ws, x)
+    in  case mapM (go . words) . lines $ xs of
+             Nothing     -> []
+             Just scores -> scores

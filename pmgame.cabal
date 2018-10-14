@@ -20,14 +20,15 @@ executable pmgame
   ghc-options:         -O2 -threaded
   build-depends:       base >= 4.7 && < 5
                      , brick
-                     , vty
+                     , directory
                      , matrix
-                     , vector
-                     , random
-                     , text
-                     , unix
                      , microlens
                      , microlens-th
+                     , random
+                     , vector
+                     , vty
+                     , text
+                     , unix
  other-modules:        Model.Types
                      , Model.Model
                      , Model.Utilities

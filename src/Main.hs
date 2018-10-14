@@ -5,27 +5,36 @@ import qualified Graphics.Vty as V
 import qualified Data.Matrix  as M
 import qualified Model.Types  as T
 import Lens.Micro                       ( (^.)                      )
+import System.Directory                 ( doesFileExist             )
 import System.Random                    ( getStdGen                 )
 import System.Environment               ( getArgs                   )
 import System.Posix.Env                 ( putEnv                    )
 import Control.Monad                    ( void, forever             )
 import Control.Concurrent               ( threadDelay
                                         , forkIO                    )
+import Text.Read                        ( readMaybe                 )
 import Brick.BChan                      ( BChan
                                         , newBChan
                                         , writeBChan                )
 import Brick.Main                       ( App (..)
                                         , customMain
                                         , showCursorNamed           )
-import Controller                       ( routeEvent                )
+import Controller                       ( readFileEither
+                                        , routeEvent                )
 import Model.Types                      ( GameSt    (..)
+                                        , HighScore (..)
                                         , Mode      (..)
                                         , Name      (..)
                                         , Time      (..)
                                         , TimeEvent (..)            )
 import View                             ( attributes
                                         , drawUI                    )
-import Loading                          ( startNewGame              )
+import Loading                          ( getLevelFile
+                                        , highScoresFile
+                                        , readHighScores
+                                        , readLevel
+                                        , showHighScore
+                                        , startNewGame              )
 import Model.Utilities                  ( tickPeriod                )
 
 app :: App GameSt TimeEvent Name
@@ -35,34 +44,29 @@ app = App { appDraw         = drawUI
           , appStartEvent   = return
           , appChooseCursor = const (showCursorNamed HighScoreEdit) }
 
-main :: IO ()
-main = do
-    let mfile = "levels/classicMaze1.txt"
-    putEnv "TERM=xterm-256color"
-    gen  <- getStdGen
-    args <- getArgs
-    etGame <- case args of
-                   []  -> startNewGame gen 1 <$> readFile mfile
-                   x:_ -> startNewGame gen 1 <$> readFile x
-    case etGame of
-         Left err -> putStrLn err
-         Right g  -> runGame etGame
-
 runTimer :: BChan TimeEvent -> Time -> IO ()
 runTimer chan t = do
     writeBChan chan (Tick t)
     threadDelay tickPeriod
     runTimer chan (t + tickPeriod)
 
+main :: IO ()
+main = do
+    putEnv "TERM=xterm-256color"
+    level   <- readLevel <$> getArgs
+    gen     <- getStdGen
+    mazeStr <- readFileEither . getLevelFile $ level
+    scores  <- readHighScores <$> readFileEither highScoresFile
+    runGame $ mazeStr >>= startNewGame gen scores level
+
 runGame :: GameSt -> IO ()
-runGame etG = do
+runGame (Left err) = putStrLn err
+runGame newGame = do
     chan <- newBChan 10 :: IO ( BChan TimeEvent )
     defaultConfig <- V.standardIOConfig
     forkIO $ runTimer chan 0
-    etG' <- customMain (V.mkVty defaultConfig) (Just chan) app etG
-    case etG' of
+    finishedGame <- customMain (V.mkVty defaultConfig) (Just chan) app newGame
+    case finishedGame of
          Left msg -> putStrLn msg
-         Right g  -> case g ^. T.mode of
-                          GameOver  -> putStrLn "Game Over"
-                          LevelOver -> putStrLn "Level Finished!"
-                          otherwise -> putStrLn "Looks like you gave up..."
+         Right gm -> let xs = concatMap showHighScore $ gm ^. T.highscores
+                     in  writeFile highScoresFile xs
