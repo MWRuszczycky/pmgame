@@ -48,6 +48,7 @@ routeEvent (Right gm) e = case gm ^. T.mode of
                                otherwise    -> routeRunning gm e
 
 routeRunning :: Game -> EventHandler
+-- ^Normal, unpaused gameplay.
 routeRunning gm (AppEvent (Tick t)) =
     continue . Right . tickEvent t $ gm
 routeRunning gm (VtyEvent (V.EvKey V.KEsc [])) =
@@ -59,7 +60,20 @@ routeRunning gm (VtyEvent (V.EvKey k ms)) =
 routeRunning gm _ =
     continue . Right $ gm
 
+routePaused :: Game -> Mode -> EventHandler
+-- ^Normal, paused gameplay.
+routePaused gm m (AppEvent (Tick t)) =
+    continue . Right . updateTimePaused t $ gm
+routePaused gm m (VtyEvent (V.EvKey V.KEsc [])) =
+    halt . Right $ gm & T.mode .~ m
+routePaused gm m (VtyEvent (V.EvKey (V.KChar ' ') [])) =
+    continue . Right $ gm & T.mode .~ m
+routePaused gm _ _ =
+    continue . Right $ gm
+
 routeReplay :: Game -> EventHandler
+-- ^Player still has lives left, but was just captured and is waiting
+-- to replay the level.
 routeReploy gm (AppEvent (Tick t)) =
     continue . Right . updateClock t $ gm
 routeReplay gm (VtyEvent (V.EvKey V.KEsc [])) =
@@ -70,6 +84,8 @@ routeReplay gm _ =
     continue . Right $ gm
 
 routeLevelOver :: Game -> EventHandler
+-- ^Player has just completed a level and is waiting to start the
+-- next level.
 routeLevelOver gm (AppEvent (Tick t)) =
     continue . Right . updateClock t $ gm
 routeLevelOver gm (VtyEvent (V.EvKey V.KEsc [])) =
@@ -81,6 +97,8 @@ routeLevelOver gm _ =
     continue . Right $ gm
 
 routeNewHighScore :: Game -> EventHandler
+-- ^Player has lost all lives, but has achieved a new high score and
+-- is in the process of entering their name to be saved.
 routeNewHighScore gm (AppEvent (Tick t)) =
     continue . Right . updateClock t $ gm
 routeNewHighScore gm (VtyEvent (V.EvKey V.KEsc [])) =
@@ -96,6 +114,8 @@ routeNewHighScore gm _ =
     continue . Right $ gm
 
 routeGameOver :: Game -> EventHandler
+-- ^Player has lost all lives and has not achieved a new high score.
+-- Player is currently deciding whether to try again or not.
 routeGameOver gm (AppEvent (Tick t)) =
     continue . Right . updateClock t $ gm
 routeGameOver gm (VtyEvent (V.EvKey V.KEsc [])) =
@@ -103,16 +123,6 @@ routeGameOver gm (VtyEvent (V.EvKey V.KEsc [])) =
 routeGameOver gm (VtyEvent (V.EvKey V.KEnter [])) =
     suspendAndResume ( restartGame gm )
 routeGameOver gm _ =
-    continue . Right $ gm
-
-routePaused :: Game -> Mode -> EventHandler
-routePaused gm m (AppEvent (Tick t)) =
-    continue . Right . updateTimePaused t $ gm
-routePaused gm m (VtyEvent (V.EvKey V.KEsc [])) =
-    halt . Right $ gm & T.mode .~ m
-routePaused gm m (VtyEvent (V.EvKey (V.KChar ' ') [])) =
-    continue . Right $ gm & T.mode .~ m
-routePaused gm _ _ =
     continue . Right $ gm
 
 ---------------------------------------------------------------------

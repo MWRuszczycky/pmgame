@@ -80,7 +80,7 @@ startNewGame r0 lvl s = do
                 , _pwrtime    = powerDuration lvl
                 , _msg        = newMessage "Ready!"
                 , _highscores = reverse . sortOn snd $ [("My Dog", 10)]
-                , _hsedit     = editor HighScoreEdit ( Just 1 ) "Your Name"
+                , _hsedit     = editor HighScoreEdit ( Just 1 ) ""
                 }
 
 advanceLevel :: Game -> MazeString -> GameSt
