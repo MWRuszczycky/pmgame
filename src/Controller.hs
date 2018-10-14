@@ -22,11 +22,13 @@ import Model.Types                  ( Direction  (..)
                                     , TimeEvent  (..)       )
 import Loading                      ( advanceLevel
                                     , levels
+                                    , restartNewGame
                                     , startNewGame          )
 import Model.Model                  ( moveGhosts
                                     , movePlayer
                                     , restartLevel
                                     , updateGame
+                                    , updateClock
                                     , updateTime
                                     , updateTimePaused      )
 
@@ -46,18 +48,20 @@ routeEvent (Right gm) e = case gm ^. T.mode of
                                otherwise    -> routeRunning gm e
 
 routeRunning :: Game -> EventHandler
+routeRunning gm (AppEvent (Tick t)) =
+    continue . Right . tickEvent t $ gm
 routeRunning gm (VtyEvent (V.EvKey V.KEsc [])) =
     halt . Right $ gm
 routeRunning gm (VtyEvent (V.EvKey (V.KChar ' ') [])) =
     continue . Right . pauseGame $ gm
 routeRunning gm (VtyEvent (V.EvKey k ms)) =
     continue . Right . keyEvent k ms $ gm
-routeRunning gm (AppEvent (Tick t)) =
-    continue . Right . tickEvent t $ gm
 routeRunning gm _ =
     continue . Right $ gm
 
 routeReplay :: Game -> EventHandler
+routeReploy gm (AppEvent (Tick t)) =
+    continue . Right . updateClock t $ gm
 routeReplay gm (VtyEvent (V.EvKey V.KEsc [])) =
     halt . Right $ gm
 routeReplay gm (VtyEvent (V.EvKey V.KEnter [])) =
@@ -66,6 +70,8 @@ routeReplay gm _ =
     continue . Right $ gm
 
 routeLevelOver :: Game -> EventHandler
+routeLevelOver gm (AppEvent (Tick t)) =
+    continue . Right . updateClock t $ gm
 routeLevelOver gm (VtyEvent (V.EvKey V.KEsc [])) =
     halt . Right $ gm
 routeLevelOver gm (VtyEvent (V.EvKey V.KEnter [])) =
@@ -75,6 +81,8 @@ routeLevelOver gm _ =
     continue . Right $ gm
 
 routeNewHighScore :: Game -> EventHandler
+routeNewHighScore gm (AppEvent (Tick t)) =
+    continue . Right . updateClock t $ gm
 routeNewHighScore gm (VtyEvent (V.EvKey V.KEsc [])) =
     halt . Right $ gm
 routeNewHighScore gm (VtyEvent (V.EvKey V.KEnter [])) =
@@ -88,6 +96,8 @@ routeNewHighScore gm _ =
     continue . Right $ gm
 
 routeGameOver :: Game -> EventHandler
+routeGameOver gm (AppEvent (Tick t)) =
+    continue . Right . updateClock t $ gm
 routeGameOver gm (VtyEvent (V.EvKey V.KEsc [])) =
     halt . Right $ gm
 routeGameOver gm (VtyEvent (V.EvKey V.KEnter [])) =
@@ -96,12 +106,12 @@ routeGameOver gm _ =
     continue . Right $ gm
 
 routePaused :: Game -> Mode -> EventHandler
+routePaused gm m (AppEvent (Tick t)) =
+    continue . Right . updateTimePaused t $ gm
 routePaused gm m (VtyEvent (V.EvKey V.KEsc [])) =
     halt . Right $ gm & T.mode .~ m
 routePaused gm m (VtyEvent (V.EvKey (V.KChar ' ') [])) =
-    continue . Right $ unpauseGame m gm
-routePaused gm m (AppEvent (Tick t)) =
-    continue . Right . pausedTickEvent t $ gm
+    continue . Right $ gm & T.mode .~ m
 routePaused gm _ _ =
     continue . Right $ gm
 
@@ -133,23 +143,12 @@ keyEvent (V.KChar 'o') _ gm = gm & T.pacman . T.pdir .~ South
 keyEvent _             _ gm = gm
 
 ---------------------------------------------------------------------
--- Event handlers for paused game
-
-pausedTickEvent :: Int -> Game -> Game
-pausedTickEvent t gm = updateTimePaused t gm
-
-unpauseGame :: Mode -> Game -> Game
-unpauseGame m gm = gm & T.mode .~ m
-
----------------------------------------------------------------------
 -- Event handlers for restarts
 
 restartGame :: Game -> IO GameSt
-restartGame g = do
-    let gen = g ^. T.rgen
-    case lookup 1 levels of
-         Just fn -> startNewGame gen 1 <$> readFile fn
-         Nothing -> return . Left $ "Cannot find first level"
+restartGame gm = case lookup 1 levels of
+                      Just fn -> restartNewGame gm <$> readFile fn
+                      Nothing -> return . Left $ "Cannot find first level"
 
 ---------------------------------------------------------------------
 -- Level transitioning

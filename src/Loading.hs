@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Loading
     ( advanceLevel
+    , restartNewGame
     , startNewGame
     , levels
     ) where
@@ -89,6 +90,11 @@ advanceLevel gm s = do
     return $ nxtGame & T.items   .~ ( gm ^. T.items  )
                      & T.oneups  .~ ( gm ^. T.oneups )
                      & T.time    .~ ( gm ^. T.time   )
+
+restartNewGame :: Game -> MazeString -> GameSt
+restartNewGame gm s = do
+    newGame <- startNewGame ( gm ^. T.rgen ) 1 s
+    return $ newGame & T.time .~ ( gm ^. T.time )
 
 -- =============================================================== --
 -- Parsing level files

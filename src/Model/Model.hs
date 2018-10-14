@@ -4,8 +4,9 @@ module Model.Model
     -- Running ame state updating
     , updateGame
     -- Time management
-    , updateTime
+    , updateClock
     , updateTimePaused
+    , updateTime
     -- Moving and updating the player
     , movePlayer
     -- Moving the ghosts
@@ -99,14 +100,15 @@ runUpdate gm0 gm1 = updatePower . updateFruit . updateCaptures gm0 $ gm1
 
 -- Exported
 
-updateTime :: Time -> Game -> Game
-updateTime t gm = let dt = t - gm ^. T.time
-                  in  updateMessageTime dt
-                      . updatePowerTime dt
-                      . updateFruitTimes dt
-                      $ gm & T.time .~ t & T.dtime .~ dt
+updateClock :: Time -> Game -> Game
+-- ^Does nothing besides keep the game clock ticking. This function
+-- is only needed when the game is not running (e.g., when the player
+-- is entering their name for a new high score).
+updateClock t gm = let dt = t - gm ^. T.time
+                   in  gm & T.time .~ t & T.dtime .~ dt
 
 updateTimePaused :: Time -> Game -> Game
+-- ^Keeps all time variables up to date during a paused game state.
 updateTimePaused t gm =
     let dt = t - gm ^. T.time
     in  gm & T.time .~ t
@@ -114,22 +116,31 @@ updateTimePaused t gm =
            & T.pacman . T.ptlast %~ (+dt)
            & T.ghosts %~ map ( \ g -> g & T.gtlast %~ (+dt) )
 
+updateTime :: Time -> Game -> Game
+-- ^Keeps all time variables up to date during a running game state.
+updateTime t = updateMessageTime
+                 . updatePowerTime
+                 . updateFruitTimes
+                 . updateClock t
+
 -- Unexported
 
-updatePowerTime :: Time -> Game -> Game
-updatePowerTime dt gm = gm & T.mode %~ go
-    where go (PwrRunning t0) = PwrRunning (t0 - dt)
+updatePowerTime :: Game -> Game
+updatePowerTime gm = gm & T.mode %~ go
+    where go (PwrRunning t0) = PwrRunning (t0 - gm ^. T.dtime)
           go x               = x
 
-updateFruitTimes :: Time -> Game -> Game
-updateFruitTimes dt gm = gm & T.fruit %~ fmap go
-    where go frt | frt ^. T.fdelay > 0    = frt & T.fdelay    %~ subtract dt
+updateFruitTimes :: Game -> Game
+updateFruitTimes gm = gm & T.fruit %~ fmap go
+    where dt = gm ^. T.dtime
+          go frt | frt ^. T.fdelay > 0    = frt & T.fdelay    %~ subtract dt
                  | frt ^. T.fduration > 0 = frt & T.fduration %~ subtract dt
                  | otherwise              = frt
 
-updateMessageTime :: Time -> Game -> Game
-updateMessageTime dt gm = gm & T.msg %~ go
-    where go NoMessage     = NoMessage
+updateMessageTime :: Game -> Game
+updateMessageTime gm = gm & T.msg %~ go
+    where dt = gm ^. T.dtime
+          go NoMessage     = NoMessage
           go (Message s t) | t > 0     = Message s (t - dt)
                            | otherwise = NoMessage
 

@@ -290,8 +290,11 @@ renderPausedHeader gm = vLimit 3 . vBox $ [ row1, row2, row3 ]
 -- Rendering fruit and oneups
 
 renderOneups :: Game -> Widget Name
-renderOneups gm = hBox . take (2 * gm ^. T.oneups) . cycle $ [ oneup, space ]
-    where oneup = withAttr "player"     . txt $ ">"
+renderOneups gm
+    | n > 0     = hBox . take n . cycle $ [ oneup, space ]
+    | otherwise = space
+    where n     = 2 * gm ^. T.oneups
+          oneup = withAttr "player"     . txt $ ">"
           space = withAttr "background" . txt $ " "
 
 renderFruitItems :: Game -> Widget Name
