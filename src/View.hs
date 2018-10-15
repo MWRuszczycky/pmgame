@@ -94,7 +94,7 @@ drawPausedUI gm =
     in  [ withAttr "background" . center . hLimit width . vBox $ parts ]
 
 drawStartScreenUI :: Game -> [ Widget Name ]
--- ^Player has completed a level.
+-- ^Player has not begun play and is at the start screen.
 drawStartScreenUI gm =
     let parts = [
                   renderHighScoreDisplay gm

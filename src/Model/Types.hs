@@ -78,7 +78,7 @@ type Time = Int
 data TimeEvent = Tick Time deriving ( Show )
 
 ---------------------------------------------------------------------
--- Positioning and movement of movabel characters
+-- Positioning and movement of movable characters
 
 data Direction = North | South | East | West deriving ( Show, Eq )
 

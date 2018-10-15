@@ -59,7 +59,7 @@ getLevelFile :: Int -> FilePath
 -- ^Maps level numbers to files.
 getLevelFile (-1) = "levels/classicMaze1-testing1.txt"
 getLevelFile 1    = "levels/classicMaze1.txt"
-getLevelFile _ = getLevelFile 1
+getLevelFile _    = getLevelFile 1
 
 highScoresFile :: FilePath
 -- ^File where high scores are stored.

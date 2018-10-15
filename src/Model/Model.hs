@@ -137,9 +137,9 @@ updateTimePaused t gm =
 updateTime :: Time -> Game -> Game
 -- ^Keeps all time variables up to date during a running game state.
 updateTime t = updateMessageTime
-                 . updatePowerTime
-                 . updateFruitTimes
-                 . updateClock t
+               . updatePowerTime
+               . updateFruitTimes
+               . updateClock t
 
 -- Unexported
 
