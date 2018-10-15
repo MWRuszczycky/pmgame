@@ -73,6 +73,9 @@ drawRunningUI gm =
                   renderHeader gm
                 , renderMaze gm
                 , renderFooter gm
+                , renderVerticalSpace 1
+                , withAttr "controls" . txt $ " Space to pause"
+                , withAttr "controls" . txt $ " Esc to quit"
                 ]
     in  [ withAttr "background" . center . hLimit width . vBox $ parts ]
 
@@ -84,6 +87,9 @@ drawPausedUI gm =
                   renderPausedHeader gm
                 , renderMaze gm
                 , renderFooter gm
+                , renderVerticalSpace 1
+                , withAttr "controls" . txt $ " Space to unpause"
+                , withAttr "controls" . txt $ " Esc to quit"
                 ]
     in  [ withAttr "background" . center . hLimit width . vBox $ parts ]
 
