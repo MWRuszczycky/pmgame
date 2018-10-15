@@ -261,8 +261,8 @@ renderPlayer g = withAttr "player" . txt . glyph $ g ^. T.pacman . T.pdir
 
 renderPwrPellet :: Game -> Widget Name
 renderPwrPellet gm
-    | isFlashing gm = withAttr "flashPellet" . txt $ "*"
-    | otherwise     = withAttr "pellet"      . txt $ "*"
+    | isFlashing gm = withAttr "flashPwrPellet" . txt $ "●"
+    | otherwise     = withAttr "pwrPellet"      . txt $ "●"
 
 ---------------------------------------------------------------------
 -- Rendering scores and messages during regular gameplay
@@ -480,7 +480,8 @@ attributes = attrMap V.defAttr
     , ( "maze",             on V.blue          V.black )
     , ( "oneway",           on V.red           V.black )
     , ( "pellet",           on V.white         V.black )
-    , ( "flashPellet",      on V.brightBlack   V.black )
+    , ( "pwrPellet",        on V.cyan          V.black )
+    , ( "flashPwrPellet",   on V.brightCyan    V.black )
     , ( "score",            on V.white         V.black )
     , ( "info",             on V.white         V.black )
     , ( "blinky",           on V.black           V.red )

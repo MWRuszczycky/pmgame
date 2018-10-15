@@ -56,14 +56,18 @@ type IndexedMaze = [(Point, Char)]
 -- List of levels and associated maze files
 
 getLevelFile :: Int -> FilePath
+-- ^Maps level numbers to files.
 getLevelFile (-1) = "levels/classicMaze1-testing1.txt"
 getLevelFile 1    = "levels/classicMaze1.txt"
 getLevelFile _ = getLevelFile 1
 
 highScoresFile :: FilePath
+-- ^File where high scores are stored.
 highScoresFile = "levels/high_scores.txt"
 
 readLevel :: [String] -> Int
+-- ^Used to jump any level when running the game (see use in Main).
+-- Will eventually be changed.
 readLevel []    = 1
 readLevel (x:_) = case readMaybe x of
                        Nothing -> 1
@@ -88,7 +92,7 @@ startNewGame r0 scores level asciiMaze = do
                 , _mode       = StartScreen
                 , _level      = level
                 , _npellets   = countPellets xs
-                , _oneups     = 0 -- 3
+                , _oneups     = 2
                 , _time       = 0
                 , _pwrmult    = 2
                 , _dtime      = 0
