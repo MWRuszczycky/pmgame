@@ -17,7 +17,7 @@ module Model.Model
 import qualified Data.Matrix as M
 import qualified Model.Types as T
 import Brick.Widgets.Edit           ( getEditContents       )
-import Data.List                    ( (\\), foldl', sort    )
+import Data.List                    ( (\\), delete, foldl', sort    )
 import Lens.Micro                   ( (&), (^.), (.~), (%~) )
 import Data.Matrix                  ( (!)                   )
 import System.Random                ( randomR
@@ -356,7 +356,7 @@ moveWholeGhost gm g0 (gs, r0)
           m       = gm ^. T.maze
           atStart = g0 ^. T.gpos == fst ( g0 ^. T.gstrt )
           bias    = if atStart then 0 else 20
-          (r1,ds) = proposeDirections gm g0 r0 bias
+          (ds,r1) = proposeDirections gm g0 r0 bias
           (d1,p1) = chooseDirection gm g0 ds
           g1      = g0 & T.gpos   .~ p1
                        & T.gdir   .~ d1
@@ -380,14 +380,24 @@ chooseDirection gm g (d:ds) =
              OneWay owd -> if d == owd then (d, p) else nxt
              otherwise  -> (d, p)
 
-proposeDirections :: Game -> Ghost -> StdGen -> Int -> (StdGen, [Direction])
-proposeDirections gm g r bias = randomDirections r ds
-    where ds = [North, South, East, West] ++ replicate bias pd
+proposeDirections :: Game -> Ghost -> StdGen -> Int -> ([Direction], StdGen)
+proposeDirections gm g r bias = randomDirections r ds bias
+    where ds = pd : delete pd [North, South, East, West]
           pd = case toPacMan gm g of
                     Nothing -> g ^. T.gdir
                     Just d  -> if g ^. T.gstate == Edible
                                   then revDirection d
                                   else d
+
+randomDirections :: StdGen -> [Direction] -> Int -> ([Direction], StdGen)
+randomDirections r0 [] _    = ([], r0)
+randomDirections r0 ds bias = (d:ds', r2)
+    where n          = length ds - 1
+          m          = n + bias
+          (k,r1)     = randomR (0, m) r0
+          (ds', r2)  = randomDirections r1 (delete d ds) bias'
+          (bias', d) | k < n     = ( bias, ds !! (k + 1) )
+                     | otherwise = ( 0, head ds          )
 
 toPacMan :: Game -> Ghost -> Maybe Direction
 toPacMan g gst
@@ -400,10 +410,3 @@ toPacMan g gst
           (pr, pc) = g ^. T.pacman . T.ppos
           rPath    = M.getRow gr ( g ^. T.maze )
           cPath    = M.getCol gc ( g ^. T.maze )
-
-randomDirections :: StdGen -> [Direction] -> (StdGen, [Direction])
-randomDirections r0 [] = (r0, [])
-randomDirections r0 ds0 = (r, d:ds)
-    where (k,r1) = randomR (0, length ds0 - 1) r0
-          d      = ds0 !! k
-          (r,ds) = randomDirections r1 . filter (/= d) $ ds0
