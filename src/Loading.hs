@@ -85,7 +85,7 @@ startNewGame r0 scores level asciiMaze = do
                 , _pacman     = pman
                 , _ghosts     = sort gsts
                 , _fruit      = mbFruit
-                , _mode       = Running
+                , _mode       = StartScreen
                 , _level      = level
                 , _npellets   = countPellets xs
                 , _oneups     = 0 -- 3
@@ -104,7 +104,8 @@ advanceLevel gm asciiMaze = do
         scores = gm ^. T.highscores
         gen    = gm ^. T.rgen
     nxtGame <- startNewGame gen scores nxtLvl asciiMaze
-    return $ nxtGame & T.items  .~ ( gm ^. T.items  )
+    return $ nxtGame & T.mode   .~ Running
+                     & T.items  .~ ( gm ^. T.items  )
                      & T.oneups .~ ( gm ^. T.oneups )
                      & T.time   .~ ( gm ^. T.time   )
 
@@ -113,7 +114,8 @@ restartNewGame gm asciiMaze = do
     let scores = gm ^. T.highscores
         gen    = gm ^. T.rgen
     newGame <- startNewGame gen scores 1 asciiMaze
-    return $ newGame & T.time .~ ( gm ^. T.time )
+    return $ newGame & T.mode .~ StartScreen
+                     & T.time .~ ( gm ^. T.time )
 
 -- =============================================================== --
 -- Parsing level files

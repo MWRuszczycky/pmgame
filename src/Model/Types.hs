@@ -213,7 +213,8 @@ data Name = HighScoreEdit deriving (Show, Eq, Ord)
 -- |After eating a power pellet during regular (Running) play mode,
 -- the mode switches to PwrRunnig t, where t is the time remaining
 -- in the powered mode.
-data Mode = Running           -- Normal play mode
+data Mode = StartScreen       -- Play has not begun
+          | Running           -- Normal play mode
           | PwrRunning Time   -- Play mode after eating a power pellet
           | GameOver          -- All oneups have have been used
           | NewHighScore      -- Game over with new high score

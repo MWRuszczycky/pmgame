@@ -60,12 +60,24 @@ readFileEither fp = do
 routeEvent :: GameSt -> EventHandler
 routeEvent (Left err) _ = halt (Left err)
 routeEvent (Right gm) e = case gm ^. T.mode of
+                               StartScreen  -> routeStartScreen gm e
                                GameOver     -> routeGameOver gm e
                                NewHighScore -> routeNewHighScore gm e
                                LevelOver    -> routeLevelOver gm e
                                ReplayLvl    -> routeReplay gm e
                                Paused m     -> routePaused gm m e
                                otherwise    -> routeRunning gm e
+
+routeStartScreen :: Game -> EventHandler
+-- ^Start screen before starting a new game.
+routeStartScreen gm (AppEvent (Tick t)) =
+    continue . Right . updateClock t $ gm
+routeStartScreen gm (VtyEvent (V.EvKey V.KEsc [])) =
+    halt . Right $ gm
+routeStartScreen gm (VtyEvent (V.EvKey V.KEnter [])) =
+    continue . Right $ gm & T.mode .~ Running
+routeStartScreen gm _ =
+    continue . Right $ gm
 
 routeRunning :: Game -> EventHandler
 -- ^Normal, unpaused gameplay.

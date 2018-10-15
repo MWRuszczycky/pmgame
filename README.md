@@ -26,9 +26,8 @@ Right now things are not setup for a proper installation and only for testing, b
 
 ## Things to do
 
-* Add display for control information.
-* Improve the entry point and add a start screen.
-* Add recording and loading of high scores (right now it just redisplays the current score).
+* Add display for control information during gameplay.
+* Improve the entry point to allow terminal intialization and help.
 * Make more levels.
 * Improve installation.
 * Write a better README and add images or an animated gif.

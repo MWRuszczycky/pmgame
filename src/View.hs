@@ -57,6 +57,7 @@ drawUI :: GameSt -> [ Widget Name ]
 -- ^Entry point for rendering the game state.
 drawUI (Left msg) = [ str msg ]
 drawUI (Right gm) = case gm ^. T.mode of
+                         StartScreen  -> drawStartScreenUI gm
                          GameOver     -> drawGameOverUI gm
                          LevelOver    -> drawLevelOverUI gm
                          NewHighScore -> drawNewHighScoreUI gm
@@ -85,6 +86,21 @@ drawPausedUI gm =
                 , renderFooter gm
                 ]
     in  [ withAttr "background" . center . hLimit width . vBox $ parts ]
+
+drawStartScreenUI :: Game -> [ Widget Name ]
+-- ^Player has completed a level.
+drawStartScreenUI gm =
+    let parts = [
+                  renderHighScoreDisplay gm
+                , renderVerticalSpace 2
+                , withAttr "focusControls" . txt $ " Enter to start a new game"
+                , withAttr "focusControls" . txt $ " Esc to quit"
+                , renderVerticalSpace 1
+                , withAttr "controls" . txt $ " Arrow keys change direction"
+                , withAttr "controls" . txt $ " Space to pause"
+                , withAttr "controls" . txt $ " Esc to quit"
+                ]
+    in  putInDialogBox "PAC-MAN!" . vBox $ parts
 
 drawLevelOverUI :: Game -> [ Widget Name ]
 -- ^Player has completed a level.
@@ -273,17 +289,17 @@ renderHeader :: Game -> Widget Name
 -- ^Collect together all the score and message information and
 -- display above the maze during regular gameplay.
 renderHeader gm = vLimit 3 . vBox $ [ row1, row2, row3 ]
-    where row1    = padLeft Max . withAttr "score" . txt $ "High"
-          row2    = hBox [ renderMessage gm, hsLabel ]
-          row3    = hBox [ renderScore gm, padLeft Max . renderHighestScore $ gm ]
+    where row1 = padLeft Max . withAttr "score" . txt $ "High"
+          row2 = hBox [ renderMessage gm, hsLabel ]
+          row3 = hBox [ renderScore gm, padLeft Max . renderHighestScore $ gm ]
           hsLabel = padLeft Max . withAttr "score" . txt $ "Score"
 
 renderPausedHeader :: Game -> Widget Name
 -- ^Same as renderHeader but for paused gameplay.
 renderPausedHeader gm = vLimit 3 . vBox $ [ row1, row2, row3 ]
-    where row1    = padLeft Max . withAttr "score" . txt $ "High"
-          row2    = hBox [ withAttr "info" . txt $ "PAUSED", hsLabel ]
-          row3    = hBox [ renderScore gm, padLeft Max . renderHighestScore $ gm ]
+    where row1 = padLeft Max . withAttr "score" . txt $ "High"
+          row2 = hBox [ withAttr "info" . txt $ "PAUSED", hsLabel ]
+          row3 = hBox [ renderScore gm, padLeft Max . renderHighestScore $ gm ]
           hsLabel = padLeft Max . withAttr "score" . txt $ "Score"
 
 ---------------------------------------------------------------------
@@ -351,6 +367,8 @@ renderHighScoreDisplay gm =
              otherwise    -> renderHighScores scores
 
 renderHighScores :: [HighScore] -> Widget Name
+-- ^Helper function for renderHighScoreDisplay that actually displays
+-- the scores.
 renderHighScores scores =
     let go (name, score) = name ++ " " ++ show score
     in  vBox [
