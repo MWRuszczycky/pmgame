@@ -23,6 +23,7 @@ import Brick.Widgets.Border             ( borderAttr
 import Brick.AttrMap                    ( AttrMap, attrMap          )
 import Brick.Util                       ( bg, fg, on                )
 import Brick.Widgets.Center             ( center, hCenter, vCenter  )
+import Loading                          ( mazeNumber                )
 import Model.Utilities                  ( addHighScore
                                         , highScore
                                         , isFlashing
@@ -227,7 +228,7 @@ renderMaze gm = vBox . renderTiles . M.toLists . tileMaze $ gm
     where renderTiles = map ( hBox . map (renderTile gm) )
 
 renderTile :: Game -> Tile -> Widget Name
-renderTile _ (Wall s)               = withAttr "maze"       . txt $ s
+renderTile gm (Wall s)              = renderWall (mazeNumber $ gm ^. T.level) s
 renderTile _ (OneWay North)         = withAttr "oneway"     . txt $ "-"
 renderTile _ (OneWay South)         = withAttr "oneway"     . txt $ "-"
 renderTile _ (OneWay West )         = withAttr "oneway"     . txt $ "|"
@@ -250,7 +251,13 @@ renderTile _ (FruitTile Galaxian  ) = withAttr "galaxian"   . txt $ "g"
 renderTile _ (FruitTile Bell      ) = withAttr "bell"       . txt $ "b"
 renderTile _ (FruitTile Key       ) = withAttr "key"        . txt $ "k"
 renderTile gm Player                = renderPlayer gm
-renderTile _  _                     = withAttr "maze"       . txt $ " "
+renderTile _  _                     = withAttr "maze1"      . txt $ " "
+
+renderWall :: Int -> Txt.Text -> Widget Name
+renderWall 1 = withAttr "maze1" . txt
+renderWall 2 = withAttr "maze2" . txt
+renderWall 3 = withAttr "maze3" . txt
+renderWall _ = withAttr "maze1" . txt
 
 renderPlayer :: Game -> Widget Name
 renderPlayer g = withAttr "player" . txt . glyph $ g ^. T.pacman . T.pdir
@@ -477,7 +484,9 @@ renderFruitScores xs = vBox . map renderFruitScore $ xs
 attributes :: AttrMap
 attributes = attrMap V.defAttr
     [ ( "player",           on V.black  V.brightYellow )
-    , ( "maze",             on V.blue          V.black )
+    , ( "maze1",            on V.blue          V.black )
+    , ( "maze2",            on V.magenta       V.black )
+    , ( "maze3",            on V.cyan          V.black )
     , ( "oneway",           on V.red           V.black )
     , ( "pellet",           on V.white         V.black )
     , ( "pwrPellet",        on V.cyan          V.black )

@@ -393,8 +393,7 @@ randomDirections :: StdGen -> [Direction] -> Int -> ([Direction], StdGen)
 randomDirections r0 [] _    = ([], r0)
 randomDirections r0 ds bias = (d:ds', r2)
     where n          = length ds - 1
-          m          = n + bias
-          (k,r1)     = randomR (0, m) r0
+          (k,r1)     = randomR (0, n + bias) r0
           (ds', r2)  = randomDirections r1 (delete d ds) bias'
           (bias', d) | k < n     = ( bias, ds !! (k + 1) )
                      | otherwise = ( 0, head ds          )

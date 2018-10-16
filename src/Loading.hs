@@ -3,6 +3,7 @@ module Loading
     ( advanceLevel
     , highScoresFile
     , getLevelFile
+    , mazeNumber
     , readLevel
     , readHighScores
     , restartNewGame
@@ -57,13 +58,16 @@ type IndexedMaze = [(Point, Char)]
 
 getLevelFile :: Int -> FilePath
 -- ^Maps level numbers to files.
-getLevelFile 1  = "dev/maze1.txt"
-getLevelFile n
-    | n < 1     = testingMaze
-    | otherwise = getLevelFile 1
-    where testingMaze = concat [ "dev/levels-testing/maze-testing-"
-                               , (show . abs) n
-                               , ".txt" ]
+getLevelFile lvl
+    | lvl > 0 = "dev/maze" ++ m ++ ".txt"
+    | lvl < 1 = "dev/maze-testing/testing" ++ m ++ ".txt"
+    where m = show . abs . mazeNumber $ lvl
+
+mazeNumber :: Int -> Int
+-- ^Mapse level numbers to maze numbers.
+mazeNumber n
+    | n > 0     = rem (n - 1) 3 + 1
+    | otherwise = n
 
 highScoresFile :: FilePath
 -- ^File where high scores are stored.
