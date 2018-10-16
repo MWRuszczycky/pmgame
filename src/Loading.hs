@@ -71,7 +71,7 @@ mazeNumber n
 
 highScoresFile :: FilePath
 -- ^File where high scores are stored.
-highScoresFile = "levels/high_scores.txt"
+highScoresFile = "dev/high_scores.txt"
 
 readLevel :: [String] -> Int
 -- ^Used to jump any level when running the game (see use in Main).
