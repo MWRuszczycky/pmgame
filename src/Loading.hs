@@ -66,7 +66,7 @@ getLevelFile lvl
 mazeNumber :: Int -> Int
 -- ^Mapse level numbers to maze numbers.
 mazeNumber n
-    | n > 0     = rem (n - 1) 3 + 1
+    | n > 0     = rem (n - 1) 4 + 1
     | otherwise = n
 
 highScoresFile :: FilePath
