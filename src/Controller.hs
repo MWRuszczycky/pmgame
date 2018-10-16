@@ -52,7 +52,7 @@ readFileEither :: FilePath-> IO (Either String String)
 readFileEither fp = do
     catch ( Right <$> readFile fp ) ( hndlErr fp )
     where hndlErr :: FilePath -> IOException -> IO (Either String String)
-          hndlErr x _ = return . Left $ "Error: cannot find file " ++ x ++ "!"
+          hndlErr x _ = return . Left $ "Error: cannot find file " ++ x
 
 -- =============================================================== --
 -- Event routers

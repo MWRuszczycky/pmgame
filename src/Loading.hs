@@ -57,9 +57,13 @@ type IndexedMaze = [(Point, Char)]
 
 getLevelFile :: Int -> FilePath
 -- ^Maps level numbers to files.
-getLevelFile (-1) = "levels/classicMaze1-testing1.txt"
-getLevelFile 1    = "levels/classicMaze1.txt"
-getLevelFile _    = getLevelFile 1
+getLevelFile 1  = "dev/maze1.txt"
+getLevelFile n
+    | n < 1     = testingMaze
+    | otherwise = getLevelFile 1
+    where testingMaze = concat [ "dev/levels-testing/maze-testing-"
+                               , (show . abs) n
+                               , ".txt" ]
 
 highScoresFile :: FilePath
 -- ^File where high scores are stored.

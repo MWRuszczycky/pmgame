@@ -19,7 +19,7 @@ To run the game use
 stack exec pmgame
 ```
 
-Right now the levels and high scores are stored as separate files in their own directory (`levels/`), and there is only one real level so far. Eventually this will all be reorganized so that proper installations are possible.
+Right now the levels and high scores are stored as separate files in their own directory (`dev/`), and there is only one real level so far. Eventually this will all be reorganized so that proper installations are possible.
 
 ## Controls
 
