@@ -64,10 +64,11 @@ getLevelFile lvl
     where m = show . abs . mazeNumber $ lvl
 
 mazeNumber :: Int -> Int
--- ^Mapse level numbers to maze numbers.
+-- ^Maps level numbers to maze numbers.
 mazeNumber n
-    | n > 0     = rem (n - 1) 4 + 1
+    | n > 0     = rem (m - 1) 5 + 1
     | otherwise = n
+    where m = quot ( rem n 2 + n ) 2
 
 highScoresFile :: FilePath
 -- ^File where high scores are stored.

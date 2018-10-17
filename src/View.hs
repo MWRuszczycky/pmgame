@@ -258,6 +258,7 @@ renderWall 1 = withAttr "maze1" . txt
 renderWall 2 = withAttr "maze2" . txt
 renderWall 3 = withAttr "maze3" . txt
 renderWall 4 = withAttr "maze4" . txt
+renderWall 5 = withAttr "maze5" . txt
 renderWall _ = withAttr "maze1" . txt
 
 renderPlayer :: Game -> Widget Name
@@ -489,6 +490,7 @@ attributes = attrMap V.defAttr
     , ( "maze2",            on V.magenta       V.black )
     , ( "maze3",            on V.cyan          V.black )
     , ( "maze4",            on V.red           V.black )
+    , ( "maze5",            on V.white         V.black )
     , ( "oneway",           on V.red           V.black )
     , ( "pellet",           on V.white         V.black )
     , ( "pwrPellet",        on V.cyan          V.black )

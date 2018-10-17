@@ -19,7 +19,7 @@ To run the game use
 stack exec pmgame
 ```
 
-Right now the levels and high scores are stored as separate files in their own directory (`dev/`), and there are only four mazes (with different colors!) so far. Eventually this will all be reorganized so that proper installations are possible.
+Right now the mazes and high scores are stored as separate files in their own directory (`dev/`). Eventually this will all be reorganized so that proper installations are possible.
 
 ## Controls
 
@@ -29,9 +29,10 @@ Right now the levels and high scores are stored as separate files in their own d
 
 ## Things to do
 
-* Improve the entry point to allow terminal intialization and help.
-* Handle versions.
-* Include an "about" screen.
-* Make more levels.
+* Improve the entry point to handle options.
+* Allow changes to terminal settings.
+* Make the player die more gracefully.
+* Include an "about" screen with version information.
+* Improve level progression and maze layouts.
 * Improve installation.
 * Write a better README.

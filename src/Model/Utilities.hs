@@ -70,7 +70,7 @@ powerDuration :: Int -> Time
 -- This depends on the livel.
 powerDuration lvl
     | lvl > 19  = 0
-    | otherwise = toMicroSeconds $ 10 - fromIntegral lvl / 2
+    | otherwise = toMicroSeconds $ 10 - fromIntegral ( abs lvl ) / 2
 
 tickPeriod :: Time
 -- ^Time between clock ticks.
