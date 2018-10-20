@@ -3,51 +3,59 @@ module Loading
     ( advanceLevel
     , highScoresFile
     , getLevelFile
+    , getOptions
     , mazeNumber
-    , readLevel
     , readHighScores
     , restartNewGame
     , showHighScore
     , startNewGame
     ) where
 
-import qualified Data.Matrix as M
-import qualified Data.Vector as V
-import qualified Model.Types as T
-import Text.Read                    ( readMaybe             )
-import Brick.Widgets.Edit           ( editor                )
-import Data.List                    ( find, intercalate
-                                    , sort, sortOn          )
-import Lens.Micro                   ( (&), (^.), (.~), (%~) )
-import System.Random                ( randomR, StdGen       )
-import Model.Utilities              ( fruitDuration
-                                    , newMessage
-                                    , powerDuration
-                                    , tickPeriod
-                                    , toMicroSeconds        )
-import Model.Types                  ( Direction     (..)
-                                    , Fruit         (..)
-                                    , FruitName     (..)
-                                    , Game          (..)
-                                    , GameSt        (..)
-                                    , Ghost         (..)
-                                    , GhostName     (..)
-                                    , GhostState    (..)
-                                    , HighScore     (..)
-                                    , Items         (..)
-                                    , Maze          (..)
-                                    , MazeString    (..)
-                                    , Mode          (..)
-                                    , Name          (..)
-                                    , PacMan        (..)
-                                    , Point         (..)
-                                    , Score         (..)
-                                    , Tile          (..)
-                                    , Time          (..)    )
+import qualified Data.Matrix           as M
+import qualified Data.Vector           as V
+import qualified Model.Types           as T
+import qualified System.Console.GetOpt as O
+import Control.Applicative                  ( (<|>)                 )
+import Text.Read                            ( readMaybe             )
+import Brick.Widgets.Edit                   ( editor                )
+import Data.List                            ( find, foldl'
+                                            , intercalate, sort
+                                            , sortOn                )
+import Lens.Micro                           ( (&), (^.), (.~), (%~)
+                                            , over, set             )
+import System.Random                        ( randomR, StdGen       )
+import Model.Utilities                      ( fruitDuration
+                                            , newMessage
+                                            , powerDuration
+                                            , tickPeriod
+                                            , toMicroSeconds        )
+import Model.Types                          ( Direction     (..)
+                                            , Fruit         (..)
+                                            , FruitName     (..)
+                                            , Game          (..)
+                                            , GameSt        (..)
+                                            , Ghost         (..)
+                                            , GhostName     (..)
+                                            , GhostState    (..)
+                                            , HighScore     (..)
+                                            , Items         (..)
+                                            , Maze          (..)
+                                            , MazeString    (..)
+                                            , Mode          (..)
+                                            , Name          (..)
+                                            , Options       (..)
+                                            , PacMan        (..)
+                                            , Point         (..)
+                                            , Score         (..)
+                                            , Tile          (..)
+                                            , Time          (..)    )
 
 ---------------------------------------------------------------------
 ---------------------------------------------------------------------
 -- Pure functions for loading and transitioning between levels
+
+-- =============================================================== --
+-- Helper types
 
 -- |Raw MazeString where each ascii charcter has been indexed by the
 -- row and column it represents in the level maze.
@@ -73,14 +81,6 @@ mazeNumber n
 highScoresFile :: FilePath
 -- ^File where high scores are stored.
 highScoresFile = "dev/high_scores.txt"
-
-readLevel :: [String] -> Int
--- ^Used to jump any level when running the game (see use in Main).
--- Will eventually be changed.
-readLevel []    = 1
-readLevel (x:_) = case readMaybe x of
-                       Nothing -> 1
-                       Just n  -> n
 
 -- =============================================================== --
 -- Game initialization and level transitioning
@@ -364,3 +364,41 @@ readHighScores (Right xs) =
     in  case mapM (go . words) . lines $ xs of
              Nothing     -> []
              Just scores -> scores
+
+-- =============================================================== --
+-- Command line parsing and options handling
+
+readLevel :: String -> Int
+readLevel = maybe 1 id . readMaybe
+
+getOptions :: [String] -> Either String Options
+getOptions args =
+    let defaults = Options { _info       = Nothing
+                           , _terminal   = "xterm-256color"
+                           , _firstlevel = 1 }
+    in  case O.getOpt O.Permute optionsHub args of
+             (xs, _, []) -> let opts = foldl' ( flip ($) ) defaults $ xs
+                            in  maybe (Right opts) Left $ opts ^. T.info
+             (_, _, es ) -> Left . concat $ es
+
+helpStr :: String
+helpStr = "This is the help string."
+
+versionStr :: String
+versionStr = "This is the version string."
+
+optionsHub :: [ O.OptDescr (Options -> Options) ]
+optionsHub =
+    [ O.Option ['h'] ["help"]
+          ( O.NoArg ( over T.info (<|> Just helpStr) ) )
+          "Show help."
+    , O.Option ['v'] ["version"]
+          ( O.NoArg ( over T.info (<|> Just versionStr) ) )
+          "Show version number."
+    , O.Option ['t'] ["terminal"]
+          ( O.ReqArg ( set T.terminal ) "TERMINAL" )
+          "Set the terminal environment parameter."
+    , O.Option ['l'] ["level", "lvl"]
+          ( O.ReqArg ( set T.firstlevel . readLevel ) "Zero level" )
+          "Set a zero level for testing."
+    ]

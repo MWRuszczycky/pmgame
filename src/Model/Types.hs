@@ -15,12 +15,17 @@ module Model.Types
     , MazeString    (..)
     , Mode          (..)
     , Name          (..)
+    , Options       (..)
     , PacMan        (..)
     , Point         (..)
     , Score         (..)
     , Tile          (..)
     , Time          (..)
     , TimeEvent     (..)
+    -- Lenses for Options
+    , firstlevel
+    , info
+    , terminal
     -- Lenses for Game
     , dtime
     , fruit
@@ -69,6 +74,16 @@ import qualified Data.Text   as Txt
 import Brick.Widgets.Edit           ( Editor     )
 import System.Random                ( StdGen     )
 import Lens.Micro.TH                ( makeLenses )
+
+---------------------------------------------------------------------
+-- Options from command line arguments
+
+data Options = Options { _firstlevel :: Int
+                       , _info       :: Maybe String
+                       , _terminal   :: String
+                       } deriving ( Show )
+
+makeLenses ''Options
 
 ---------------------------------------------------------------------
 -- Time management

@@ -25,14 +25,15 @@ import Model.Types                      ( GameSt    (..)
                                         , HighScore (..)
                                         , Mode      (..)
                                         , Name      (..)
+                                        , Options   (..)
                                         , Time      (..)
                                         , TimeEvent (..)            )
 import View                             ( attributes
                                         , drawUI                    )
 import Loading                          ( getLevelFile
+                                        , getOptions
                                         , highScoresFile
                                         , readHighScores
-                                        , readLevel
                                         , showHighScore
                                         , startNewGame              )
 import Model.Utilities                  ( tickPeriod                )
@@ -44,20 +45,26 @@ app = App { appDraw         = drawUI
           , appStartEvent   = return
           , appChooseCursor = const (showCursorNamed HighScoreEdit) }
 
+main :: IO ()
+main = do
+    eitherOpts <- getOptions <$> getArgs
+    case eitherOpts of
+         Left msg   -> putStrLn msg
+         Right opts -> initialize opts >>= runGame
+
 runTimer :: BChan TimeEvent -> Time -> IO ()
 runTimer chan t = do
     writeBChan chan (Tick t)
     threadDelay tickPeriod
     runTimer chan (t + tickPeriod)
 
-main :: IO ()
-main = do
-    putEnv "TERM=xterm-256color"
-    level   <- readLevel <$> getArgs
+initialize :: Options -> IO GameSt
+initialize opts = do
+    putEnv $ "TERM=" ++ opts ^. T.terminal
     gen     <- getStdGen
-    mazeStr <- readFileEither . getLevelFile $ level
+    mazeStr <- readFileEither . getLevelFile $ opts ^. T.firstlevel
     scores  <- readHighScores <$> readFileEither highScoresFile
-    runGame $ mazeStr >>= startNewGame gen scores level
+    return $ mazeStr >>= startNewGame gen scores ( opts ^. T.firstlevel )
 
 runGame :: GameSt -> IO ()
 runGame (Left err) = putStrLn err
