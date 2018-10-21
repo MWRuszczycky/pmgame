@@ -38,19 +38,28 @@ import Loading                          ( getLevelFile
                                         , startNewGame              )
 import Model.Utilities                  ( tickPeriod                )
 
-app :: App GameSt TimeEvent Name
-app = App { appDraw         = drawUI
-          , appHandleEvent  = routeEvent
-          , appAttrMap      = const attributes
-          , appStartEvent   = return
-          , appChooseCursor = const (showCursorNamed HighScoreEdit) }
+---------------------------------------------------------------------
+-- Entry point and Brick App definition
 
 main :: IO ()
 main = do
     eitherOpts <- getOptions <$> getArgs
     case eitherOpts of
          Left msg   -> putStrLn msg
-         Right opts -> initialize opts >>= runGame
+         Right opts -> initGame opts
+                       >>= runGame
+                       >>= stopGame
+
+app :: App GameSt TimeEvent Name
+-- ^Define the Brick App type.
+app = App { appDraw         = drawUI
+          , appHandleEvent  = routeEvent
+          , appAttrMap      = const attributes
+          , appStartEvent   = return
+          , appChooseCursor = const (showCursorNamed HighScoreEdit) }
+
+---------------------------------------------------------------------
+-- Initialization and timers
 
 runTimer :: BChan TimeEvent -> Time -> IO ()
 runTimer chan t = do
@@ -58,22 +67,30 @@ runTimer chan t = do
     threadDelay tickPeriod
     runTimer chan (t + tickPeriod)
 
-initialize :: Options -> IO GameSt
-initialize opts = do
+initGame :: Options -> IO GameSt
+initGame opts = do
     putEnv $ "TERM=" ++ opts ^. T.terminal
     gen     <- getStdGen
     mazeStr <- readFileEither . getLevelFile $ opts ^. T.firstlevel
     scores  <- readHighScores <$> readFileEither highScoresFile
     return $ mazeStr >>= startNewGame gen scores ( opts ^. T.firstlevel )
 
-runGame :: GameSt -> IO ()
-runGame (Left err) = putStrLn err
+---------------------------------------------------------------------
+-- Running the game
+
+runGame :: GameSt -> IO GameSt
 runGame newGame = do
     chan <- newBChan 10 :: IO ( BChan TimeEvent )
     defaultConfig <- V.standardIOConfig
     forkIO $ runTimer chan 0
-    finishedGame <- customMain (V.mkVty defaultConfig) (Just chan) app newGame
-    case finishedGame of
-         Left msg -> putStrLn msg
-         Right gm -> let xs = concatMap showHighScore $ gm ^. T.highscores
-                     in  writeFile highScoresFile xs
+    customMain (V.mkVty defaultConfig) (Just chan) app newGame
+
+---------------------------------------------------------------------
+-- Shutting down the game
+-- If there was an error, print it to the terimnal; otherwise, save
+-- the new list of high scores.
+
+stopGame :: GameSt -> IO ()
+stopGame (Left msg) = putStrLn msg
+stopGame (Right gm) = writeFile highScoresFile xs
+    where xs = concatMap showHighScore $ gm ^. T.highscores

@@ -27,10 +27,21 @@ Right now the mazes and high scores are stored as separate files in their own di
 * Use `Esc` to quit the game at any time.
 * Use `Space` to pause the game.
 
+## Colors
+
+When the game runs, it sets the `TERM` environment parameter to `xterm-256color`. If this causes a problem such as a message like
+```sh
+pmgame : setupTerm: Couldn't lookup terminfo entry "xterm-256color"
+```
+then you can try using a different terminal setting using the `--terminal` option. For example, try,
+```sh
+pmgame --terminal=xterm-16color
+```
+The game should still display correctly with only 16 colors; however, you will start to lose colors if you go below 16. For example, grey text will not show up and power pellets will not flash if you set `--terminal=xterm`, but everything else should still work.
+
 ## Things to do
 
 * Improve the entry point to handle options.
-* Allow changes to terminal settings.
 * Make the player die more gracefully.
 * Include an "about" screen with version information.
 * Improve level progression and maze layouts.
