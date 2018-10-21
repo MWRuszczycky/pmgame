@@ -20,15 +20,14 @@ import qualified Data.Matrix           as M
 import qualified Data.Vector           as V
 import qualified Model.Types           as T
 import qualified System.Console.GetOpt as O
-import qualified Resources             as R
 import Text.Read                            ( readMaybe             )
 import Brick.Widgets.Edit                   ( editor                )
 import Data.List                            ( find, foldl'
                                             , intercalate, sort
                                             , sortOn                )
-import Lens.Micro                           ( (&), (^.), (.~), (%~)
-                                            , over, set             )
+import Lens.Micro                           ( (&), (^.), (.~), (%~) )
 import System.Random                        ( randomR, StdGen       )
+import Resources                            ( optionsHub            )
 import Model.Utilities                      ( fruitDuration
                                             , newMessage
                                             , powerDuration
@@ -406,31 +405,3 @@ getOptions args =
              (xs, _, []) -> let opts = foldl' ( flip ($) ) defaults $ xs
                             in  maybe (Right opts) Left $ opts ^. T.info
              (_, _, es ) -> Left . concat $ es
-
--- Unexported
-
-readFirstLevel :: String -> Int
--- ^Read a string as level value, and if not possible, then just
--- default to level 1.
-readFirstLevel = maybe 1 id . readMaybe
-
-optionsHub :: [ O.OptDescr (Options -> Options) ]
--- ^Used by GetOpt.getOpt to parse command line options. Contains
--- handlers for all possible command line options.
-optionsHub =
-    [ O.Option ['h'] ["help"]
-          ( O.NoArg ( set T.info (Just R.help) ) )
-          R.helpUsage
-    , O.Option ['v'] ["version"]
-          ( O.NoArg ( set T.info (Just R.version) ) )
-          R.versionUsage
-    , O.Option ['t'] ["terminal"]
-          ( O.ReqArg ( set T.terminal ) "TERMINAL-IDENTIFIER" )
-          R.terminalUsage
-    , O.Option ['m'] ["maze"]
-          ( O.ReqArg ( set T.firstmaze . Just ) "PATH-TO-MAZE-FILE" )
-          R.mazeUsage
-    , O.Option ['b'] ["backdoor"]
-          ( O.ReqArg ( set T.firstlevel . readFirstLevel ) "LEVEL-NUMBER" )
-          "" -- Allows starting at any level, so don't tell the user about it.
-    ]

@@ -71,8 +71,9 @@ initGame :: Options -> IO GameSt
 initGame opts = do
     putEnv $ "TERM=" ++ opts ^. T.terminal
     gen     <- getStdGen
-    mazeStr <- readFileEither . maybe (getMazeFile 1) id $ opts ^. T.firstmaze
     scores  <- readHighScores <$> readFileEither highScoresFile
+    mazeStr <- readFileEither . maybe (getMazeFile $ opts ^. T.firstlevel) id
+                              $ opts ^. T.firstmaze
     return $ mazeStr >>= startNewGame gen scores ( opts ^. T.firstlevel )
 
 ---------------------------------------------------------------------

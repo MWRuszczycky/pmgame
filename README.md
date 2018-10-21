@@ -27,7 +27,7 @@ Right now the mazes and high scores are stored as separate files in their own di
 * Use `Esc` to quit the game at any time.
 * Use `Space` to pause the game.
 
-## Colors
+## Terminal and color issues
 
 When the game runs, it sets the `TERM` environment parameter to `xterm-256color`. If this causes a problem such as a message like
 ```sh
@@ -41,7 +41,6 @@ The game should still display correctly with only 16 colors; however, you will s
 
 ## Things to do
 
-* Improve the entry point to handle options.
 * Make the player die more gracefully.
 * Include an "about" screen with version information.
 * Improve level progression and maze layouts.
