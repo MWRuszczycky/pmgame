@@ -30,7 +30,7 @@ import Model.Types                      ( GameSt    (..)
                                         , TimeEvent (..)            )
 import View                             ( attributes
                                         , drawUI                    )
-import Loading                          ( getLevelFile
+import Loading                          ( getMazeFile
                                         , getOptions
                                         , highScoresFile
                                         , readHighScores
@@ -71,7 +71,7 @@ initGame :: Options -> IO GameSt
 initGame opts = do
     putEnv $ "TERM=" ++ opts ^. T.terminal
     gen     <- getStdGen
-    mazeStr <- readFileEither . getLevelFile $ opts ^. T.firstlevel
+    mazeStr <- readFileEither . maybe (getMazeFile 1) id $ opts ^. T.firstmaze
     scores  <- readHighScores <$> readFileEither highScoresFile
     return $ mazeStr >>= startNewGame gen scores ( opts ^. T.firstlevel )
 

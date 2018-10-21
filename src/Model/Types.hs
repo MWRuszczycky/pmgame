@@ -24,6 +24,7 @@ module Model.Types
     , TimeEvent     (..)
     -- Lenses for Options
     , firstlevel
+    , firstmaze
     , info
     , terminal
     -- Lenses for Game
@@ -78,9 +79,10 @@ import Lens.Micro.TH                ( makeLenses )
 ---------------------------------------------------------------------
 -- Options from command line arguments
 
-data Options = Options { _firstlevel :: Int
-                       , _info       :: Maybe String
-                       , _terminal   :: String
+data Options = Options { _firstlevel :: Int             -- Where to start
+                       , _firstmaze  :: Maybe FilePath  -- Path to custom maze
+                       , _info       :: Maybe String    -- Info. to dislay
+                       , _terminal   :: String          -- TERM setting
                        } deriving ( Show )
 
 makeLenses ''Options

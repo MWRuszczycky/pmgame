@@ -24,7 +24,7 @@ import Model.Types                  ( Direction  (..)
                                     , Name       (..)
                                     , TimeEvent  (..)       )
 import Loading                      ( advanceLevel
-                                    , getLevelFile
+                                    , getMazeFile
                                     , restartNewGame
                                     , startNewGame          )
 import Model.Utilities              ( addHighScore
@@ -188,7 +188,7 @@ keyEvent _             _ gm = gm
 
 restartGame :: Game -> IO GameSt
 restartGame gm = do
-    ms <- readFileEither . getLevelFile $ 1
+    ms <- readFileEither . getMazeFile $ 1
     return $ restartNewGame gm =<< ms
 
 ---------------------------------------------------------------------
@@ -196,5 +196,5 @@ restartGame gm = do
 
 startNextLevel :: Game -> IO GameSt
 startNextLevel gm = do
-    ms <- readFileEither . getLevelFile . succ $ gm ^. T.level
+    ms <- readFileEither . getMazeFile . succ $ gm ^. T.level
     return $ advanceLevel gm =<< ms

@@ -35,3 +35,5 @@ executable pmgame
                      , Controller
                      , View
                      , Loading
+                     , Resources
+                     , Paths_pmgame

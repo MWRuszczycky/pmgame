@@ -1,21 +1,26 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Loading
-    ( advanceLevel
+    (
+    -- files and maze numbers
+      getMazeFile
     , highScoresFile
-    , getLevelFile
-    , getOptions
     , mazeNumber
-    , readHighScores
-    , restartNewGame
-    , showHighScore
+    -- Game initialization and level transitioning
+    , advanceLevel
     , startNewGame
+    , restartNewGame
+    -- Working with strings encoding high score information
+    , readHighScores
+    , showHighScore
+    -- Parsing command line arguments into game options
+    , getOptions
     ) where
 
 import qualified Data.Matrix           as M
 import qualified Data.Vector           as V
 import qualified Model.Types           as T
 import qualified System.Console.GetOpt as O
-import Control.Applicative                  ( (<|>)                 )
+import qualified Resources             as R
 import Text.Read                            ( readMaybe             )
 import Brick.Widgets.Edit                   ( editor                )
 import Data.List                            ( find, foldl'
@@ -52,7 +57,9 @@ import Model.Types                          ( Direction     (..)
 
 ---------------------------------------------------------------------
 ---------------------------------------------------------------------
--- Pure functions for loading and transitioning between levels
+-- This module contains only pure code and handles the initialization
+-- of levels, transitioning between levels, parsing of maze files and
+-- parsing of command line arguments read as options.
 
 -- =============================================================== --
 -- Helper types
@@ -64,9 +71,9 @@ type IndexedMaze = [(Point, Char)]
 -- =============================================================== --
 -- List of levels and associated maze files
 
-getLevelFile :: Int -> FilePath
+getMazeFile :: Int -> FilePath
 -- ^Maps level numbers to files.
-getLevelFile lvl
+getMazeFile lvl
     | lvl > 0 = "dev/maze" ++ m ++ ".txt"
     | lvl < 1 = "dev/maze-testing/testing" ++ m ++ ".txt"
     where m = show . abs . mazeNumber $ lvl
@@ -86,17 +93,20 @@ highScoresFile = "dev/high_scores.txt"
 -- Game initialization and level transitioning
 
 startNewGame :: StdGen -> [HighScore] -> Int -> MazeString -> GameSt
+-- ^Complete intialization of a new game state based on a standard
+-- generator, a list of high scores, a level number to start at and
+-- a maze string for the first level to play.
 startNewGame r0 scores level asciiMaze = do
     xs   <- indexMazeString asciiMaze
     m    <- loadMaze xs
     pman <- loadPacMan xs
-    gsts <- mapM ( loadGhost xs ) "pbic"
+    gs   <- mapM ( loadGhost xs ) "pbic"
     (mbFruit, r1) <- loadFruit r0 level xs
     return Game { _maze       = m
                 , _items      = Items 0 0 [] []
                 , _rgen       = r1
                 , _pacman     = pman
-                , _ghosts     = sort gsts
+                , _ghosts     = sort gs
                 , _fruit      = mbFruit
                 , _mode       = StartScreen
                 , _level      = level
@@ -112,6 +122,10 @@ startNewGame r0 scores level asciiMaze = do
                 }
 
 advanceLevel :: Game -> MazeString -> GameSt
+-- ^Reintialize the game state upon starting a new level. A complete
+-- initialization is performed with the updated level and maze, and
+-- then further updated with those praameters that should carry over
+-- such as the time and remaining number of oneups.
 advanceLevel gm asciiMaze = do
     let nxtLvl = succ $ gm ^. T.level
         scores = gm ^. T.highscores
@@ -123,6 +137,9 @@ advanceLevel gm asciiMaze = do
                      & T.time   .~ ( gm ^. T.time   )
 
 restartNewGame :: Game -> MazeString -> GameSt
+-- ^Reinitialize the game after player has lost all lives. A complete
+-- initialization is performed and just the time is updated as well
+-- as the play mode to return the player back to the start screen.
 restartNewGame gm asciiMaze = do
     let scores = gm ^. T.highscores
         gen    = gm ^. T.rgen
@@ -346,59 +363,74 @@ horizontalLink '=' (Just '=') = True
 horizontalLink x   (Just y  ) = isWallChar x && isWallChar y && x /= y
 
 -- =============================================================== --
--- Working with high scores files
+-- Working with strings encoding high score information
 
 showHighScore :: HighScore -> String
+-- ^Converts a high score value to string for saving. This replaces
+-- all spaces with underscores and appends a new line character.
 showHighScore ("", score  ) = showHighScore ("_", score)
 showHighScore (name, score) = name' ++ " " ++ show score ++ "\n"
     where name' = intercalate "_" . words $ name
 
 readHighScores :: Either String String -> [HighScore]
+-- ^Read high scores from a string and convert to a list of high
+-- score values. If no high scores are available (i.e., a Left value
+-- is provided as the argument), then an empty list is generated.
+-- High scores are read as lines terminated by '\n' with two strings
+-- separated by whitespace. The first is the name and the second is
+-- the score. Underscores in the name are converted to spaces. If the
+-- is not properly formatted or cannot be read, it is excluded from
+-- the list of generated high scores.
 readHighScores (Left _  ) = []
-readHighScores (Right xs) =
-    let deUnder ys = [ if y == '_' then ' ' else y | y <- ys ]
-        go ws | length ws /= 2 = Nothing
-              | otherwise      = case readMaybe (ws !! 1) :: Maybe Score of
-                                      Nothing -> Nothing
-                                      Just x  -> Just (deUnder . head $ ws, x)
-    in  case mapM (go . words) . lines $ xs of
-             Nothing     -> []
-             Just scores -> scores
+readHighScores (Right xs) = maybe [] id . mapM (go . words) . lines $ xs
+    where deUnder ys = [ if y == '_' then ' ' else y | y <- ys ]
+          go ws | length ws /= 2 = Nothing
+                | otherwise      = case readMaybe (ws !! 1) :: Maybe Score of
+                                        Nothing -> Nothing
+                                        Just x  -> Just (deUnder . head $ ws, x)
 
 -- =============================================================== --
 -- Command line parsing and options handling
 
-readLevel :: String -> Int
-readLevel = maybe 1 id . readMaybe
+-- Exported
 
 getOptions :: [String] -> Either String Options
+-- ^Parse command line arguments into Right Options record or return
+-- an error message as the Left value.
 getOptions args =
-    let defaults = Options { _info       = Nothing
-                           , _terminal   = "xterm-256color"
-                           , _firstlevel = 1 }
+    let defaults = Options { _firstlevel = 1
+                           , _firstmaze  = Nothing
+                           , _info       = Nothing
+                           , _terminal   = "xterm-256color" }
     in  case O.getOpt O.Permute optionsHub args of
              (xs, _, []) -> let opts = foldl' ( flip ($) ) defaults $ xs
                             in  maybe (Right opts) Left $ opts ^. T.info
              (_, _, es ) -> Left . concat $ es
 
-helpStr :: String
-helpStr = "This is the help string."
+-- Unexported
 
-versionStr :: String
-versionStr = "This is the version string."
+readFirstLevel :: String -> Int
+-- ^Read a string as level value, and if not possible, then just
+-- default to level 1.
+readFirstLevel = maybe 1 id . readMaybe
 
 optionsHub :: [ O.OptDescr (Options -> Options) ]
+-- ^Used by GetOpt.getOpt to parse command line options. Contains
+-- handlers for all possible command line options.
 optionsHub =
     [ O.Option ['h'] ["help"]
-          ( O.NoArg ( over T.info (<|> Just helpStr) ) )
-          "Show help."
+          ( O.NoArg ( set T.info (Just R.help) ) )
+          R.helpUsage
     , O.Option ['v'] ["version"]
-          ( O.NoArg ( over T.info (<|> Just versionStr) ) )
-          "Show version number."
+          ( O.NoArg ( set T.info (Just R.version) ) )
+          R.versionUsage
     , O.Option ['t'] ["terminal"]
-          ( O.ReqArg ( set T.terminal ) "TERMINAL" )
-          "Set the terminal environment parameter."
-    , O.Option ['l'] ["level", "lvl"]
-          ( O.ReqArg ( set T.firstlevel . readLevel ) "Zero level" )
-          "Set a zero level for testing."
+          ( O.ReqArg ( set T.terminal ) "TERMINAL-IDENTIFIER" )
+          R.terminalUsage
+    , O.Option ['m'] ["maze"]
+          ( O.ReqArg ( set T.firstmaze . Just ) "PATH-TO-MAZE-FILE" )
+          R.mazeUsage
+    , O.Option ['b'] ["backdoor"]
+          ( O.ReqArg ( set T.firstlevel . readFirstLevel ) "LEVEL-NUMBER" )
+          "" -- Allows starting at any level, so don't tell the user about it.
     ]
