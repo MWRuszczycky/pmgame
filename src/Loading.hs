@@ -1,10 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Loading
     (
-    -- files and maze numbers
-      highScoresFile
     -- Game initialization and level transitioning
-    , advanceLevel
+      advanceLevel
     , startNewGame
     , restartGame
     -- Working with strings encoding high score information
@@ -65,13 +63,6 @@ import Model.Types                          ( Direction     (..)
 -- |Raw AsciiMaze where each ascii charcter has been indexed by the
 -- row and column it represents in the level maze.
 type IndexedMaze = [(Point, Char)]
-
--- =============================================================== --
--- Stored file names and paths
-
-highScoresFile :: FilePath
--- ^File where high scores are stored.
-highScoresFile = "dev/high_scores.txt"
 
 -- =============================================================== --
 -- Game initialization and level transitioning

@@ -382,14 +382,13 @@ renderHighScoreDisplay gm =
              otherwise    -> renderHighScores scores
 
 renderHighScores :: [HighScore] -> Widget Name
--- ^Helper function for renderHighScoreDisplay that actually displays
--- the scores.
-renderHighScores scores =
-    let go (name, score) = name ++ " " ++ show score
-    in  vBox [
-               hCenter . withAttr "highScore" . txt $ "High Scores"
-             , vBox . map ( hCenter . withAttr "info" . str . go ) $ scores
-             ]
+renderHighScores xs
+    | null xs   = vBox [ hdr, hCenter noScoresMsg ]
+    | otherwise = vBox [ hdr, scores      ]
+    where hdr = hCenter . withAttr "highScore" . txt $ "High Scores"
+          go (name, score) = name ++ " " ++ show score
+          scores = vBox . map ( hCenter . withAttr "info" . str . go ) $ xs
+          noScoresMsg = withAttr "highScores" . txt $ "No high scores yet!"
 
 renderLabeledScore :: Game -> Widget Name
 -- ^Simple display of score information.

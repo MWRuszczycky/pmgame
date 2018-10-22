@@ -6,20 +6,37 @@ This is still a work in progress, but the basic game is working:
 
 ![pmgame demo](demos/demo1.gif)
 
-## Downloading and compiling
+## Installation
 
-Right now things are not set up for a proper installation and only for testing; however, the game can be compiled and run within the cloned repository. The program uses the [Haskell Tool Stack](https://docs.haskellstack.org/en/stable/README/). Clone the repository and compile with
+### Installing and updating
+
+The program uses the [Haskell Tool Stack](https://docs.haskellstack.org/en/stable/README/). Clone the repository and install with
 ```sh
 git clone https://github.com/MWRuszczycky/pmgame.git
 cd pmgame
-stack build
+stack install
 ```
-To run the game use
+Stack will tell you where the binary has been installed (e.g., `~/.local/pmgame`). To run the game use
 ```sh
-stack exec pmgame
+pmgame
+```
+To see a list of options try
+```sh
+pmgame --help
+```
+To update the game, move to the repository directory and update with
+```sh
+git pull origin master
+stack install
 ```
 
-Right now the mazes and high scores are stored as separate files in their own directory (`dev/`). Eventually this will all be reorganized so that proper installations are possible.
+### Configuration files
+
+After running the game for the first time, a `~/.config/pmgame` directory will be created in your home directory where high scores are saved. If there is no `.config` file in your home directory, then no directory will be created and the high scores will not be saved between game plays.
+
+### Uninstalling
+
+Delete the `pmgame` binary from wherever Stack installed it (see above). Delete the configuration directory `pmgame` from your `~/.config` directory.
 
 ## Controls
 
@@ -43,6 +60,4 @@ The game should still display correctly with only 16 colors; however, you will s
 
 * Make the player die more gracefully.
 * Include an "about" screen with version information.
-* Improve level progression and maze layouts.
-* Improve installation.
 * Write a better README.
