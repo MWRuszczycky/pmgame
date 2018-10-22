@@ -1,12 +1,10 @@
 module Controller
-    ( readFileEither
-    , routeEvent
+    ( routeEvent
     ) where
 
 import qualified Graphics.Vty as V
 import qualified Data.Matrix  as M
 import qualified Model.Types  as T
-import Control.Exception            ( IOException, catch  )
 import Lens.Micro                   ( (&), (^.), (.~), (%~) )
 import Brick.Types                  ( BrickEvent (..)
                                     , EventM
@@ -14,18 +12,16 @@ import Brick.Types                  ( BrickEvent (..)
 import Brick.Widgets.Edit           ( getEditContents
                                     , handleEditorEvent     )
 import Brick.Main                   ( continue
-                                    , halt
-                                    , suspendAndResume      )
+                                    , halt                  )
 import Model.Types                  ( Direction  (..)
                                     , Game       (..)
                                     , GameSt     (..)
-                                    , MazeString (..)
+                                    , AsciiMaze  (..)
                                     , Mode       (..)
                                     , Name       (..)
                                     , TimeEvent  (..)       )
 import Loading                      ( advanceLevel
-                                    , getMazeFile
-                                    , restartNewGame
+                                    , restartGame
                                     , startNewGame          )
 import Model.Utilities              ( addHighScore
                                     , playerScore           )
@@ -43,16 +39,7 @@ type EventHandler = BrickEvent Name TimeEvent
 
 ---------------------------------------------------------------------
 ---------------------------------------------------------------------
--- IO actions and event handlers for controlling the game
-
--- =============================================================== --
--- IO helper functions
-
-readFileEither :: FilePath-> IO (Either String String)
-readFileEither fp = do
-    catch ( Right <$> readFile fp ) ( hndlErr fp )
-    where hndlErr :: FilePath -> IOException -> IO (Either String String)
-          hndlErr x _ = return . Left $ "Error: cannot find file " ++ x
+-- Event handlers for controlling the game and interfacing with Brick
 
 -- =============================================================== --
 -- Event routers
@@ -123,7 +110,7 @@ routeLevelOver gm (AppEvent (Tick t)) =
 routeLevelOver gm (VtyEvent (V.EvKey V.KEsc [])) =
     halt . Right $ gm
 routeLevelOver gm (VtyEvent (V.EvKey V.KEnter [])) =
-    suspendAndResume . startNextLevel $ gm
+    continue . advanceLevel $ gm
 routeLevelOver gm _ =
     continue . Right $ gm
 
@@ -135,7 +122,7 @@ routeNewHighScore gm (AppEvent (Tick t)) =
 routeNewHighScore gm (VtyEvent (V.EvKey V.KEsc [])) =
     halt . Right . updateHighScores $ gm
 routeNewHighScore gm (VtyEvent (V.EvKey V.KEnter [])) = do
-    suspendAndResume . restartGame . updateHighScores $ gm
+    continue . restartGame . updateHighScores $ gm
 routeNewHighScore gm (VtyEvent vtyEv) = do
     newHsEdit <- handleEditorEvent vtyEv ( gm ^. T.hsedit )
     if (>26) . length . unlines . getEditContents $ newHsEdit
@@ -152,7 +139,7 @@ routeGameOver gm (AppEvent (Tick t)) =
 routeGameOver gm (VtyEvent (V.EvKey V.KEsc [])) =
     halt . Right $ gm
 routeGameOver gm (VtyEvent (V.EvKey V.KEnter [])) =
-    suspendAndResume . restartGame $ gm
+    continue . restartGame $ gm
 routeGameOver gm _ =
     continue . Right $ gm
 
@@ -182,19 +169,3 @@ keyEvent  V.KDown      _ gm = gm & T.pacman . T.pdir .~ South
 keyEvent (V.KChar 's') _ gm = gm & T.pacman . T.pdir .~ South
 keyEvent (V.KChar 'o') _ gm = gm & T.pacman . T.pdir .~ South
 keyEvent _             _ gm = gm
-
----------------------------------------------------------------------
--- Starting & restarting the game.
-
-restartGame :: Game -> IO GameSt
-restartGame gm = do
-    ms <- readFileEither . getMazeFile $ 1
-    return $ restartNewGame gm =<< ms
-
----------------------------------------------------------------------
--- Level transitioning
-
-startNextLevel :: Game -> IO GameSt
-startNextLevel gm = do
-    ms <- readFileEither . getMazeFile . succ $ gm ^. T.level
-    return $ advanceLevel gm =<< ms

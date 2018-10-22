@@ -4,39 +4,41 @@ module Main where
 import qualified Graphics.Vty as V
 import qualified Data.Matrix  as M
 import qualified Model.Types  as T
-import Lens.Micro                       ( (^.)                      )
-import System.Directory                 ( doesFileExist             )
-import System.Random                    ( getStdGen                 )
-import System.Environment               ( getArgs                   )
-import System.Posix.Env                 ( putEnv                    )
-import Control.Monad                    ( void, forever             )
+import Lens.Micro                       ( (^.)              )
+import System.Directory                 ( doesFileExist     )
+import System.Random                    ( getStdGen         )
+import System.Environment               ( getArgs           )
+import System.Posix.Env                 ( putEnv            )
+import Control.Exception                ( IOException
+                                        , catch             )
+import Control.Monad                    ( void, forever     )
 import Control.Concurrent               ( threadDelay
-                                        , forkIO                    )
-import Text.Read                        ( readMaybe                 )
+                                        , forkIO            )
+import Text.Read                        ( readMaybe         )
 import Brick.BChan                      ( BChan
                                         , newBChan
-                                        , writeBChan                )
+                                        , writeBChan        )
 import Brick.Main                       ( App (..)
                                         , customMain
-                                        , showCursorNamed           )
-import Controller                       ( readFileEither
-                                        , routeEvent                )
-import Model.Types                      ( GameSt    (..)
+                                        , showCursorNamed   )
+import Controller                       ( routeEvent        )
+import View                             ( attributes
+                                        , drawUI            )
+import Model.Utilities                  ( tickPeriod        )
+import Resources                        ( getAsciiMaze      )
+import Loading                          ( getOptions
+                                        , highScoresFile
+                                        , readHighScores
+                                        , showHighScore
+                                        , startNewGame      )
+import Model.Types                      ( AsciiMaze (..)
+                                        , GameSt    (..)
                                         , HighScore (..)
                                         , Mode      (..)
                                         , Name      (..)
                                         , Options   (..)
                                         , Time      (..)
-                                        , TimeEvent (..)            )
-import View                             ( attributes
-                                        , drawUI                    )
-import Loading                          ( getMazeFile
-                                        , getOptions
-                                        , highScoresFile
-                                        , readHighScores
-                                        , showHighScore
-                                        , startNewGame              )
-import Model.Utilities                  ( tickPeriod                )
+                                        , TimeEvent (..)    )
 
 ---------------------------------------------------------------------
 -- Entry point and Brick App definition
@@ -72,8 +74,7 @@ initGame opts = do
     putEnv $ "TERM=" ++ opts ^. T.terminal
     gen     <- getStdGen
     scores  <- readHighScores <$> readFileEither highScoresFile
-    mazeStr <- readFileEither . maybe (getMazeFile $ opts ^. T.firstlevel) id
-                              $ opts ^. T.firstmaze
+    mazeStr <- getFirstAsciiMaze (opts ^. T.firstmaze) (opts ^. T.firstlevel)
     return $ mazeStr >>= startNewGame gen scores ( opts ^. T.firstlevel )
 
 ---------------------------------------------------------------------
@@ -95,3 +96,19 @@ stopGame :: GameSt -> IO ()
 stopGame (Left msg) = putStrLn msg
 stopGame (Right gm) = writeFile highScoresFile xs
     where xs = concatMap showHighScore $ gm ^. T.highscores
+
+---------------------------------------------------------------------
+-- Helper functions
+
+getFirstAsciiMaze :: Maybe FilePath -> Int -> IO (Either String AsciiMaze)
+-- ^The first maze played can be user-defined.
+getFirstAsciiMaze Nothing lvl = return . Right . getAsciiMaze $ lvl
+getFirstAsciiMaze (Just fp) _ = readFileEither fp
+
+readFileEither :: FilePath-> IO (Either String String)
+-- ^Read a file converting IO exceptions to Left String values.
+readFileEither fp = do
+    catch ( Right <$> readFile fp ) ( hndlErr fp )
+    where hndlErr :: FilePath -> IOException -> IO (Either String String)
+          hndlErr x _ = return . Left $ "Error: cannot find file " ++ x
+

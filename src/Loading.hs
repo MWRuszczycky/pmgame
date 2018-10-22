@@ -2,13 +2,11 @@
 module Loading
     (
     -- files and maze numbers
-      getMazeFile
-    , highScoresFile
-    , mazeNumber
+      highScoresFile
     -- Game initialization and level transitioning
     , advanceLevel
     , startNewGame
-    , restartNewGame
+    , restartGame
     -- Working with strings encoding high score information
     , readHighScores
     , showHighScore
@@ -27,7 +25,8 @@ import Data.List                            ( find, foldl'
                                             , sortOn                )
 import Lens.Micro                           ( (&), (^.), (.~), (%~) )
 import System.Random                        ( randomR, StdGen       )
-import Resources                            ( optionsHub            )
+import Resources                            ( getAsciiMaze
+                                            , optionsHub            )
 import Model.Utilities                      ( fruitDuration
                                             , newMessage
                                             , powerDuration
@@ -44,7 +43,7 @@ import Model.Types                          ( Direction     (..)
                                             , HighScore     (..)
                                             , Items         (..)
                                             , Maze          (..)
-                                            , MazeString    (..)
+                                            , AsciiMaze     (..)
                                             , Mode          (..)
                                             , Name          (..)
                                             , Options       (..)
@@ -63,26 +62,12 @@ import Model.Types                          ( Direction     (..)
 -- =============================================================== --
 -- Helper types
 
--- |Raw MazeString where each ascii charcter has been indexed by the
+-- |Raw AsciiMaze where each ascii charcter has been indexed by the
 -- row and column it represents in the level maze.
 type IndexedMaze = [(Point, Char)]
 
 -- =============================================================== --
--- List of levels and associated maze files
-
-getMazeFile :: Int -> FilePath
--- ^Maps level numbers to files.
-getMazeFile lvl
-    | lvl > 0 = "dev/maze" ++ m ++ ".txt"
-    | lvl < 1 = "dev/maze-testing/testing" ++ m ++ ".txt"
-    where m = show . abs . mazeNumber $ lvl
-
-mazeNumber :: Int -> Int
--- ^Maps level numbers to maze numbers.
-mazeNumber n
-    | n > 0     = rem (m - 1) 5 + 1
-    | otherwise = n
-    where m = quot ( rem n 2 + n ) 2
+-- Stored file names and paths
 
 highScoresFile :: FilePath
 -- ^File where high scores are stored.
@@ -91,12 +76,12 @@ highScoresFile = "dev/high_scores.txt"
 -- =============================================================== --
 -- Game initialization and level transitioning
 
-startNewGame :: StdGen -> [HighScore] -> Int -> MazeString -> GameSt
+startNewGame :: StdGen -> [HighScore] -> Int -> AsciiMaze -> GameSt
 -- ^Complete intialization of a new game state based on a standard
 -- generator, a list of high scores, a level number to start at and
 -- a maze string for the first level to play.
 startNewGame r0 scores level asciiMaze = do
-    xs   <- indexMazeString asciiMaze
+    xs   <- indexAsciiMaze asciiMaze
     m    <- loadMaze xs
     pman <- loadPacMan xs
     gs   <- mapM ( loadGhost xs ) "pbic"
@@ -120,29 +105,29 @@ startNewGame r0 scores level asciiMaze = do
                 , _hsedit     = editor HighScoreEdit ( Just 1 ) ""
                 }
 
-advanceLevel :: Game -> MazeString -> GameSt
+advanceLevel :: Game -> GameSt
 -- ^Reintialize the game state upon starting a new level. A complete
 -- initialization is performed with the updated level and maze, and
 -- then further updated with those praameters that should carry over
 -- such as the time and remaining number of oneups.
-advanceLevel gm asciiMaze = do
+advanceLevel gm = do
     let nxtLvl = succ $ gm ^. T.level
         scores = gm ^. T.highscores
         gen    = gm ^. T.rgen
-    nxtGame <- startNewGame gen scores nxtLvl asciiMaze
+    nxtGame <- startNewGame gen scores nxtLvl . getAsciiMaze $ nxtLvl
     return $ nxtGame & T.mode   .~ Running
                      & T.items  .~ ( gm ^. T.items  )
                      & T.oneups .~ ( gm ^. T.oneups )
                      & T.time   .~ ( gm ^. T.time   )
 
-restartNewGame :: Game -> MazeString -> GameSt
+restartGame :: Game -> GameSt
 -- ^Reinitialize the game after player has lost all lives. A complete
 -- initialization is performed and just the time is updated as well
 -- as the play mode to return the player back to the start screen.
-restartNewGame gm asciiMaze = do
+restartGame gm = do
     let scores = gm ^. T.highscores
         gen    = gm ^. T.rgen
-    newGame <- startNewGame gen scores 1 asciiMaze
+    newGame <- startNewGame gen scores 1 . getAsciiMaze $ 1
     return $ newGame & T.mode .~ StartScreen
                      & T.time .~ ( gm ^. T.time )
 
@@ -152,10 +137,10 @@ restartNewGame gm asciiMaze = do
 ---------------------------------------------------------------------
 -- Utilities
 
-indexMazeString :: MazeString -> Either String IndexedMaze
--- ^Index a MazeString to get an IndexedMaze string making sure that
+indexAsciiMaze :: AsciiMaze -> Either String IndexedMaze
+-- ^Index a AsciiMaze to get an IndexedMaze string making sure that
 -- it is rectangular.
-indexMazeString s
+indexAsciiMaze s
     | isRect    = Right . zip indxs . concat $ ss
     | otherwise = Left "Maze is not rectangular"
     where ss     = lines s
@@ -214,7 +199,7 @@ loadGhost xs c = do
 
 readGhost :: Char -> Either String (GhostName, Direction)
 -- ^Helper function for initializing each ghost by name given its
--- ascii representation in a MazeString.
+-- ascii representation in a AsciiMaze.
 readGhost 'p' = Right ( Pinky,  East  )
 readGhost 'b' = Right ( Blinky, West  )
 readGhost 'i' = Right ( Inky,   West  )
@@ -227,7 +212,7 @@ readGhost x   = Left $ "Character '" ++ [x] ++ "' not recognized as ghost"
 -- 1. The name of the fruit, or no fruit at all, which also depends
 --    on the level.
 -- 2. The position of the fruit, which can be any position marked
---    with an '?' in the MazeString.
+--    with an '?' in the AsciiMaze.
 -- 3. The delay time before the fruit appears.
 -- The duration of time that a fruit can be captured is not random.
 

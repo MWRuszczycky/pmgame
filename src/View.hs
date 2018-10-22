@@ -23,7 +23,7 @@ import Brick.Widgets.Border             ( borderAttr
 import Brick.AttrMap                    ( AttrMap, attrMap          )
 import Brick.Util                       ( bg, fg, on                )
 import Brick.Widgets.Center             ( center, hCenter, vCenter  )
-import Loading                          ( mazeNumber                )
+import Resources                        ( mazeNumber                )
 import Model.Utilities                  ( addHighScore
                                         , highScore
                                         , isFlashing

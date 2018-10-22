@@ -12,7 +12,7 @@ module Model.Types
     , Items         (..)
     , Message       (..)
     , Maze          (..)
-    , MazeString    (..)
+    , AsciiMaze     (..)
     , Mode          (..)
     , Name          (..)
     , Options       (..)
@@ -190,7 +190,7 @@ makeLenses ''Fruit
 
 -- |Raw string of ascii characters that represents all elements in
 -- the maze.
-type MazeString = String
+type AsciiMaze = String
 
 -- |Interpretted maze of renderable tiles.
 type Maze = M.Matrix Tile
