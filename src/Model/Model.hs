@@ -17,7 +17,8 @@ module Model.Model
 import qualified Data.Matrix as M
 import qualified Model.Types as T
 import Brick.Widgets.Edit           ( getEditContents       )
-import Data.List                    ( (\\), delete, foldl', sort    )
+import Data.List                    ( (\\), delete, foldl'
+                                    , sort                  )
 import Lens.Micro                   ( (&), (^.), (.~), (%~) )
 import Data.Matrix                  ( (!)                   )
 import System.Random                ( randomR
