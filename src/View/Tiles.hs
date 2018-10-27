@@ -76,7 +76,7 @@ renderTile _ (FruitTile Galaxian  ) = withAttr "galaxian"   . txt $ "g"
 renderTile _ (FruitTile Bell      ) = withAttr "bell"       . txt $ "b"
 renderTile _ (FruitTile Key       ) = withAttr "key"        . txt $ "k"
 renderTile gm Player                = renderPlayer gm
-renderTile _  _                     = withAttr "maze1"      . txt $ " "
+renderTile _  _                     = withAttr "background" . txt $ " "
 
 ---------------------------------------------------------------------
 -- Maze rendering
