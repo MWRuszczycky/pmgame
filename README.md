@@ -58,6 +58,5 @@ The game should still display correctly with only 16 colors; however, you will s
 
 ## Things to do
 
-* Make the player die more gracefully.
 * Include an "about" screen with version information.
 * Write a better README.
