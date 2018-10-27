@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+
 module Main where
 
 import qualified Graphics.Vty as V
@@ -24,8 +25,8 @@ import Brick.Main                       ( App (..)
                                         , customMain
                                         , showCursorNamed       )
 import Controller                       ( routeEvent            )
-import View                             ( attributes
-                                        , drawUI                )
+import View.View                        ( drawUI                )
+import View.Core                        ( attributes            )
 import Model.Utilities                  ( tickPeriod            )
 import Resources                        ( getAsciiMaze          )
 import Loading                          ( getOptions

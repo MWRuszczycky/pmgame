@@ -29,11 +29,16 @@ executable pmgame
                      , vty
                      , text
                      , unix
- other-modules:        Model.Types
-                     , Model.Model
-                     , Model.Utilities
-                     , Controller
-                     , View
+ other-modules:        Controller
                      , Loading
-                     , Resources
+                     , Model.Model
+                     , Model.Types
+                     , Model.Utilities
                      , Paths_pmgame
+                     , Resources
+                     , View.Core
+                     , View.DialogUIs
+                     , View.MazeUIs
+                     , View.Tiles
+                     , View.View
+
