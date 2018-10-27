@@ -18,6 +18,7 @@ module Model.Model
 import qualified Data.Matrix as M
 import qualified Model.Types as T
 import Brick.Widgets.Edit           ( getEditContents       )
+import Data.Char                    ( isSpace               )
 import Data.List                    ( (\\), delete, foldl'
                                     , sort                  )
 import Lens.Micro                   ( (&), (^.), (.~), (%~) )
@@ -77,7 +78,10 @@ updateHighScores :: Game -> Game
 -- score to the curernt list.
 updateHighScores gm = gm & T.highscores %~ addHighScore score
     where name  = filter (/= '\n') . unlines . getEditContents $ gm ^. T.hsedit
-          score = ( name, playerScore gm )
+          name' = filter (not . isSpace) name
+          score | null name  = ( "I have no name!", playerScore gm )
+                | null name' = ( "My name is Spaces!", playerScore gm )
+                | otherwise  = ( name, playerScore gm )
 
 -- Unexported
 

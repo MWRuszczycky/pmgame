@@ -74,8 +74,8 @@ runTimer chan t = do
 initGame :: Options -> IO GameSt
 initGame opts = do
     putEnv $ "TERM=" ++ opts ^. T.terminal
-    hsPath  <- (++ "/.config/pmgame/high_scores") <$> getHomeDirectory
     gen     <- getStdGen
+    hsPath  <- (++ "/.config/pmgame/high_scores") <$> getHomeDirectory
     scores  <- readHighScores <$> readFileEither hsPath
     mazeStr <- getFirstAsciiMaze (opts ^. T.firstmaze) (opts ^. T.firstlevel)
     return $ mazeStr >>= startNewGame gen scores ( opts ^. T.firstlevel )

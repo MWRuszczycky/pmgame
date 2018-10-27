@@ -342,8 +342,9 @@ horizontalLink x   (Just y  ) = isWallChar x && isWallChar y && x /= y
 
 showHighScore :: HighScore -> String
 -- ^Converts a high score value to string for saving. This replaces
--- all spaces with underscores and appends a new line character.
-showHighScore ("", score  ) = showHighScore ("_", score)
+-- all spaces with underscores and appends a new line character. Note
+-- that the updateHighScores function in Model.Model ensures that
+-- player names have at least one non-space character in them.
 showHighScore (name, score) = name' ++ " " ++ show score ++ "\n"
     where name' = intercalate "_" . words $ name
 
