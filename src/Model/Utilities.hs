@@ -5,6 +5,7 @@ module Model.Utilities
     , playerWaitTime
     , powerDuration
     , tickPeriod
+    , transitionDelay
     -- Useful helper functions
     , addHighScore
     , newMessage
@@ -75,6 +76,11 @@ powerDuration lvl
 tickPeriod :: Time
 -- ^Time between clock ticks.
 tickPeriod = toMicroSeconds 0.225
+
+transitionDelay :: Time
+-- ^Delay after completing a level or getting captured by a ghost
+-- to allow a nicer transition between gameplay and dialogs.
+transitionDelay = toMicroSeconds 1.5
 
 -- Unexported
 

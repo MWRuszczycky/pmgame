@@ -56,11 +56,12 @@ renderVerticalSpace n = vLimit n . withAttr "background" . fill $ ' '
 attributes :: AttrMap
 attributes = attrMap V.defAttr
     [ ( "player",           on V.black  V.brightYellow )
-    , ( "maze1",            on V.blue          V.black )
-    , ( "maze2",            on V.magenta       V.black )
-    , ( "maze3",            on V.cyan          V.black )
-    , ( "maze4",            on V.red           V.black )
-    , ( "maze5",            on V.white         V.black )
+    , ( "blueMaze",         on V.blue          V.black )
+    , ( "pinkMaze",         on V.magenta       V.black )
+    , ( "cyanMaze",         on V.cyan          V.black )
+    , ( "redMmaze",         on V.red           V.black )
+    , ( "whiteMaze",        on V.white         V.black )
+    , ( "deathMaze",        on V.brightBlack   V.black )
     , ( "oneway",           on V.red           V.black )
     , ( "pellet",           on V.white         V.black )
     , ( "pwrPellet",        on V.cyan          V.black )

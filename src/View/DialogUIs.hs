@@ -123,8 +123,8 @@ renderHighScoreDisplay gm =
     let scores = gm ^. T.highscores
         score  = ( "Your name", playerScore gm )
     in  case gm ^. T.mode of
-             NewHighScore -> renderHighScores . addHighScore score $ scores
-             otherwise    -> renderHighScores scores
+             NewHighScore _ -> renderHighScores . addHighScore score $ scores
+             otherwise      -> renderHighScores scores
 
 renderHighScores :: [HighScore] -> Widget Name
 renderHighScores xs

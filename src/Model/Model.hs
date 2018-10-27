@@ -6,8 +6,9 @@ module Model.Model
     , updateGame
     -- Time management
     , updateClock
-    , updateTimePaused
     , updateTime
+    , updateTimePaused
+    , updateTimeTrans
     -- Moving and updating the player
     , movePlayer
     -- Moving the ghosts
@@ -36,7 +37,8 @@ import Model.Utilities              ( addHighScore
                                     , revDirection
                                     , scoreFruit
                                     , scoreMessage
-                                    , tickPeriod            )
+                                    , tickPeriod
+                                    , transitionDelay       )
 import Model.Types                  ( Direction     (..)
                                     , Fruit         (..)
                                     , FruitName     (..)
@@ -81,9 +83,9 @@ updateHighScores gm = gm & T.highscores %~ addHighScore score
 
 endPlay :: Game -> Game
 endPlay gm
-    | moreLives         = gm & T.mode .~ ReplayLvl
-    | isNewHighScore gm = gm & T.mode .~ NewHighScore
-    | otherwise         = gm & T.mode .~ GameOver
+    | moreLives         = gm & T.mode .~ ReplayLvl transitionDelay
+    | isNewHighScore gm = gm & T.mode .~ NewHighScore transitionDelay
+    | otherwise         = gm & T.mode .~ GameOver transitionDelay
     where moreLives = gm ^. T.oneups > 0
 
 resetPacMan :: PacMan -> PacMan
@@ -124,7 +126,15 @@ updateClock :: Time -> Game -> Game
 -- is only needed when the game is not running (e.g., when the player
 -- is entering their name for a new high score).
 updateClock t gm = let dt = t - gm ^. T.time
-                   in  gm & T.time .~ t & T.dtime .~ dt
+                   in  gm & T.time .~ t
+                          & T.dtime .~ dt
+
+updateTime :: Time -> Game -> Game
+-- ^Keeps all time variables up to date during a running game state.
+updateTime t = updateMessageTime
+               . updateModeTimers
+               . updateFruitTimes
+               . updateClock t
 
 updateTimePaused :: Time -> Game -> Game
 -- ^Keeps all time variables up to date during a paused game state.
@@ -135,19 +145,12 @@ updateTimePaused t gm =
            & T.pacman . T.ptlast %~ (+dt)
            & T.ghosts %~ map ( \ g -> g & T.gtlast %~ (+dt) )
 
-updateTime :: Time -> Game -> Game
--- ^Keeps all time variables up to date during a running game state.
-updateTime t = updateMessageTime
-               . updatePowerTime
-               . updateFruitTimes
-               . updateClock t
+updateTimeTrans :: Time -> Game -> Game
+-- ^Keeps all time variables up to date during a transition state,
+-- for example after the player has been caputured.
+updateTimeTrans t = updateModeTimers . updateClock t
 
 -- Unexported
-
-updatePowerTime :: Game -> Game
-updatePowerTime gm = gm & T.mode %~ go
-    where go (PwrRunning t0) = PwrRunning (t0 - gm ^. T.dtime)
-          go x               = x
 
 updateFruitTimes :: Game -> Game
 updateFruitTimes gm = gm & T.fruit %~ fmap go
@@ -162,6 +165,15 @@ updateMessageTime gm = gm & T.msg %~ go
           go NoMessage     = NoMessage
           go (Message s t) | t > 0     = Message s (t - dt)
                            | otherwise = NoMessage
+
+updateModeTimers :: Game -> Game
+-- ^Updates timers associated with gameplay modes.
+updateModeTimers gm = gm & T.mode %~ go
+    where go (PwrRunning t0)   = PwrRunning   (t0 - gm ^. T.dtime)
+          go (ReplayLvl t0)    = ReplayLvl    (t0 - gm ^. T.dtime)
+          go (NewHighScore t0) = NewHighScore (t0 - gm ^. T.dtime)
+          go (GameOver t0)     = GameOver     (t0 - gm ^. T.dtime)
+          go m                 = m
 
 ---------------------------------------------------------------------
 -- Eating ghosts and getting captured by ghosts

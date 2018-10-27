@@ -233,10 +233,10 @@ data Name = HighScoreEdit deriving (Show, Eq, Ord)
 data Mode = StartScreen       -- Play has not begun
           | Running           -- Normal play mode
           | PwrRunning Time   -- Play mode after eating a power pellet
-          | GameOver          -- All oneups have have been used
-          | NewHighScore      -- Game over with new high score
+          | GameOver Time     -- All oneups have have been used
+          | NewHighScore Time -- Game over with new high score
           | LevelOver         -- Current level has been completed
-          | ReplayLvl         -- Player was captured and about to try again
+          | ReplayLvl Time    -- Player was captured and about to try again
           | Paused Mode       -- Game is paused
           deriving ( Show, Eq )
 

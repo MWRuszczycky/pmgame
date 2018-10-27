@@ -1,7 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module View.MazeUIs
-    ( drawRunningUI
+    ( drawDeathUI
+    , drawRunningUI
     , drawPausedUI
     ) where
 
@@ -35,7 +36,22 @@ import Model.Types                  ( Direction  (..)
 -- Gameplay UIs
 
 -- =============================================================== --
--- Rendering the gameplay UIs for the unpaused and paused modes
+-- Rendering the maze UIs for different modes
+
+drawDeathUI :: Game -> [ Widget Name ]
+-- ^Player has just been captured and this UI is letting the player
+-- know it.
+drawDeathUI gm =
+    let width = M.ncols $ gm ^. T.maze
+        parts = [
+                  renderHeader gm
+                , renderMaze tileDeathMaze gm
+                , renderFooter gm
+                , renderVerticalSpace 1
+                , withAttr "controls" . txt $ " Space to pause"
+                , withAttr "controls" . txt $ " Esc to quit"
+                ]
+    in  [ withAttr "background" . center . hLimit width . vBox $ parts ]
 
 drawRunningUI :: Game -> [ Widget Name ]
 -- ^Actual active gameplay UI.
@@ -43,7 +59,7 @@ drawRunningUI gm =
     let width = M.ncols $ gm ^. T.maze
         parts = [
                   renderHeader gm
-                , renderMaze gm
+                , renderMaze tileMaze gm
                 , renderFooter gm
                 , renderVerticalSpace 1
                 , withAttr "controls" . txt $ " Space to pause"
@@ -57,7 +73,7 @@ drawPausedUI gm =
     let width = M.ncols $ gm ^. T.maze
         parts = [
                   renderPausedHeader gm
-                , renderMaze gm
+                , renderMaze tileMaze gm
                 , renderFooter gm
                 , renderVerticalSpace 1
                 , withAttr "controls" . txt $ " Space to unpause"
@@ -68,24 +84,29 @@ drawPausedUI gm =
 -- =============================================================== --
 -- Helper functions for construction of the gameplay UIs
 
-renderMaze :: Game -> Widget Name
+renderMaze :: ( Game -> Maze ) -> Game -> Widget Name
 -- ^Build and render the maze with fixed and changing tiles in place.
-renderMaze gm = vBox . renderTiles . M.toLists . tileMaze $ gm
+renderMaze tiler gm = vBox . renderTiles . M.toLists . tiler $ gm
     where renderTiles = map ( hBox . map (renderTile gm) )
-
 
 ---------------------------------------------------------------------
 -- Mazes
 
 tileMaze :: Game -> Maze
--- ^Standard maze tiling fol normal gameplay.
+-- ^Standard maze tiling for normal gameplay.
 tileMaze gm = tilePlayer   ( gm ^. T.pacman )
               . tileGhosts   gm
               . tileFruit  ( gm ^. T.fruit  )
               $ gm ^. T.maze
 
+tileDeathMaze :: Game -> Maze
+-- ^Maze tiling after player has been captured.
+tileDeathMaze gm = tilePlayer ( gm ^. T.pacman )
+                   . untilePellets
+                   $ gm ^. T.maze
+
 ---------------------------------------------------------------------
--- Adding tiles to mazes
+-- Adding and removing tiles to and from mazes
 
 tileFruit :: Maybe Fruit -> Maze -> Maze
 tileFruit Nothing m = m
@@ -101,6 +122,13 @@ tileGhosts gm m0 = foldl' ( \ m (p,t) -> M.setElem t p m) m0 gs
 
 tilePlayer :: PacMan -> Maze -> Maze
 tilePlayer pm = M.setElem Player (pm ^. T.ppos)
+
+untilePellets :: Maze -> Maze
+-- ^Remove all pellets and power pellets from the maze.
+untilePellets = M.mapPos go
+    where go _ Pellet    = Empty
+          go _ PwrPellet = Empty
+          go _ x         = x
 
 ---------------------------------------------------------------------
 -- Rendering scores and messages during regular gameplay
