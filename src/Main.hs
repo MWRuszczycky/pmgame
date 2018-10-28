@@ -27,11 +27,11 @@ import Brick.Main                       ( App (..)
 import Controller                       ( routeEvent            )
 import View.View                        ( drawUI                )
 import View.Core                        ( attributes            )
-import Model.Utilities                  ( tickPeriod            )
 import Resources                        ( getAsciiMaze          )
-import Loading                          ( getOptions
+import Model.Utilities                  ( formatHighScore
                                         , readHighScores
-                                        , showHighScore
+                                        , tickPeriod            )
+import Loading                          ( getOptions
                                         , startNewGame          )
 import Model.Types                      ( AsciiMaze (..)
                                         , GameSt    (..)
@@ -104,7 +104,7 @@ stopGame (Right gm) = do
     configDir <- (++ "/.config/pmgame") <$> getHomeDirectory
     exists    <- doesDirectoryExist configDir
     if exists
-       then let xs = concatMap showHighScore $ gm ^. T.highscores
+       then let xs = concatMap formatHighScore $ gm ^. T.highscores
             in  writeFile ( configDir ++ "/high_scores" ) xs
        else handleMissingConfig . Right $ gm
 

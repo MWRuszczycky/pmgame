@@ -25,12 +25,13 @@ import Loading                      ( advanceLevel
                                     , restartGame
                                     , startNewGame          )
 import Model.Utilities              ( addHighScore
-                                    , playerScore           )
+                                    , maxNameLength
+                                    , playerScore
+                                    , updateHighScores      )
 import Model.Model                  ( moveGhosts
                                     , movePlayer
                                     , restartLevel
                                     , updateGame
-                                    , updateHighScores
                                     , updateClock
                                     , updateTime
                                     , updateTimePaused
@@ -133,7 +134,7 @@ routeNewHighScore t gm (VtyEvent vtyEv)
     | t > 0     = continue . Right $ gm & T.mode .~ NewHighScore 0
     | otherwise = do
         newHsEdit <- handleEditorEvent vtyEv ( gm ^. T.hsedit )
-        if (>26) . length . unlines . getEditContents $ newHsEdit
+        if (> maxNameLength+1) . length . unlines . getEditContents $ newHsEdit
            then continue . Right $ gm
            else continue . Right $ gm & T.hsedit .~ newHsEdit
 routeNewHighScore _ gm _ =

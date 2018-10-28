@@ -5,9 +5,6 @@ module Loading
       advanceLevel
     , startNewGame
     , restartGame
-    -- Working with strings encoding high score information
-    , readHighScores
-    , showHighScore
     -- Parsing command line arguments into game options
     , getOptions
     ) where
@@ -16,11 +13,9 @@ import qualified Data.Matrix           as M
 import qualified Data.Vector           as V
 import qualified Model.Types           as T
 import qualified System.Console.GetOpt as O
-import Text.Read                            ( readMaybe             )
 import Brick.Widgets.Edit                   ( editor                )
 import Data.List                            ( find, foldl'
-                                            , intercalate, sort
-                                            , sortOn                )
+                                            , sort, sortOn          )
 import Lens.Micro                           ( (&), (^.), (.~), (%~) )
 import System.Random                        ( randomR, StdGen       )
 import Resources                            ( getAsciiMaze
@@ -336,34 +331,6 @@ horizontalLink :: Char -> Maybe Char -> Bool
 horizontalLink _   Nothing    = False
 horizontalLink '=' (Just '=') = True
 horizontalLink x   (Just y  ) = isWallChar x && isWallChar y && x /= y
-
--- =============================================================== --
--- Working with strings encoding high score information
-
-showHighScore :: HighScore -> String
--- ^Converts a high score value to string for saving. This replaces
--- all spaces with underscores and appends a new line character. Note
--- that the updateHighScores function in Model.Model ensures that
--- player names have at least one non-space character in them.
-showHighScore (name, score) = name' ++ " " ++ show score ++ "\n"
-    where name' = intercalate "_" . words $ name
-
-readHighScores :: Either String String -> [HighScore]
--- ^Read high scores from a string and convert to a list of high
--- score values. If no high scores are available (i.e., a Left value
--- is provided as the argument), then an empty list is generated.
--- High scores are read as lines terminated by '\n' with two strings
--- separated by whitespace. The first is the name and the second is
--- the score. Underscores in the name are converted to spaces. If the
--- is not properly formatted or cannot be read, it is excluded from
--- the list of generated high scores.
-readHighScores (Left _  ) = []
-readHighScores (Right xs) = maybe [] id . mapM (go . words) . lines $ xs
-    where deUnder ys = [ if y == '_' then ' ' else y | y <- ys ]
-          go ws | length ws /= 2 = Nothing
-                | otherwise      = case readMaybe (ws !! 1) :: Maybe Score of
-                                        Nothing -> Nothing
-                                        Just x  -> Just (deUnder . head $ ws, x)
 
 -- =============================================================== --
 -- Command line parsing and options handling

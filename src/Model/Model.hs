@@ -1,7 +1,6 @@
 module Model.Model
     ( -- Game and level restarting
       restartLevel
-    , updateHighScores
     -- Running ame state updating
     , updateGame
     -- Time management
@@ -17,8 +16,6 @@ module Model.Model
 
 import qualified Data.Matrix as M
 import qualified Model.Types as T
-import Brick.Widgets.Edit           ( getEditContents       )
-import Data.Char                    ( isSpace               )
 import Data.List                    ( (\\), delete, foldl'
                                     , sort                  )
 import Lens.Micro                   ( (&), (^.), (.~), (%~) )
@@ -72,16 +69,6 @@ restartLevel gm = gm & T.mode    .~ Running
                      & T.ghosts  %~ map resetGhost
                      & T.pwrmult .~ 2
                      & T.oneups  %~ subtract 1
-
-updateHighScores :: Game -> Game
--- ^Read the player's name from the high score edit and add the high
--- score to the curernt list.
-updateHighScores gm = gm & T.highscores %~ addHighScore score
-    where name  = filter (/= '\n') . unlines . getEditContents $ gm ^. T.hsedit
-          name' = filter (not . isSpace) name
-          score | null name  = ( "I have no name!", playerScore gm )
-                | null name' = ( "My name is Spaces!", playerScore gm )
-                | otherwise  = ( name, playerScore gm )
 
 -- Unexported
 

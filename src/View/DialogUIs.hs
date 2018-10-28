@@ -133,7 +133,7 @@ renderHighScores xs
     where hdr = hCenter . withAttr "highScore" . txt $ "High Scores"
           go (name, score) = name ++ " " ++ show score
           scores = vBox . map ( hCenter . withAttr "info" . str . go ) $ xs
-          noScoresMsg = withAttr "highScores" . txt $ "No high scores yet!"
+          noScoresMsg = withAttr "info" . txt $ "No high scores yet!"
 
 renderLabeledScore :: Game -> Widget Name
 -- ^Simple display of score information.

@@ -2,10 +2,15 @@ module Model.Utilities
     ( -- Default constants
       edibleGhostWaitTime
     , ghostWaitTime
+    , maxNameLength
     , playerWaitTime
     , powerDuration
     , tickPeriod
     , transitionDelay
+    -- Working with high scores
+    , formatHighScore
+    , readHighScores
+    , updateHighScores
     -- Useful helper functions
     , addHighScore
     , newMessage
@@ -37,7 +42,10 @@ import qualified Data.Vector    as V
 import Data.Matrix                      ( (!)               )
 import Data.Ord                         ( comparing         )
 import Data.List                        ( foldl', maximumBy )
-import Lens.Micro                       ( (^.)              )
+import Data.Char                        ( isControl         )
+import Text.Read                        ( readMaybe         )
+import Lens.Micro                       ( (&), (^.), (%~)   )
+import Brick.Widgets.Edit               ( getEditContents   )
 import Model.Types                      ( Direction (..)
                                         , FruitName (..)
                                         , Game      (..)
@@ -62,6 +70,10 @@ edibleGhostWaitTime = 2 * ghostWaitTime
 ghostWaitTime :: Time
 -- ^Wait time for normal ghosts between moves.
 ghostWaitTime = tickPeriod
+
+maxNameLength :: Int
+-- ^Maximum length for player names.
+maxNameLength = 25
 
 playerWaitTime :: Time
 -- ^Wait time for player between moves.
@@ -90,15 +102,62 @@ messageDuration :: Time
 messageDuration = toMicroSeconds 3
 
 ---------------------------------------------------------------------
--- Useful helper functions
+-- Working with high scores
 
 -- Exported
 
+readHighScores :: Either String String -> [HighScore]
+-- ^Read high scores from a string and convert to a list of high
+-- score values. If no high scores are available (i.e., a Left value
+-- is provided as the argument), then an empty list is generated.
+-- An empty list is also returned if any high score is improperly
+-- formatted. Each highscore is formatted as two tab-separated
+-- strings terminated by a newline. The first string is the player
+-- name and the second is the score.
+readHighScores (Left _  ) = []
+readHighScores (Right xs) = maybe [] id . mapM parseLine . lines $ xs
+    where parseLine = go . break (== '\t')
+          go (n,s)  | null n    = Nothing
+                    | otherwise = case readMaybe s of
+                                       Nothing -> Nothing
+                                       Just x  -> Just (n, x)
+
+formatHighScore :: HighScore -> String
+-- ^Converts a high score value to a string for saving.
+formatHighScore (name, score) = name ++ "\t" ++ show score ++ "\n"
+
+updateHighScores :: Game -> Game
+-- ^Read the player's name from the high score edit and add the high
+-- score to the current list.
+updateHighScores gm = gm & T.highscores %~ addHighScore score
+    where name  = unlines . getEditContents $ gm ^. T.hsedit
+          score = ( formatPlayerName name, playerScore gm )
+
+-- Unexported
+
 addHighScore :: HighScore -> [HighScore] -> [HighScore]
+-- ^Add a new high score to the list of high scores. There can only
+-- be at most 5 high scores, so the new high score will not be added
+-- if it is not in the top 5.
 addHighScore (name, score) = take 5 . go
     where go [] = [(name, score)]
           go ((n,s):xs) | score > s = (name, score) : (n,s) : xs
                         | otherwise = (n,s) : go xs
+
+formatPlayerName :: String -> String
+-- ^Read the name the player input and format it. Player names must
+-- have at least one non-space character.
+formatPlayerName x
+    | null goodName = "I have no name!"
+    | isAllSpaces   = "My name is Spaces!"
+    | otherwise     = goodName
+    where goodName    = filter (not . isControl) . take maxNameLength $ x
+          isAllSpaces = null . words $ goodName
+
+---------------------------------------------------------------------
+-- Useful helper functions
+
+-- Exported
 
 newMessage :: String -> Message
 newMessage s = Message s messageDuration
