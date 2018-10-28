@@ -55,7 +55,7 @@ main = do
                        >>= stopGame
 
 app :: App GameSt TimeEvent Name
--- ^Define the Brick App type.
+-- ^Define the value of the Brick App type.
 app = App { appDraw         = drawUI
           , appHandleEvent  = routeEvent
           , appAttrMap      = const attributes

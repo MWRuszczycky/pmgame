@@ -3,7 +3,11 @@ module Model.Utilities
       edibleGhostWaitTime
     , ghostWaitTime
     , maxDialogWidth
+    , maxMazeCols
+    , maxMazeRows
     , maxNameLength
+    , minMazeCols
+    , minMazeRows
     , playerWaitTime
     , powerDuration
     , tickPeriod
@@ -76,6 +80,13 @@ edibleGhostWaitTime = 2 * ghostWaitTime
 ghostWaitTime :: Time
 -- ^Wait time for normal ghosts between moves.
 ghostWaitTime = tickPeriod
+
+maxMazeCols, maxMazeRows, minMazeCols, minMazeRows :: Int
+-- ^Limits on the dimensions of mazes.
+maxMazeCols = 80
+minMazeCols = 3
+maxMazeRows = 80
+minMazeRows = 3
 
 maxDialogWidth :: Int
 -- ^Maximum width of dialog boxes.
