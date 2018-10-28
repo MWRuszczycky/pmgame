@@ -2,6 +2,7 @@ module Model.Utilities
     ( -- Default constants
       edibleGhostWaitTime
     , ghostWaitTime
+    , maxDialogWidth
     , maxNameLength
     , playerWaitTime
     , powerDuration
@@ -70,6 +71,10 @@ edibleGhostWaitTime = 2 * ghostWaitTime
 ghostWaitTime :: Time
 -- ^Wait time for normal ghosts between moves.
 ghostWaitTime = tickPeriod
+
+maxDialogWidth :: Int
+-- ^Maximum width of dialog boxes.
+maxDialogWidth = 30
 
 maxNameLength :: Int
 -- ^Maximum length for player names.
@@ -151,7 +156,7 @@ formatPlayerName x
     | null goodName = "I have no name!"
     | isAllSpaces   = "My name is Spaces!"
     | otherwise     = goodName
-    where goodName    = filter (not . isControl) . take maxNameLength $ x
+    where goodName    = filter ( not . isControl ) x
           isAllSpaces = null . words $ goodName
 
 ---------------------------------------------------------------------

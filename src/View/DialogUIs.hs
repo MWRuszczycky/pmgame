@@ -24,6 +24,7 @@ import View.Core                        ( putInDialogBox
                                         , renderVerticalSpace       )
 import Model.Utilities                  ( addHighScore
                                         , highScore
+                                        , maxDialogWidth
                                         , playerScore
                                         , scoreFruit                )
 import Model.Types                      ( FruitName (..)
@@ -118,7 +119,10 @@ drawGameOverUI gm =
 -- Rendering basic score information
 
 renderHighScoreDisplay :: Game -> Widget Name
--- ^Summary of all recorded high scores and players' names.
+-- ^Summary of all recorded high scores and players' names. This
+-- function will include a space for the player's name if an new
+-- high score was achieved. It makes a call to renderHighScores for
+-- the actual rendering.
 renderHighScoreDisplay gm =
     let scores = gm ^. T.highscores
         score  = ( "Your name", playerScore gm )
@@ -127,13 +131,26 @@ renderHighScoreDisplay gm =
              otherwise      -> renderHighScores scores
 
 renderHighScores :: [HighScore] -> Widget Name
+-- ^Render a list of high scores to a widget with a header. Display
+-- a message if there are no high scores yet.
 renderHighScores xs
     | null xs   = vBox [ hdr, hCenter noScoresMsg ]
     | otherwise = vBox [ hdr, scores      ]
-    where hdr = hCenter . withAttr "highScore" . txt $ "High Scores"
-          go (name, score) = name ++ " " ++ show score
-          scores = vBox . map ( hCenter . withAttr "info" . str . go ) $ xs
+    where hdr         = hCenter . withAttr "highScore" . txt $ "High Scores"
+          scores      = vBox . map highScoreToWidget $ xs
           noScoresMsg = withAttr "info" . txt $ "No high scores yet!"
+
+highScoreToWidget :: HighScore -> Widget Name
+-- ^Format a high score as a widget. If the score cannot fit in the
+-- dialog box, then the player's name is truncated.
+highScoreToWidget = hCenter . withAttr "info" . str . go
+    where go (name, s) | length name > available = truncated
+                       | otherwise               = untruncated
+                       where score       = show s
+                             available   = maxDialogWidth - length score - 1
+                             untruncated = name ++ " " ++ score
+                             truncated   = take ( available - 2 ) name
+                                           ++ ".. " ++ score
 
 renderLabeledScore :: Game -> Widget Name
 -- ^Simple display of score information.

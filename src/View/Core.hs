@@ -19,6 +19,7 @@ import Brick.Widgets.Core               ( fill, hLimit, txt, vBox
 import Brick.Widgets.Center             ( center                    )
 import Brick.Widgets.Border.Style       ( unicodeRounded            )
 import Brick.Widgets.Edit               ( editFocusedAttr           )
+import Model.Utilities                  ( maxDialogWidth            )
 import Model.Types                      ( Name (..)                 )
 
 ---------------------------------------------------------------------
@@ -43,7 +44,7 @@ putInDialogBox title widget =
           . center
           . withBorderStyle unicodeRounded
           . borderWithLabel header
-          . hLimit 30 . vBox $ formatted
+          . hLimit maxDialogWidth . vBox $ formatted
         ]
 
 renderVerticalSpace :: Int -> Widget Name
