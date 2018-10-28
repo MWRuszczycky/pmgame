@@ -27,6 +27,7 @@ module Model.Utilities
     , moveFrom
     , revDirection
     -- Pathfinding
+    , isPathBetween
     , pathBetween
     ) where
 
@@ -234,7 +235,20 @@ dirToShift South = (1, 0)
 --Exported
 
 pathBetween :: Maze -> Point -> Point -> [Point]
--- ^Return a list of points that connect p0 and p1 in the maze m.
+-- ^Find a path between two points in the maze that are connected. If
+-- the points are not connected, return an empty path.
+pathBetween m p0 p1 = maybe [] id $ findPathBetween m p0 p1
+
+isPathBetween :: Maze -> Point -> Point -> Bool
+-- ^Determine if there is a path from p0 to p1. If either is a wall,
+-- then there is no path.
+isPathBetween m p0 p1 = maybe False (const True) $ findPathBetween m p0 p1
+
+-- Unexported
+
+findPathBetween :: Maze -> Point -> Point -> Maybe [Point]
+-- ^Return a list of points that connect p0 and p1 in the maze m. If
+-- no such path exists, then return Nothing.
 -- The algorithm works by adding the inital point p0 to the list. All
 -- points connected to p0 are then added to the end of the list, and
 -- the next point is considered adding all points connected to it to
@@ -243,18 +257,19 @@ pathBetween :: Maze -> Point -> Point -> [Point]
 -- in the list. Thus, the last element of the list (p1) is connected
 -- to the first element (p0) via a sequence of points in between.
 -- A connected sublist from the last to first is then a path between.
-pathBetween m p0 p1
-    | p0 == p1  = []
-    | otherwise = go . reverse . getPaths m p1 [] $ [p0]
-    where go []     = []
+findPathBetween m p0 p1
+    | oneIsWall = Nothing
+    | p0 == p1  = Just []
+    | otherwise = go . reverse <$> getPaths m p1 [] [p0]
+    where oneIsWall = isWall (m ! p0) || isWall (m ! p1)
+          go []     = []
           go (x:xs) = go ( dropWhile (not . connected x ) xs ) ++ [x]
 
--- Unexported
-
-getPaths :: Maze -> Point -> [Point] -> [Point] -> [Point]
+getPaths :: Maze -> Point -> [Point] -> [Point] -> Maybe [Point]
+getPaths _ _ _  []     = Nothing
 getPaths m p ys (x:xs)
-    | p == x     = ys ++ [x]
-    | elem p nxt = ys' ++ [p]
+    | p == x     = Just $ ys ++ [x]
+    | elem p nxt = Just $ ys' ++ [p]
     | otherwise  = getPaths m p ys' (xs ++ nxt)
     where ys' = ys ++ [x]
           nxt = getNxtPoints m (ys ++ xs) x
