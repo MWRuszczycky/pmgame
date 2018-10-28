@@ -2,8 +2,6 @@
 
 Terminal-based game for Linux similar to Pac-Man and written entirely in Haskell using [Brick](https://hackage.haskell.org/package/brick).
 
-This is still a work in progress, but the basic game is working:
-
 ![pmgame demo](demos/demo1.gif)
 
 ## Installation
@@ -44,6 +42,13 @@ Delete the `pmgame` binary from wherever Stack installed it (see above). Delete 
 * Use `Esc` to quit the game at any time.
 * Use `Space` to pause the game.
 
+## Creating your own mazes
+
+You can create and play your own custom maze as the first level. Complete information, including an example, about how to write your own ascii maze file can be displayed using the help command:
+```sh
+pmgame --help
+```
+
 ## Terminal and color issues
 
 When the game runs, it sets the `TERM` environment parameter to `xterm-256color`. If this causes a problem such as a message like
@@ -55,8 +60,3 @@ then you can try using a different terminal setting using the `--terminal` optio
 pmgame --terminal=xterm-16color
 ```
 The game should still display correctly with only 16 colors; however, you will start to lose colors if you go below 16. For example, grey text will not show up and power pellets will not flash if you set `--terminal=xterm`, but everything else should still work.
-
-## Things to do
-
-* Include an "about" screen with version information.
-* Write a better README.
