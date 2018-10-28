@@ -32,6 +32,8 @@ module Model.Utilities
     -- Utilities for moving player and ghosts
     , moveFrom
     , revDirection
+    -- Randomizaton utilities
+    , randomizeBiasHead
     -- Pathfinding
     , isPathBetween
     , pathBetween
@@ -42,8 +44,11 @@ import qualified Model.Types    as T
 import qualified Data.Vector    as V
 import Data.Matrix                      ( (!)               )
 import Data.Ord                         ( comparing         )
-import Data.List                        ( foldl', maximumBy )
 import Data.Char                        ( isControl         )
+import Data.List                        ( delete, foldl'
+                                        , maximumBy         )
+import System.Random                    ( randomR
+                                        , StdGen            )
 import Text.Read                        ( readMaybe         )
 import Lens.Micro                       ( (&), (^.), (%~)   )
 import Brick.Widgets.Edit               ( getEditContents   )
@@ -292,6 +297,21 @@ dirToShift West  = (0,-1)
 dirToShift East  = (0, 1)
 dirToShift North = (-1,0)
 dirToShift South = (1, 0)
+
+---------------------------------------------------------------------
+-- Randomization utilities
+
+randomizeBiasHead :: ( Eq a ) => StdGen -> [a] -> Int -> ([a], StdGen)
+-- ^Randomize a list biased towards the head of the list. If the list
+-- has n elements and the bias is b, then the probablity that the
+-- head will remain the head is (b + 1) / (b + n).
+randomizeBiasHead r0 [] _    = ([], r0)
+randomizeBiasHead r0 xs bias = (x:xs', r2)
+    where n          = length xs - 1
+          (k,r1)     = randomR (0, n + bias) r0
+          (xs', r2)  = randomizeBiasHead r1 (delete x xs) bias'
+          (bias', x) | k < n     = ( bias, xs !! (k + 1) )
+                     | otherwise = ( 0, head xs          )
 
 ---------------------------------------------------------------------
 -- Path-finding

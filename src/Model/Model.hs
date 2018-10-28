@@ -16,12 +16,11 @@ module Model.Model
 
 import qualified Data.Matrix as M
 import qualified Model.Types as T
-import Data.List                    ( (\\), delete, foldl'
-                                    , sort                  )
 import Lens.Micro                   ( (&), (^.), (.~), (%~) )
 import Data.Matrix                  ( (!)                   )
-import System.Random                ( randomR
-                                    , StdGen                )
+import Data.List                    ( (\\), delete, foldl'
+                                    , sort                  )
+import System.Random                ( StdGen                )
 import Model.Utilities              ( addHighScore
                                     , edibleGhostWaitTime
                                     , ghostWaitTime
@@ -32,6 +31,7 @@ import Model.Utilities              ( addHighScore
                                     , pathBetween
                                     , playerScore
                                     , playerWaitTime
+                                    , randomizeBiasHead
                                     , revDirection
                                     , scoreFruit
                                     , scoreMessage
@@ -330,6 +330,11 @@ makeEdible g = case g ^. T.gstate of
 ---------------------------------------------------------------------
 -- Moving the ghosts
 
+-- All ghosts move the same way in a biased-random manner. If the
+-- player is visible to the ghost (i.e., no walls in between), then
+-- the ghost is biased to chase the player. Otherwise, the ghost is
+-- biased to keep going in the direction it was already going in.
+
 -- Exported
 
 moveGhosts :: Game -> Game
@@ -346,6 +351,8 @@ moveGhost gm g0 (gs, r0) = case g0 ^. T.gstate of
                                 otherwise -> moveWholeGhost gm g0 (gs, r0)
 
 moveEyes :: Ghost -> ([Ghost], StdGen) -> ([Ghost], StdGen)
+-- ^Ghost eyes follow a specific path back to the ghost's starting
+-- point, where it regenerates. Ghost eyes have no wait time.
 moveEyes g0 (gs,r) = (g1:gs, r)
     where g1 = case g0 ^. T.gpathback of
                     []     -> resetGhost g0
@@ -356,11 +363,7 @@ moveWholeGhost :: Game -> Ghost -> ([Ghost], StdGen) -> ([Ghost], StdGen)
 moveWholeGhost gm g0 (gs, r0)
     | isGhostWaiting gm g0 = (g0:gs, r0)
     | otherwise            = (g1:gs, r1)
-    where p0      = g0 ^. T.gpos
-          m       = gm ^. T.maze
-          atStart = g0 ^. T.gpos == fst ( g0 ^. T.gstrt )
-          bias    = if atStart then 0 else 20
-          (ds,r1) = proposeDirections gm g0 r0 bias
+    where (ds,r1) = proposeDirections gm g0 r0
           (d1,p1) = chooseDirection gm g0 ds
           g1      = g0 & T.gpos   .~ p1
                        & T.gdir   .~ d1
@@ -374,6 +377,8 @@ isGhostWaiting gm g = let dt = gm ^. T.time - g ^. T.gtlast
                                EyesOnly  -> dt < ghostWaitTime
 
 chooseDirection :: Game -> Ghost -> [Direction] -> (Direction, Point)
+-- ^Choose new position and direction for ghost from the first
+-- availabel to move in. If no direction is available, then stay put.
 chooseDirection gm g []     = (g ^. T.gdir, g ^. T.gpos)
 chooseDirection gm g (d:ds) =
     let m   = gm ^. T.maze
@@ -384,25 +389,30 @@ chooseDirection gm g (d:ds) =
              OneWay owd -> if d == owd then (d, p) else nxt
              otherwise  -> (d, p)
 
-proposeDirections :: Game -> Ghost -> StdGen -> Int -> ([Direction], StdGen)
-proposeDirections gm g r bias = randomDirections r ds bias
-    where ds = pd : delete pd [North, South, East, West]
-          pd = case toPacMan gm g of
-                    Nothing -> g ^. T.gdir
-                    Just d  -> if g ^. T.gstate == Edible
-                                  then revDirection d
-                                  else d
-
-randomDirections :: StdGen -> [Direction] -> Int -> ([Direction], StdGen)
-randomDirections r0 [] _    = ([], r0)
-randomDirections r0 ds bias = (d:ds', r2)
-    where n          = length ds - 1
-          (k,r1)     = randomR (0, n + bias) r0
-          (ds', r2)  = randomDirections r1 (delete d ds) bias'
-          (bias', d) | k < n     = ( bias, ds !! (k + 1) )
-                     | otherwise = ( 0, head ds          )
+proposeDirections :: Game -> Ghost -> StdGen -> ([Direction], StdGen)
+-- ^Randomize directions for the ghost to move in. Directions will be
+-- attempted in order via the chooseDirection function. Randomization
+-- is biased as follows. If the player is "visible" to the ghost,
+-- then the direction to the player is favored unless the ghost is
+-- edible, in which case the ghost goes in the opposite direction.
+-- Otherwise, the ghost is biased to keep moving in the direction it
+-- is already moving in. If the ghost is at its start position, then
+-- all directions are equally probable.
+proposeDirections gm g r
+    | atStart   = randomizeBiasHead r ds  0
+    | otherwise = randomizeBiasHead r ds' b
+    where ds      = [North, South, East, West]
+          atStart = g ^. T.gpos == fst ( g ^. T.gstrt )
+          ds'     = pd : delete pd ds
+          (pd, b) = case toPacMan gm g of
+                         Nothing -> ( g ^. T.gdir, 20 )
+                         Just d  -> if g ^. T.gstate == Edible
+                                       then ( revDirection d, 50 )
+                                       else ( d, 50              )
 
 toPacMan :: Game -> Ghost -> Maybe Direction
+-- ^Determine if the plaper is visible to a ghost and if so return
+-- the direction to the player.
 toPacMan g gst
     | pc == gc && pr < gr && noWalls gr pr cPath = Just North
     | pc == gc && pr > gr && noWalls gr pr cPath = Just South
