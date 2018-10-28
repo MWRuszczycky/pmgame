@@ -59,7 +59,7 @@ attributes = attrMap V.defAttr
     , ( "blueMaze",         on V.blue          V.black )
     , ( "pinkMaze",         on V.magenta       V.black )
     , ( "cyanMaze",         on V.cyan          V.black )
-    , ( "redMmaze",         on V.red           V.black )
+    , ( "redMaze",          on V.red           V.black )
     , ( "whiteMaze",        on V.white         V.black )
     , ( "deathMaze",        on V.brightBlack   V.black )
     , ( "oneway",           on V.red           V.black )

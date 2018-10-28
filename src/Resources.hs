@@ -121,7 +121,7 @@ getAsciiMaze lvl
     | lvl < 1   = getAsciiMaze 1
     | isFlipped = intercalate "\n" . flipMaze $ maze
     | otherwise = intercalate "\n" $ maze
-    where isFlipped = odd . quot lvl $ 10
+    where isFlipped = odd . quot (lvl - 1) $ 10
           maze      = rawMaze . mazeNumber $ lvl
 
 flipMaze :: [String] -> [String]
