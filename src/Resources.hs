@@ -333,9 +333,7 @@ helpStr = intercalate "\n" hs
                , "                  |*.....P.....*|"
                , "                  |=============|"
                , "\n" ++ spacer
-               , "-- Copyright Mark W. Ruszczycky (c) 2018\n"
-               , "This is open-source software that you are free to change and"
-               , "     redistribute according to the BSD-3-Clause license,"
-               , "     https://opensource.org/licenses/BSD-3-Clause"
-               , "The open-source repository is maintained at: "
-               , "     " ++ repository ]
+               , "-- Copying\n"
+               , "This is free, open-source software maintained with full"
+               , "  documentation and licensing information at:"
+               , "  " ++ repository ]
