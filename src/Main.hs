@@ -92,7 +92,7 @@ runGame newGame = do
 
 ---------------------------------------------------------------------
 -- Shutting down the game
--- If there was an error, print it to the terimnal; otherwise, save
+-- If there was an error, print it to the terminal; otherwise, save
 -- the new list of high scores. High scores are saved in the pmgame
 -- directory, which is created in the user's ~/.config directory.
 -- If there is no ~/.config directory, the user is informed, no
@@ -137,5 +137,5 @@ readFileEither :: FilePath-> IO (Either String String)
 readFileEither fp = do
     catch ( Right <$> readFile fp ) ( hndlErr fp )
     where hndlErr :: FilePath -> IOException -> IO (Either String String)
-          hndlErr x _ = return . Left $ "Error: cannot find file " ++ x
+          hndlErr x _ = return . Left $ "Error: cannot open file " ++ x ++ "!"
 

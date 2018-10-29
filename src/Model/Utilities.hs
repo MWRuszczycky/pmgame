@@ -156,15 +156,6 @@ updateHighScores gm = gm & T.highscores %~ addHighScore score
 
 -- Unexported
 
-addHighScore :: HighScore -> [HighScore] -> [HighScore]
--- ^Add a new high score to the list of high scores. There can only
--- be at most 5 high scores, so the new high score will not be added
--- if it is not in the top 5.
-addHighScore (name, score) = take 5 . go
-    where go [] = [(name, score)]
-          go ((n,s):xs) | score > s = (name, score) : (n,s) : xs
-                        | otherwise = (n,s) : go xs
-
 formatPlayerName :: String -> String
 -- ^Read the name the player input and format it. Player names must
 -- have at least one non-space character.
@@ -179,6 +170,15 @@ formatPlayerName x
 -- Useful helper functions
 
 -- Exported
+
+addHighScore :: HighScore -> [HighScore] -> [HighScore]
+-- ^Add a new high score to the list of high scores. There can only
+-- be at most 5 high scores, so the new high score will not be added
+-- if it is not in the top 5.
+addHighScore (name, score) = take 5 . go
+    where go [] = [(name, score)]
+          go ((n,s):xs) | score > s = (name, score) : (n,s) : xs
+                        | otherwise = (n,s) : go xs
 
 newMessage :: String -> Message
 newMessage s = Message s messageDuration

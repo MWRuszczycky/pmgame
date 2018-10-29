@@ -1,6 +1,6 @@
 # pmgame
 
-Terminal-based game for Linux similar to Pac-Man and written entirely in Haskell using [Brick](https://hackage.haskell.org/package/brick).
+Terminal-based game for Linux similar to Pac-Man and written entirely in Haskell using [Brick](https://hackage.haskell.org/package/brick). The game should also work in terminal emulators on the MacOS, but may not work on Windows (I have only tested it on Linux).
 
 ![pmgame demo](demos/demo1.gif)
 
