@@ -134,8 +134,6 @@ getFirstAsciiMaze (Just fp) _ = readFileEither fp
 
 readFileEither :: FilePath-> IO (Either String String)
 -- ^Read a file converting IO exceptions to Left String values.
-readFileEither fp = do
-    catch ( Right <$> readFile fp ) ( hndlErr fp )
-    where hndlErr :: FilePath -> IOException -> IO (Either String String)
-          hndlErr x _ = return . Left $ "Error: cannot open file " ++ x ++ "!"
-
+readFileEither fp = catch ( Right <$> readFile fp ) hndlErr
+    where hndlErr :: IOException -> IO (Either String String)
+          hndlErr _ = return . Left $ "Error: cannot open file '" ++ fp ++ "'!"
