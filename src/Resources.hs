@@ -251,7 +251,7 @@ rawMaze _ = rawMaze 1
 helpStr :: String
 helpStr = intercalate "\n" hs
     where spacer = "----------------------------------------------------------"
-          hs = [ "Usage: pmgame [OPTION]...\n"
+          hs = [ "Usage: pmgame [OPTION..]\n"
                , "Play a Pac-Man-like game in your terminal!"
                , "pmgame is written entirely in Haskell using Brick.\n"
                , O.usageInfo (spacer ++ "\n-- Available options\n") . init
@@ -266,6 +266,17 @@ helpStr = intercalate "\n" hs
                , "The game requires at least 16 colors. So if you choose a"
                , "TERM parameter that does not support 16 colors, the game"
                , "should still run, but some colors may not show up correctly."
+               , "\nThe display may also look a little wonky depending on the"
+               , "terminal font. Some fonts that look reasonably good are:\n"
+               , "    DejaVu Sans Mono (used to develop the game)"
+               , "    Andale Mono"
+               , "    Courier"
+               , "    FreeMono"
+               , "    Liberation Mono"
+               , "    Monospace\n"
+               , "Right now, the terminal font needs to be changed before"
+               , "starting the game, (e.g., by right-clicking in the terminal"
+               , "and editing the profile preferences)."
                , "\n" ++ spacer
                , "-- Creating your own mazes\n"
                , "You can create your own maze to play as the first level by"
