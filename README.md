@@ -8,7 +8,7 @@ Terminal-based game for Linux similar to Pac-Man and written entirely in Haskell
 
 ### Installing and updating
 
-The program uses the [Haskell Tool Stack](https://docs.haskellstack.org/en/stable/README/). Clone the repository and install with
+If you want to just get the latest release binary for Linux rather than compiling from source, then [go here](https://github.com/MWRuszczycky/pmgame/releases). Otherwise, the program uses the [Haskell Tool Stack](https://docs.haskellstack.org/en/stable/README/) for package management and compiling. Clone the repository and install with
 ```sh
 git clone https://github.com/MWRuszczycky/pmgame.git
 cd pmgame
