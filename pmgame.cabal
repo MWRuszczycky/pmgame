@@ -25,10 +25,10 @@ executable pmgame
                      , microlens
                      , microlens-th
                      , random
-                     , vector
-                     , vty
                      , text
                      , unix
+                     , vector
+                     , vty
  other-modules:        Controller
                      , Loading
                      , Model.Model
