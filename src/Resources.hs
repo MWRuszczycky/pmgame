@@ -45,6 +45,9 @@ optionsHub =
     [ O.Option ['h'] ["help"]
           ( O.NoArg ( set T.info (Just helpStr) ) )
           helpUsage
+    , O.Option ['c'] ["copying"]
+          ( O.NoArg ( set T.info (Just copyingStr) ) )
+          copyingUsage
     , O.Option ['v'] ["version"]
           ( O.NoArg ( set T.info (Just version) ) )
           versionUsage
@@ -70,6 +73,9 @@ readFirstLevel = maybe 1 id . readMaybe
 
 helpUsage :: String
 helpUsage = "Show this help display."
+
+copyingUsage :: String
+copyingUsage = "Display copyright information."
 
 versionUsage :: String
 versionUsage = "Show version number."
@@ -336,13 +342,16 @@ helpStr = intercalate "\n" hs
                , "-- Copying\n"
                , "This is free, open-source software maintained with full"
                , "  documentation and licensing information at:"
-               , "  " ++ repository ]
+               , "  " ++ repository
+               , "Copyright information for the binary can be displayed with:"
+               , "  pmgame --copying"
+               ]
 
 -- =============================================================== --
 -- Copying string
 
-copyingHelpStr :: String
-copyingHelpStr = intercalate "\n"
+copyingStr :: String
+copyingStr = intercalate "\n"
   [ "The pmgame binary contains code generated from the following sources. Each of"
   , "the licenses represented are reproduced in full below.\n"
   , "pmgame | BSD-3"
