@@ -482,7 +482,7 @@ bsd3License = unlines
   , "are met:\n"
   , "    1. Redistributions of source code must retain the above copyright"
   , "       notice, this list of conditions and the following disclaimer.\n"
-  , "    2. Redistributions in binary form must reproduce the above copyright\n"
+  , "    2. Redistributions in binary form must reproduce the above copyright"
   , "       notice, this list of conditions and the following disclaimer in the"
   , "       documentation and/or other materials provided with the distribution.\n"
   , "    3. Neither the name of the author nor the names of his contributors"
