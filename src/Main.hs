@@ -86,9 +86,10 @@ initGame opts = do
 runGame :: GameSt -> IO GameSt
 runGame newGame = do
     chan <- newBChan 10 :: IO ( BChan TimeEvent )
-    defaultConfig <- V.standardIOConfig
+    let buildVty = V.standardIOConfig >>= V.mkVty
+    initVty <- buildVty
     forkIO $ runTimer chan 0
-    customMain (V.mkVty defaultConfig) (Just chan) app newGame
+    customMain initVty buildVty (Just chan) app newGame
 
 ---------------------------------------------------------------------
 -- Shutting down the game
